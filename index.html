@@ -1539,6 +1539,19 @@ body.acc-big #exam .qtext, body.acc-big #exam .opt, body.acc-big #exam .stem { f
 .ut-ready .ico { width: 18px; height: 18px; color: var(--good); flex: none; }
 .ut-ready span { flex: 1 1 220px; min-width: 0; }
 
+/* online test status (open / closed) on the Create Unit Test page */
+.ut-open { display: grid; gap: 10px; margin: 0 0 16px; padding: 14px 16px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--surface); }
+.uo-h { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.uo-chip { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 800; background: var(--sunk); color: var(--muted); }
+.uo-chip.open { background: var(--good-soft); color: var(--good); }
+.uo-chip.closed { background: var(--bad-soft); color: var(--bad); }
+.uo-ctl { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; }
+.uo-ctl label { display: grid; gap: 4px; font-weight: 600; }
+.uo-ctl input { font: inherit; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); }
+.uo-pw input { display: block; margin-top: 4px; font: inherit; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); max-width: 260px; }
+.ut-open .ico { width: 15px; height: 15px; vertical-align: -2px; }
+.utmine .uo-chip { margin-left: 6px; vertical-align: 1px; }
+
 </style>
 </head><body>
 <div id="app">
@@ -15380,6 +15393,48 @@ function utShortParse(raw) {
   const ut = { v: 1, n: utDefaultTitle(x, g.u, kind), t: x.id, u: g.u, q: g.q, f: g.f, m, e: '', a, s: z, z, zm: mix, o: 1, ...(lkm ? { lk: { m: lkm, ...(kLock ? { k: 1 } : {}) } } : {}), ...(kh ? { kh } : {}), ...(dn ? { dn } : {}), ...(dw ? { dw } : {}), ...(ver === 1 ? { zv: 1 } : { sp: { m: SP_KINDS.map(o => o[0]).filter((k, i) => spm & (1 << i)), all: spA } }), ...(ver === 1 ? { zv: 1 } : {}), ...(kind !== 'unit' ? { ex: kind } : { zn: o.n }) };
   return { ut, code: utCode(ut) };
 }
+/* ── open / closed tests (checked with the sign-up script, so it works for every student and can't be beaten by changing a clock) ── */
+const tidOf = ut => { const k = `${ut.t}|${ut.s}|${ut.kh || ''}|${ut.k || ''}`; return 'h' + hashStr(k) + hashStr(k + '#'); };
+async function testCheck(uts) {
+  const cfg = await signupReady(); if (!cfg || !cfg.endpoint) return null;
+  try { const ac = new AbortController(), tm = setTimeout(() => ac.abort(), 7000);
+    const r = await fetch(`${cfg.endpoint}?a=tests&site=scholarlab&ids=${uts.map(tidOf).join(',')}`, { signal: ac.signal }); clearTimeout(tm);
+    const d = await r.json(); return d && d.ok ? d : null; } catch (e) { return null; }
+}
+async function testSet(ut, pw, extra) {
+  const cfg = await signupReady(); if (!cfg || !cfg.endpoint) return { ok: false, msg: 'Opening and closing tests works on the website (scholarlab.net).' };
+  try { const tid = tidOf(ut), ck = await closeKey(pw, tid);
+    const r = await fetch(cfg.endpoint, { method: 'POST', body: JSON.stringify({ a: 'test', site: 'scholarlab', id: tid, ck, name: ut.n, course: (BY_ID[ut.t] || {}).subject || '', teacher: ut.e || '', ...extra }) });
+    return await r.json(); } catch (e) { return { ok: false, msg: 'Couldn’t reach the test service. Check your connection and try again.' }; }
+}
+const fmtWhen = iso => { const d = new Date(iso); return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) + ', ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }); };
+const dtLocal = iso => { if (!iso) return ''; const d = new Date(iso), p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; };
+function openBoxHTML(d) {
+  const o = d.os;
+  if (!window.SIGNUP && !o) return `<div class="ut-open"><p class="small muted" style="margin:0">${SVG(IC.lock)} Closing a test (now or at a set time) works on your website, scholarlab.net.</p></div>`;
+  const chip = !o || o.loading ? '<span class="uo-chip">Checking…</span>' : o.err ? '<span class="uo-chip">Unknown</span>' : o.closed ? '<span class="uo-chip closed">Closed</span>' : '<span class="uo-chip open">Open</span>';
+  const when = o && !o.loading && !o.err ? (o.closed ? (o.status === 'Closed' ? 'Students can’t start this test.' : `Closed at ${fmtWhen(o.closeAt)}. Students can’t start it.`) : o.closeAt ? `Closes ${fmtWhen(o.closeAt)}` : 'No close time set') : o && o.err ? esc(o.err) : '';
+  return `<div class="ut-open"><div class="uo-h"><b>Online test status</b> ${chip} <span class="small muted">${when}</span></div>
+    <div class="uo-ctl"><label class="small">Close at<input type="datetime-local" id="utClAt" value="${esc(dtLocal(o && o.closeAt))}"></label><button class="btn sm" type="button" id="utClSet">Save close time</button>
+      ${o && o.closed ? '<button class="btn sm primary" type="button" id="utReopen">Reopen now</button>' : '<button class="btn sm" type="button" id="utCloseNow" style="color:var(--bad)">Close now</button>'}</div>
+    ${d.owPw ? `<div class="uo-pw"><label class="small">This test was made with a different teacher password. Enter it to continue.<input id="utOpenPw" autocomplete="off" spellcheck="false"></label></div>` : ''}
+    <p class="small muted" id="utOpenMsg" role="status" style="margin:0">${esc(d.osMsg || 'Students who already started can still finish and send their results.')}</p></div>`;
+}
+function bindOpenBox(d, pwFn) {
+  const box = document.getElementById('utOpen'); if (!box) return;
+  const paint = () => { box.innerHTML = openBoxHTML(d); bindOpenBox(d, pwFn); };
+  const run = async extra => { const pw = ($('#utOpenPw') && $('#utOpenPw').value.trim()) || d.okPw || pwFn(); d.osMsg = 'Saving…'; paint();
+    const r = await testSet(d.ut, pw, { op: 'set', ...extra });
+    if (r && r.ok) { d.os = r; d.owPw = false; d.okPw = pw; d.osMsg = r.closed ? 'Closed. Students who open the link or code now see that the test is closed.' : r.closeAt ? 'Saved. The test closes automatically at that time.' : 'Open. Students can start the test.'; }
+    else if (r && r.wrongKey) { d.owPw = true; d.osMsg = r.msg; } else d.osMsg = (r && r.msg) || 'Couldn’t save. Try again.';
+    paint(); };
+  if ($('#utCloseNow')) $('#utCloseNow').onclick = () => run({ status: 'Closed' });
+  if ($('#utReopen')) $('#utReopen').onclick = () => run({ status: 'Open', ...(d.os && d.os.closeAt && new Date(d.os.closeAt) <= new Date() ? { closeAt: '' } : {}) });
+  if ($('#utClSet')) $('#utClSet').onclick = () => { const v = $('#utClAt').value; run({ closeAt: v ? new Date(v).toISOString() : '' }); };
+  if (d.os === undefined) { d.os = null; /* the sign-up script loads after the page, so wait for it before checking */
+    signupReady().then(cfg => { if (!cfg) { d.os = undefined; return; } d.os = { loading: true }; paint();
+      testCheck([d.ut]).then(res => { const t = res && res.tests[tidOf(d.ut)]; d.os = res ? (t || { closed: false, status: 'Open', closeAt: '' }) : { err: 'Couldn’t check right now.' }; paint(); }); }); }
+}
 function renderUtNew() {
   if (!isTeacher()) return renderUnitTests();
   setAccent(null); show('hub');
@@ -15401,6 +15456,7 @@ function renderUtNew() {
   const draftHTML = d ? (() => { const ut = d.ut, items = utItems(ut), code = utCode(ut), nf = ut.f.length, x2 = BY_ID[ut.t];
     return `<section class="card" style="margin-top:18px" id="utDraft"><div class="card-h sm"><h3>${esc(ut.n)}</h3><span class="small muted">${utCountText(utCounts(ut, items))} · ${ut.m ? ut.m + ' min' : 'no time limit'}</span></div>
       <div class="ut-top"><button class="btn primary" id="utSave">${d.saved ? '✓ Saved' : 'Save test'}</button><a class="btn" href="#assign" id="utAssign">${SVG(IC.assign)} Assign to students</a><button class="btn" id="utTry">${SVG(IC.play)} Preview as a student</button><span class="ut-paper">${paperSel()}</span></div>
+      <div id="utOpen">${openBoxHTML(d)}</div>
       <div class="ut-groups">
         <section class="ut-grp"><h4>${SVG(IC.file)} Test and answer key</h4><p>The regular test for everyone. PDF to print, or Word to edit.</p>
           <div class="ut-sub"><span>PDF</span>${pdfBtn('utPdfBoth', 'Test + answer key')}${pdfBtn('utPdfTest', 'Test only')}${pdfBtn('utPdfSheet', 'Answer sheet')}</div>
@@ -15449,6 +15505,8 @@ function renderUtNew() {
       <section class="ut-step">${H('Title, time, and results')}
         <div class="row2"><label>Title<input id="utTitle" maxlength="80" value="${esc(st.title || utDefaultTitle(x, st.u, st.kind))}"></label>
         <label>Time limit (minutes, 0 = none)<input type="number" id="utM" min="0" max="240" value="${st.m == null ? autoMin : st.m}"></label></div>
+        <label>Close the test at (optional)<input type="datetime-local" id="utCl" value="${esc(st.cl || '')}"></label>
+        <p class="small muted" style="margin:-4px 0 0">After this time students can’t start the test (anyone already taking it can finish). You can also close or reopen it any time after you generate it.</p>
         <label>Send results to (your school email)<input id="utE" type="email" value="${esc(st.e)}"></label>
         <p class="small muted" style="margin:-4px 0 0">When students finish, their results page opens an email to this address with their results filled in.</p>
         <label>After a student sends results<select id="utA"><option value="send" ${st.a === 'send' ? 'selected' : ''}>Show them the answers and explanations</option><option value="never" ${st.a === 'never' ? 'selected' : ''}>Keep answers hidden (I’ll go over them in class)</option></select></label></section>
@@ -15461,12 +15519,12 @@ function renderUtNew() {
       <div class="ut-go"><button class="btn primary big" id="utGen">${d ? 'Generate a new version' : 'Generate test'}</button><div class="err" id="utErr" role="alert"></div>${st.justMade && d ? `<p class="ut-ready" role="status">${SVG(IC.check)} <span><b>Your test is ready.</b> It’s just below this form, with the download options.</span><button class="btn sm" type="button" id="utSee">View the test ↓</button></p>` : ''}</div>
     </section>
     <section class="card"><div class="card-h sm"><h3>Your unit tests</h3><a class="more" href="#ut-check">Check results ${SVG(IC.arrow)}</a></div>
-      ${mine.length ? `<ul class="utmine">${mine.slice().reverse().map((m, i) => { const ut = (utParse(m.code) || {}).ut; return ut ? `<li><div><b>${esc(ut.n)}</b><small>${esc(BY_ID[ut.t].subject)} · ${ut.q.length} MC${ut.f.length ? ' + ' + ut.f.length + ' FRQ' : ''} · saved ${fmtDate(m.date).split(',')[0]}</small></div><div class="row"><button class="linkbtn sm" data-open="${mine.length - 1 - i}">Open</button><button class="linkbtn sm" data-del="${mine.length - 1 - i}" style="color:var(--bad)">Delete</button></div></li>` : ''; }).join('')}</ul>` : '<p class="empty">Tests you save appear here, in this browser.</p>'}
+      ${mine.length ? `<ul class="utmine">${mine.slice().reverse().map((m, i) => { const ut = (utParse(m.code) || {}).ut; return ut ? `<li data-tid="${tidOf(ut)}"><div><b>${esc(ut.n)}</b><small>${esc(BY_ID[ut.t].subject)} · ${ut.q.length} MC${ut.f.length ? ' + ' + ut.f.length + ' FRQ' : ''} · saved ${fmtDate(m.date).split(',')[0]}</small></div><div class="row"><button class="linkbtn sm" data-open="${mine.length - 1 - i}">Open</button><button class="linkbtn sm" data-del="${mine.length - 1 - i}" style="color:var(--bad)">Delete</button></div></li>` : ''; }).join('')}</ul>` : '<p class="empty">Tests you save appear here, in this browser.</p>'}
     </section></div>
     ${build ? buildPanelHTML(x, st) : ''}
     ${draftHTML}
     ${foot()}</div>`;
-  const upd = () => { st.t = $('#utT').value; if ($('#utN')) st.n = Math.max(0, +$('#utN').value || 0); st.mix = $('#utMix').value; st.m = $('#utM').value === '' ? null : Math.max(0, +$('#utM').value); st.title = $('#utTitle').value.trim(); st.e = $('#utE').value.trim(); st.a = $('#utA').value; st.open = $('#utO').checked; st.lk = $('#utL').value; st.pw = $('#utPw').value.trim(); };
+  const upd = () => { st.t = $('#utT').value; if ($('#utN')) st.n = Math.max(0, +$('#utN').value || 0); st.mix = $('#utMix').value; st.m = $('#utM').value === '' ? null : Math.max(0, +$('#utM').value); st.title = $('#utTitle').value.trim(); st.e = $('#utE').value.trim(); st.a = $('#utA').value; st.open = $('#utO').checked; st.lk = $('#utL').value; st.pw = $('#utPw').value.trim(); if ($('#utCl')) st.cl = $('#utCl').value; };
   /* every change re-draws the page but keeps the reader exactly where they were */
   const redo = () => { const y = window.scrollY; renderUtNew(); bindNav(); window.scrollTo(0, y); };
   if ($('#utSee')) $('#utSee').onclick = () => { const el = $('#utDraft'); if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 86, behavior: 'smooth' }); };
@@ -15488,7 +15546,7 @@ function renderUtNew() {
   $$('[data-spk]').forEach(c => c.onchange = () => { const k = c.dataset.spk; st.spm = c.checked ? [...new Set((st.spm || []).concat(k))] : (st.spm || []).filter(o => o !== k); });
   $('#utSpAll').onchange = () => { st.spall = $('#utSpAll').value === '1'; };
   $('#utK').onchange = () => { upd(); const was = st.kind; st.kind = $('#utK').value; if (was === 'build' || st.kind === 'build') st.fsel = st.fsel.filter(id => !/^c:/.test(id)); st.title = ''; st.m = null; redo(true); };
-  ['#utMix', '#utM', '#utTitle', '#utE', '#utA', '#utO', '#utL', '#utPw'].forEach(s => $(s).onchange = upd);
+  ['#utMix', '#utM', '#utTitle', '#utE', '#utA', '#utO', '#utL', '#utPw', '#utCl'].forEach(s => $(s).onchange = upd);
   $('#utGen').onclick = async () => { upd(); const pw = (st.pw || teacherPw()).trim(); if (pw.length < 4) return $('#utErr').textContent = 'The teacher password needs at least 4 characters.'; LS.set('ap.lk.pw', pw);
     const lkx = lkModeOf(st.lk), sec = async z => ({ ...(lkx ? { lk: lkx } : {}), kh: await keyHash(pw, String(z)) });
     const defSpec = () => ({ ...(st.dm === 'pick' ? (st.dsel.length ? { dp: st.dsel.slice() } : {}) : dCount ? { dn: dCount } : {}), ...(st.dw && dCount ? { dw: st.dw } : {}), sp: { m: SP_KINDS.map(o => o[0]).filter(k => (st.spm || []).includes(k)), all: st.spall ? 1 : 0 } });
@@ -15497,7 +15555,7 @@ function renderUtNew() {
       LS.set('ap.ut.email', normEmail(st.e));
       const z = Math.floor(Math.random() * 2 ** 20), g = utGenerate(x, { kind: st.kind, mix: st.mix }, z);
       st.draft = { ut: { v: 1, ex: st.kind, n: st.title || utDefaultTitle(x, [], st.kind), t: x.id, u: g.u, q: g.q, f: g.f, m: st.m == null ? autoMin : st.m, e: normEmail(st.e), a: st.a, s: z, z, zm: st.mix, ...defSpec(), ...(st.open ? { o: 1 } : {}), ...(await sec(z)), d: new Date().toISOString().slice(0, 10) }, saved: false };
-      st.justMade = true; redo(); return; }
+      st.draft.reg = { pw, cl: st.cl || '' }; st.justMade = true; redo(); return; }
     if (build) {
       if (!st.bq.length && !st.fsel.length && !dCount) return $('#utErr').textContent = 'Pick some questions from the bank or add your own first.';
       if (!isEmail(st.e)) return $('#utErr').textContent = 'Enter the email address where students should send results.';
@@ -15505,7 +15563,7 @@ function renderUtNew() {
       const z = Math.floor(Math.random() * 2 ** 20), used = st.bq.map(id => /^c:/.test(id) ? null : x.bank.find(b => b.id === id)).filter(Boolean).map(b => b.cat);
       const cu = st.cust.map(c => c.u && x.CAT[c.u] ? c.u : st.bunit || st.u[0]); const us = srCatsOf(x).map(c => c.k).filter(k => used.includes(k) || st.u.includes(k) || cu.includes(k));
       st.draft = { ut: { v: 1, n: st.title || `${x.subject} · Test`, t: x.id, u: us, q: st.bq.slice(), f: st.fsel.slice(), ...(st.cust.length ? { c: st.cust.map((c, i) => ({ ...c, u: cu[i] })) } : {}), m: st.m == null ? autoMin : st.m, e: normEmail(st.e), a: st.a, s: z, ...defSpec(), ...(st.open ? { o: 1 } : {}), ...(await sec(z)), d: new Date().toISOString().slice(0, 10) }, saved: false };
-      st.justMade = true; redo(); return; }
+      st.draft.reg = { pw, cl: st.cl || '' }; st.justMade = true; redo(); return; }
     if (!st.u.length) return $('#utErr').textContent = 'Choose at least one unit.';
     if (!st.n && !st.fsel.length && !dCount) return $('#utErr').textContent = 'Add some multiple-choice, definition, or free-response questions.';
     if (!isEmail(st.e)) return $('#utErr').textContent = 'Enter the email address where students should send results.';
@@ -15513,14 +15571,22 @@ function renderUtNew() {
     LS.set('ap.ut.email', normEmail(st.e));
     const z = Math.floor(Math.random() * 2 ** 20), g = utGenerate(x, { kind: 'unit', u: st.u, n, mix: st.mix, f: st.fsel }, z);
     st.draft = { ut: { v: 1, n: st.title || utDefaultTitle(x, st.u), t: x.id, u: st.u, q: g.q, f: g.f, m: st.m == null ? autoMin : st.m, e: normEmail(st.e), a: st.a, s: z, z, zm: st.mix, zn: n, ...defSpec(), ...(st.open ? { o: 1 } : {}), ...(await sec(z)), d: new Date().toISOString().slice(0, 10) }, saved: false };
-    st.justMade = true; redo(); };
+    st.draft.reg = { pw, cl: st.cl || '' }; st.justMade = true; redo(); };
   if (d) bindUtDraft(d, () => redo(true));
+  /* show Open / Closed next to each saved test */
+  { const uts = mine.map(m => (utParse(m.code) || {}).ut).filter(Boolean); if (uts.length) testCheck(uts.slice(-40)).then(res => { if (!res) return;
+    $$('.utmine li[data-tid]').forEach(li => { const t = res.tests[li.dataset.tid]; const b = li.querySelector('b'); if (!b || li.querySelector('.uo-chip')) return;
+      b.insertAdjacentHTML('afterend', t && t.closed ? ' <span class="uo-chip closed">Closed</span>' : t ? ' <span class="uo-chip open">Open</span>' : ''); }); }); }
   $$('[data-open]').forEach(b => b.onclick = () => { const m = LS.get(UT_MINE, [])[+b.dataset.open]; const p = utParse(m.code); if (!p) return; st.t = p.ut.t; st.u = p.ut.u; st.kind = p.ut.ex || (p.ut.c || p.ut.z == null ? 'build' : 'unit'); st.fsel = p.ut.f.slice(); st.cust = (p.ut.c || []).slice(); st.bq = st.kind === 'build' ? p.ut.q.slice() : st.bq; st.dm = p.ut.dp ? 'pick' : 'auto'; st.dsel = (p.ut.dp || []).slice(); st.dn = p.ut.dn || 0; st.dw = p.ut.dw || ''; st.draft = { ut: p.ut, saved: true }; redo(); const el = $('#utDraft'); if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 86, behavior: 'smooth' }); });
   $$('[data-del]').forEach(b => b.onclick = () => confirmBox('Delete this saved test?', 'It is removed from your list. Students who already have the link or code can still take it.', 'Delete', () => { const l = LS.get(UT_MINE, []); l.splice(+b.dataset.del, 1); LS.set(UT_MINE, l); redo(true); }));
 }
 function utSaveMine(ut) { const code = utCode(ut), l = LS.get(UT_MINE, []); if (!l.some(m => m.code === code)) l.push({ code, date: new Date().toISOString() }); LS.set(UT_MINE, l); return code; }
 function bindUtDraft(d, redraw) {
   const ut = d.ut, code = utCode(ut);
+  const pwFn = () => ($('#utPw') && $('#utPw').value.trim()) || teacherPw();
+  if (d.reg) { const g = d.reg; delete d.reg; d.os = window.SIGNUP ? { loading: true } : undefined;
+    if (window.SIGNUP || document.readyState === 'loading') testSet(ut, g.pw, g.cl ? { op: 'set', closeAt: new Date(g.cl).toISOString() } : { op: 'register' }).then(r => { d.os = r && r.ok ? r : { err: (r && r.msg) || 'Couldn’t save the close time.' }; const b = document.getElementById('utOpen'); if (b) { b.innerHTML = openBoxHTML(d); bindOpenBox(d, pwFn); } }); }
+  bindOpenBox(d, pwFn);
   $('#utSave').onclick = () => { utSaveMine(ut); d.saved = true; redraw(); };
   $('#utAssign').addEventListener('click', () => { utSaveMine(ut); d.saved = true; AS.kind = 'ut'; AS.code = utCode(ut); }, true);
   $$('[data-copy]').forEach(b => b.onclick = () => { const inp = $(b.dataset.copy); inp.select(); copyText(inp.value, '#utCopied', 'Copied'); });
@@ -15678,7 +15744,12 @@ function renderUtIntro(code) {
     else if (o.r3 != null) { A.r3 = o.r3; A.log.push(o.r3 ? 'one wrong answer removed per question' : 'all answer choices'); }
     else if (o.time === 'none') { A.untimed = true; A.log.push('no time limit'); } else { A.x = /^x/.test(o.time) ? parseFloat(o.time.slice(1)) : A.x; if (!/^x/.test(o.time)) A.add += +o.time; A.log.push(o.label); }
     return 'Applied: ' + A.log.join('; '); }, () => UTACC[p.code] || {}, () => { renderUtIntro(code); bindNav(); });
-  $('#utStartF').onsubmit = e => { e.preventDefault(); const nm = $('#utName').value.trim().replace(/\s+/g, ' ');
+  /* is this test still open? (checked once when the page opens; a closed test can't be started) */
+  const openP = testCheck([ut]).then(res => { const t = res && res.tests[tidOf(ut)]; return t && t.closed ? t : null; });
+  const shut = t => { const f = $('#utStartF'); if (!f) return; f.outerHTML = `<div class="notice ut-closed" role="alert"><b>This test is closed.</b> ${t.status === 'Closed' || !t.closeAt ? 'Your teacher has closed it' : 'It closed ' + esc(fmtWhen(t.closeAt))}, so it can’t be started now. If you think this is a mistake, ask your teacher.</div>`; };
+  openP.then(t => { if (t) shut(t); });
+  $('#utStartF').onsubmit = async e => { e.preventDefault(); const nm = $('#utName').value.trim().replace(/\s+/g, ' ');
+    const closedT = await Promise.race([openP, new Promise(r => setTimeout(() => r(null), 2500))]); if (closedT) return shut(closedT);
     if (nm.length < 3 || !/\s/.test(nm)) { $('#utStErr').textContent = 'Enter your first and last name so your teacher can match your results.'; return; }
     if ($('#utMe')) { const me2 = normEmail($('#utMe').value); if (me2 && !isEmail(me2)) { $('#utStErr').textContent = 'Check your email address, or leave it blank.'; return; } LS.set('ap.testonly.email', me2); }
     if ($('#utTo')) { const to = normEmail($('#utTo').value); if (!isEmail(to)) { $('#utStErr').textContent = 'Enter your teacher’s email address so you can send them your results.'; return; } LS.set(`ap.${PID}.teacher`, { e: to, r: '' }); }
@@ -16694,6 +16765,12 @@ async function keyHash(pw, salt) {
   const enc = new TextEncoder(), key = await crypto.subtle.importKey('raw', enc.encode(String(pw).trim().toLowerCase()), 'PBKDF2', false, ['deriveBits']);
   const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: enc.encode('eh-key|' + salt), iterations: 120000 }, key, 32);
   return [...new Uint8Array(bits)].slice(0, 3).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+/* a second slow hash of the teacher password, used only to close or reopen a test online (its fingerprint is kept by the sign-up script) */
+async function closeKey(pw, tid) {
+  const enc = new TextEncoder(), key = await crypto.subtle.importKey('raw', enc.encode(String(pw).trim().toLowerCase()), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: enc.encode('eh-close|' + tid), iterations: 120000 }, key, 256);
+  return [...new Uint8Array(bits)].map(b => b.toString(16).padStart(2, '0')).join('');
 }
 async function keyOK(ut, pw) { if (!ut) return false; if (!ut.kh) return String(pw).trim().toLowerCase() === LK_DEFAULT; try { return (await keyHash(pw, String(ut.s))) === ut.kh; } catch (e) { return false; } }
 const teacherPw = () => LS.get('ap.lk.pw', LK_DEFAULT) || LK_DEFAULT;
