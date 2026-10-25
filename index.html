@@ -13373,7 +13373,20 @@ function foot() {
   return `<footer class="foot"><div><p>${esc(DISCLAIMER)}</p><p>Scores and AP score estimates are practice estimates, not official scores. © ${new Date().getFullYear()} ${BRAND}.</p></div>
     <nav aria-label="Footer"><a href="#about">About</a><a href="#faq">FAQ</a><a href="#review">Resources</a><a href="#device" class="foot-ta">${SVG(IC.lock)}Teacher access</a></nav></footer>`;
 }
+/* The sidebar is rebuilt on every page change. Keep its scroll position, so clicking a link low in the menu
+   (Check Results, Manage Students…) doesn't throw the menu back to the top; and if the current page's link is
+   out of view (e.g. a direct visit to /ut-check), bring it into view. */
+let SIDE_Y = 0;
+document.addEventListener('scroll', e => { if (e.target && e.target.id === 'side') SIDE_Y = e.target.scrollTop; }, true);
+function keepSide() {
+  const sd = $('#side'); if (!sd) return;
+  if (SIDE_Y) sd.scrollTop = SIDE_Y;
+  const cur = sd.querySelector('a[aria-current="page"]'); if (!cur) return;
+  const r = cur.getBoundingClientRect(), sr = sd.getBoundingClientRect();
+  if (r.top < sr.top || r.bottom > sr.bottom) { sd.scrollTop += r.top - sr.top - sd.clientHeight / 3; SIDE_Y = sd.scrollTop; }
+}
 function bindNav() {
+  keepSide();
   const b = $('#whoBtn'); if (b) b.onclick = openProfileMenu; const f = $('#fbBtn'); if (f) f.onclick = () => openReport(null);
   const mb = $('#menuBtn'); if (mb) mb.onclick = () => { const o = !document.body.classList.contains('side-open'); document.body.classList.toggle('side-open', o); mb.setAttribute('aria-expanded', o); };
   $$('.side a').forEach(a => a.addEventListener('click', () => document.body.classList.remove('side-open')));
