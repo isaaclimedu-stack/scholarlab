@@ -1535,6 +1535,10 @@ body.acc-big #exam .qtext, body.acc-big #exam .opt, body.acc-big #exam .stem { f
 .ut-go { display: grid; gap: 8px; padding-top: 4px; }
 @media (max-width: 560px) { .ut-step { padding: 14px; } .ut-sh { font-size: 15.5px; flex-wrap: wrap; } .ut-cnt { margin-left: 38px; } }
 
+.ut-ready { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin: 0; padding: 12px 14px; border-radius: 10px; background: var(--good-soft); color: var(--ink); font-size: 14px; }
+.ut-ready .ico { width: 18px; height: 18px; color: var(--good); flex: none; }
+.ut-ready span { flex: 1 1 220px; min-width: 0; }
+
 </style>
 </head><body>
 <div id="app">
@@ -15097,6 +15101,8 @@ const paperDefault = () => { try { return /^(en-US|en-CA|es-MX|fil|en-PH)/i.test
 const paperKind = () => { const p = LS.get('ap.paper', null); return PAPER[p] ? p : paperDefault(); };
 const paperSel = () => `<label class="paper-sel">Paper <select data-paper aria-label="Paper size">${Object.entries(PAPER).map(([k, v]) => `<option value="${k}" ${k === paperKind() ? 'selected' : ''}>${v.label}</option>`).join('')}</select></label>`;
 document.addEventListener('change', e => { if (e.target && e.target.matches && e.target.matches('[data-paper]')) { LS.set('ap.paper', e.target.value); $$('[data-paper]').forEach(s => { s.value = e.target.value; }); } });
+const pinApp = y => { const a = document.getElementById('app'); if (!a) return; a.style.position = 'fixed'; a.style.top = -y + 'px'; a.style.left = '0'; a.style.right = '0'; };
+const unpinApp = () => { const a = document.getElementById('app'); if (!a) return; ['position', 'top', 'left', 'right'].forEach(k => { a.style[k] = ''; }); };
 async function makePdf(pagesHTML, filename, btn) {
   const lbl = btn ? btn.innerHTML : ''; if (btn) { btn.disabled = true; btn.textContent = 'Making PDF…'; }
   let host = null, sy = null;
@@ -15106,8 +15112,9 @@ async function makePdf(pagesHTML, filename, btn) {
     host = document.createElement('div'); host.className = 'pdf-host'; host.style.width = (PP.w - M[1] - M[3]).toFixed(2) + 'in';
     host.innerHTML = `<style>${scopeCss(PRINT_CSS + SC_CSS + DF_CSS + SG_CSS + SK_CSS + SP_CSS + '.pp{padding:0;max-width:none}', '.pdfdoc')}.pdfpage{background:#fff;display:flow-root}</style><div class="pdfdoc">${pagesHTML}</div>`;
     document.body.appendChild(host);
-    /* html2canvas draws relative to the scroll position, so render from the top and restore afterwards */
-    sy = window.scrollY; window.scrollTo(0, 0);
+    /* html2canvas only draws correctly from the top of the page. Pin the page in place where the reader is (so nothing visibly
+       moves), scroll the document to the top underneath it, and put everything back afterwards */
+    sy = window.scrollY; pinApp(sy); window.scrollTo(0, 0);
     const W = host.querySelector('.pdfdoc').getBoundingClientRect().width;
     const limit = Math.floor(W * (PP.h - M[0] - M[2]) / (PP.w - M[1] - M[3]) * 0.975);
     const pages = pdfPaginate(host.querySelector('.pdfdoc'), limit);
@@ -15132,7 +15139,7 @@ async function makePdf(pagesHTML, filename, btn) {
   } catch (e) {
     console.error(e);
     confirmBox('Couldn’t make the PDF', 'The PDF maker loads from the internet the first time you use it. Check your connection and try again.', 'OK', () => {});
-  } finally { if (host) host.remove(); document.querySelectorAll('.html2pdf__overlay').forEach(o => o.remove()); if (sy != null) window.scrollTo(0, sy); if (btn) { btn.disabled = false; btn.innerHTML = lbl; } }
+  } finally { if (host) host.remove(); document.querySelectorAll('.html2pdf__overlay').forEach(o => o.remove()); if (sy != null) { unpinApp(); window.scrollTo(0, sy); } if (btn) { btn.disabled = false; btn.innerHTML = lbl; } }
 }
 const pdfBtn = (id, label) => `<button class="btn" id="${id}">${SVG(IC.dl)} ${label}</button>`;
 
@@ -15451,7 +15458,7 @@ function renderUtNew() {
         <label>Test security (online)<select id="utL">${LK_MODES.map(([k, l]) => `<option value="${k}" ${st.lk === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
         <p class="small muted" style="margin:-4px 0 0">Lockdown hides the questions and records it every time a student leaves the test, and blocks copy/paste. A web page can’t block a phone or a second device, so supervise the room too. Safe Exam Browser is the strongest option on Windows, Mac, and iPad; on school Chromebooks, IT can turn off Gemini in the Google Admin console.</p>
         <label class="chk"><input type="checkbox" id="utO" ${st.open ? 'checked' : ''}> <span>Students can take this test without a Scholar Hub account (with the short test code or link)</span></label></section>`; })()}
-      <div class="ut-go"><button class="btn primary big" id="utGen">${d ? 'Generate a new version' : 'Generate test'}</button><div class="err" id="utErr" role="alert"></div></div>
+      <div class="ut-go"><button class="btn primary big" id="utGen">${d ? 'Generate a new version' : 'Generate test'}</button><div class="err" id="utErr" role="alert"></div>${st.justMade && d ? `<p class="ut-ready" role="status">${SVG(IC.check)} <span><b>Your test is ready.</b> It’s just below this form, with the download options.</span><button class="btn sm" type="button" id="utSee">View the test ↓</button></p>` : ''}</div>
     </section>
     <section class="card"><div class="card-h sm"><h3>Your unit tests</h3><a class="more" href="#ut-check">Check results ${SVG(IC.arrow)}</a></div>
       ${mine.length ? `<ul class="utmine">${mine.slice().reverse().map((m, i) => { const ut = (utParse(m.code) || {}).ut; return ut ? `<li><div><b>${esc(ut.n)}</b><small>${esc(BY_ID[ut.t].subject)} · ${ut.q.length} MC${ut.f.length ? ' + ' + ut.f.length + ' FRQ' : ''} · saved ${fmtDate(m.date).split(',')[0]}</small></div><div class="row"><button class="linkbtn sm" data-open="${mine.length - 1 - i}">Open</button><button class="linkbtn sm" data-del="${mine.length - 1 - i}" style="color:var(--bad)">Delete</button></div></li>` : ''; }).join('')}</ul>` : '<p class="empty">Tests you save appear here, in this browser.</p>'}
@@ -15460,7 +15467,10 @@ function renderUtNew() {
     ${draftHTML}
     ${foot()}</div>`;
   const upd = () => { st.t = $('#utT').value; if ($('#utN')) st.n = Math.max(0, +$('#utN').value || 0); st.mix = $('#utMix').value; st.m = $('#utM').value === '' ? null : Math.max(0, +$('#utM').value); st.title = $('#utTitle').value.trim(); st.e = $('#utE').value.trim(); st.a = $('#utA').value; st.open = $('#utO').checked; st.lk = $('#utL').value; st.pw = $('#utPw').value.trim(); };
-  const redo = (keepY) => { const y = window.scrollY; renderUtNew(); bindNav(); if (keepY) window.scrollTo(0, y); };
+  /* every change re-draws the page but keeps the reader exactly where they were */
+  const redo = () => { const y = window.scrollY; renderUtNew(); bindNav(); window.scrollTo(0, y); };
+  if ($('#utSee')) $('#utSee').onclick = () => { const el = $('#utDraft'); if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 86, behavior: 'smooth' }); };
+  st.justMade = false;
   $('#utT').onchange = () => { upd(); const nx = BY_ID[st.t]; st.u = [srCatsOf(nx)[0].k]; st.title = ''; st.m = null; st.fsel = []; st.fall = false; st.dsel = []; st.bq = []; st.cust = []; st.bunit = ''; redo(); };
   $$('[data-utu]').forEach(c => c.onchange = () => { upd(); const k = c.dataset.utu; st.u = c.checked ? [...new Set(st.u.concat(k))] : st.u.filter(u => u !== k); st.u.sort((p, q) => srCatsOf(x).findIndex(c => c.k === p) - srCatsOf(x).findIndex(c => c.k === q)); if (!st.title || st.title.endsWith(' Test')) st.title = ''; st.m = null; redo(true); });
   $$('[data-utf]').forEach(c => c.onchange = () => { upd(); const id = c.dataset.utf; st.fsel = c.checked ? [...new Set(st.fsel.concat(id))] : st.fsel.filter(f => f !== id); st.m = null; redo(true); });
@@ -15487,7 +15497,7 @@ function renderUtNew() {
       LS.set('ap.ut.email', normEmail(st.e));
       const z = Math.floor(Math.random() * 2 ** 20), g = utGenerate(x, { kind: st.kind, mix: st.mix }, z);
       st.draft = { ut: { v: 1, ex: st.kind, n: st.title || utDefaultTitle(x, [], st.kind), t: x.id, u: g.u, q: g.q, f: g.f, m: st.m == null ? autoMin : st.m, e: normEmail(st.e), a: st.a, s: z, z, zm: st.mix, ...defSpec(), ...(st.open ? { o: 1 } : {}), ...(await sec(z)), d: new Date().toISOString().slice(0, 10) }, saved: false };
-      redo(); const el = $('#utDraft'); if (el) el.scrollIntoView({ block: 'start' }); return; }
+      st.justMade = true; redo(); return; }
     if (build) {
       if (!st.bq.length && !st.fsel.length && !dCount) return $('#utErr').textContent = 'Pick some questions from the bank or add your own first.';
       if (!isEmail(st.e)) return $('#utErr').textContent = 'Enter the email address where students should send results.';
@@ -15495,7 +15505,7 @@ function renderUtNew() {
       const z = Math.floor(Math.random() * 2 ** 20), used = st.bq.map(id => /^c:/.test(id) ? null : x.bank.find(b => b.id === id)).filter(Boolean).map(b => b.cat);
       const cu = st.cust.map(c => c.u && x.CAT[c.u] ? c.u : st.bunit || st.u[0]); const us = srCatsOf(x).map(c => c.k).filter(k => used.includes(k) || st.u.includes(k) || cu.includes(k));
       st.draft = { ut: { v: 1, n: st.title || `${x.subject} · Test`, t: x.id, u: us, q: st.bq.slice(), f: st.fsel.slice(), ...(st.cust.length ? { c: st.cust.map((c, i) => ({ ...c, u: cu[i] })) } : {}), m: st.m == null ? autoMin : st.m, e: normEmail(st.e), a: st.a, s: z, ...defSpec(), ...(st.open ? { o: 1 } : {}), ...(await sec(z)), d: new Date().toISOString().slice(0, 10) }, saved: false };
-      redo(); const el = $('#utDraft'); if (el) el.scrollIntoView({ block: 'start' }); return; }
+      st.justMade = true; redo(); return; }
     if (!st.u.length) return $('#utErr').textContent = 'Choose at least one unit.';
     if (!st.n && !st.fsel.length && !dCount) return $('#utErr').textContent = 'Add some multiple-choice, definition, or free-response questions.';
     if (!isEmail(st.e)) return $('#utErr').textContent = 'Enter the email address where students should send results.';
@@ -15503,9 +15513,9 @@ function renderUtNew() {
     LS.set('ap.ut.email', normEmail(st.e));
     const z = Math.floor(Math.random() * 2 ** 20), g = utGenerate(x, { kind: 'unit', u: st.u, n, mix: st.mix, f: st.fsel }, z);
     st.draft = { ut: { v: 1, n: st.title || utDefaultTitle(x, st.u), t: x.id, u: st.u, q: g.q, f: g.f, m: st.m == null ? autoMin : st.m, e: normEmail(st.e), a: st.a, s: z, z, zm: st.mix, zn: n, ...defSpec(), ...(st.open ? { o: 1 } : {}), ...(await sec(z)), d: new Date().toISOString().slice(0, 10) }, saved: false };
-    redo(); const el = $('#utDraft'); if (el) el.scrollIntoView({ block: 'start' }); };
+    st.justMade = true; redo(); };
   if (d) bindUtDraft(d, () => redo(true));
-  $$('[data-open]').forEach(b => b.onclick = () => { const m = LS.get(UT_MINE, [])[+b.dataset.open]; const p = utParse(m.code); if (!p) return; st.t = p.ut.t; st.u = p.ut.u; st.kind = p.ut.ex || (p.ut.c || p.ut.z == null ? 'build' : 'unit'); st.fsel = p.ut.f.slice(); st.cust = (p.ut.c || []).slice(); st.bq = st.kind === 'build' ? p.ut.q.slice() : st.bq; st.dm = p.ut.dp ? 'pick' : 'auto'; st.dsel = (p.ut.dp || []).slice(); st.dn = p.ut.dn || 0; st.dw = p.ut.dw || ''; st.draft = { ut: p.ut, saved: true }; redo(); const el = $('#utDraft'); if (el) el.scrollIntoView({ block: 'start' }); });
+  $$('[data-open]').forEach(b => b.onclick = () => { const m = LS.get(UT_MINE, [])[+b.dataset.open]; const p = utParse(m.code); if (!p) return; st.t = p.ut.t; st.u = p.ut.u; st.kind = p.ut.ex || (p.ut.c || p.ut.z == null ? 'build' : 'unit'); st.fsel = p.ut.f.slice(); st.cust = (p.ut.c || []).slice(); st.bq = st.kind === 'build' ? p.ut.q.slice() : st.bq; st.dm = p.ut.dp ? 'pick' : 'auto'; st.dsel = (p.ut.dp || []).slice(); st.dn = p.ut.dn || 0; st.dw = p.ut.dw || ''; st.draft = { ut: p.ut, saved: true }; redo(); const el = $('#utDraft'); if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 86, behavior: 'smooth' }); });
   $$('[data-del]').forEach(b => b.onclick = () => confirmBox('Delete this saved test?', 'It is removed from your list. Students who already have the link or code can still take it.', 'Delete', () => { const l = LS.get(UT_MINE, []); l.splice(+b.dataset.del, 1); LS.set(UT_MINE, l); redo(true); }));
 }
 function utSaveMine(ut) { const code = utCode(ut), l = LS.get(UT_MINE, []); if (!l.some(m => m.code === code)) l.push({ code, date: new Date().toISOString() }); LS.set(UT_MINE, l); return code; }
