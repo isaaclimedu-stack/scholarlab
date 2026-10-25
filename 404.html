@@ -15762,7 +15762,11 @@ function renderUtIntro(code) {
   const shut = t => { const f = $('#utStartF'); if (!f) return; f.outerHTML = `<div class="notice ut-closed" role="alert"><b>This test is closed.</b> ${t.status === 'Closed' || !t.closeAt ? 'Your teacher has closed it' : 'It closed ' + esc(fmtWhen(t.closeAt))}, so it can’t be started now. If you think this is a mistake, ask your teacher.</div>`; };
   openP.then(t => { if (t) shut(t); });
   $('#utStartF').onsubmit = async e => { e.preventDefault(); const nm = $('#utName').value.trim().replace(/\s+/g, ' ');
-    const closedT = await Promise.race([openP, new Promise(r => setTimeout(() => r(null), 2500))]); if (closedT) return shut(closedT);
+    /* check again right now: the teacher may have closed the test after this page was opened */
+    const sb = $('#utStartF .btn.primary'), sbH = sb ? sb.innerHTML : ''; if (sb) { sb.disabled = true; sb.textContent = 'Checking…'; }
+    const fresh = testCheck([ut]).then(res => { const t = res && res.tests[tidOf(ut)]; return t && t.closed ? t : null; });
+    const closedT = await Promise.race([Promise.all([openP, fresh]).then(([a, b]) => a || b), new Promise(r => setTimeout(() => r(null), 6000))]); /* if Google can't be reached, the student can still start */
+    if (sb) { sb.disabled = false; sb.innerHTML = sbH; } if (closedT) return shut(closedT);
     if (nm.length < 3 || !/\s/.test(nm)) { $('#utStErr').textContent = 'Enter your first and last name so your teacher can match your results.'; return; }
     if ($('#utMe')) { const me2 = normEmail($('#utMe').value); if (me2 && !isEmail(me2)) { $('#utStErr').textContent = 'Check your email address, or leave it blank.'; return; } LS.set('ap.testonly.email', me2); }
     if ($('#utTo')) { const to = normEmail($('#utTo').value); if (!isEmail(to)) { $('#utStErr').textContent = 'Enter your teacher’s email address so you can send them your results.'; return; } LS.set(`ap.${PID}.teacher`, { e: to, r: '' }); }
