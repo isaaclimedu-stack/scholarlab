@@ -12966,7 +12966,7 @@ function liveBoxHTML() {
     const dup = pr.a && new Set(LIVE.filter(q => (q.presence || {}).a === pr.a).map(q => q.by || q.peer)).size > 1;
     return `<span class="chip-s"><b>${esc(nm)}</b>${p.guest ? ' (guest)' : ''}${em ? ' · using ' + esc(em) : ''} · ${pr.s === 'test' ? 'taking a test' + (pr.t ? ' (' + esc(pr.t) + ')' : '') : 'browsing'}${dup ? ' <span class="st-off">⚠ same access used by more than one account right now</span>' : ''}</span>`; }).join('')}</div>`;
 }
-const OWNER_EMAIL = 'admin@comma-ltd.com', SITE_URL = 'https://scholarlab.net';
+const OWNER_EMAIL = 'admin@scholarlab.net', SITE_URL = 'https://scholarlab.net';
 const testsIn = k => TESTS.filter(t => t.area === k).sort((a, b) => (a.order || 0) - (b.order || 0) || a.subject.localeCompare(b.subject));
 
 /* ── text rendering ── */

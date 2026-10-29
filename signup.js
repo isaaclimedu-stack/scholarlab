@@ -12,7 +12,7 @@ const SIGNUP_ENDPOINT = 'https://script.google.com/macros/s/AKfycby1jWaTEgqIqPZG
   const T = {
     comma: { contact: 'admin@comma-ltd.com', title: 'Get your Comma access code', lead: 'Comma is free practice for teacher certification exams. Tell us who you are and we’ll email your access code.',
       extra: ['School or organization (optional)', 'suOrg', 'e.g. Lincoln High School'], opt: 'Email me about new Comma products, practice tests, and updates. Optional. You can unsubscribe anytime.' },
-    scholarlab: { contact: 'admin@comma-ltd.com', title: 'Sign up for Scholar Hub', lead: 'Free practice for AP, high school, and middle school courses. Tell us who you are and we’ll email your access code.',
+    scholarlab: { contact: 'admin@scholarlab.net', title: 'Sign up for Scholar Hub', lead: 'Free practice for AP, high school, and middle school courses. Tell us who you are and we’ll email your access code.',
       extra: ['Class code (if your teacher gave you one)', 'suJoin', 'e.g. BIO-P2'], extra2: ['Your teacher’s email (optional)', 'suTeacher', 'teacher@school.org'],
       opt: 'Email me news about new products from Comma, the team behind Scholar Hub. Optional. If you’re under 14, ask a parent first. You can unsubscribe anytime.' },
   }[SITE];
