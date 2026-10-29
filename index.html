@@ -13244,7 +13244,7 @@ function route() {
   else if (h === 'defs' || h.startsWith('defs-')) renderDefs(h.slice(5));
   else if (h === 'skills' || h.startsWith('skill-')) renderSkills(h.startsWith('skill-') ? h.slice(6) : null);
   else if (h === 'flashcards' || h === 'formulas') { RV.tab = h === 'flashcards' ? 'cards' : 'sheets'; RV.via = h; renderReview(); }
-  else if (h === 'review' || h === 'resources') { RV.via = null; renderReview(); }
+  else if (h === 'review' || h === 'resources') { RV.via = RV.tab === 'sheets' ? 'formulas' : 'flashcards'; renderReview(); } /* old Resources links: same screen as Flashcards / Formulas & Reference */
   else if (h === 'about' || h === 'faq' || h === 'about-faq') renderAbout();
   else if (BY_ID[h]) renderTestPage(BY_ID[h]);
   else renderHome();
@@ -13306,7 +13306,7 @@ const subjIcon = (k, cls = '') => `<span class="sico acc-${(AREA[k] || {}).accen
 const SIDE = [['home', 'Home', 'home']];
 const SIDE_GROUPS = [
   ['Practice', [['tests', 'Practice Tests', 'file'], ['bank', 'Question Bank', 'list'], ['unit-tests', 'Unit Tests', 'check'], ['lab', 'Free Response', 'pen'], ['calc', 'Calculation Practice', 'calc'], ['skills', 'Skill Builder', 'target']]],
-  ['Study', [['flashcards', 'Flashcards', 'cards'], ['defs', 'Definitions', 'vocab'], ['formulas', 'Formulas & Reference', 'sigma'], ['review', 'Study Resources', 'folder']]],
+  ['Study', [['flashcards', 'Flashcards', 'cards'], ['defs', 'Definitions', 'vocab'], ['formulas', 'Formulas & Reference', 'sigma']]],
   ['Progress', [['analytics', 'Performance', 'chart']]],
 ];
 let PREF_MODE = 'practice';
@@ -13375,7 +13375,7 @@ function testSummary(x) {
 const DISCLAIMER = 'AP® is a trademark registered by the College Board, and NGSS is a registered trademark of WestEd; neither is affiliated with, or endorses, this site. Every question here is original.';
 function foot() {
   return `<footer class="foot"><div><p class="foot-brand">Scholar Hub</p><p>${esc(DISCLAIMER)}</p><p>Scores and AP score estimates are practice estimates, not official scores. © ${new Date().getFullYear()} ${BRAND}.</p></div>
-    <nav aria-label="Footer"><a href="#about">About</a><a href="#faq">FAQ</a><a href="#review">Resources</a><a href="#device" class="foot-ta">${SVG(IC.lock)}Teacher access</a></nav></footer>`;
+    <nav aria-label="Footer"><a href="#about">About</a><a href="#faq">FAQ</a><a href="#formulas">Formulas &amp; Reference</a><a href="#device" class="foot-ta">${SVG(IC.lock)}Teacher access</a></nav></footer>`;
 }
 /* The sidebar is rebuilt on every page change. Keep its scroll position, so clicking a link low in the menu
    (Check Results, Manage Students…) doesn't throw the menu back to the top; and if the current page's link is
@@ -13548,7 +13548,7 @@ function homeSearchIndex() {
   SUBJ_GROUPS.forEach(g => out.push({ t: g.name, s: 'Subject · every level', h: '#topic-' + g.k, ic: g.ic }));
   TESTS.forEach(x => { out.push({ t: x.subject, s: 'Course · practice tests, question bank, exam', h: '#' + x.id, ic: SUBJ_IC[x.area] }); srCatsOf(x).forEach(c => out.push({ t: `Unit ${c.k}: ${c.name}`, s: x.subject, h: '#' + x.id, ic: 'list' })); });
   if (typeof SK_SUBJ !== 'undefined') SK_SUBJ.forEach(g => g.topics.forEach(t => out.push({ t: t.name, s: 'Skill Builder · ' + g.name, h: '#skill-' + t.id, ic: 'target' })));
-  [['Practice Tests', '#tests', 'file'], ['Question Bank', '#bank', 'list'], ['Unit Tests', '#unit-tests', 'check'], ['Free Response Lab', '#lab', 'pen'], ['Calculation Practice', '#calc', 'calc'], ['Skill Builder', '#skills', 'target'], ['Flashcards', '#flashcards', 'cards'], ['Definitions', '#defs', 'vocab'], ['Formulas & reference sheets', '#formulas', 'sigma'], ['Study Resources', '#review', 'folder'], ['Performance', '#analytics', 'chart'], ['About & FAQ', '#about', 'info']].forEach(([t, h, ic]) => out.push({ t, s: 'Tool', h, ic }));
+  [['Practice Tests', '#tests', 'file'], ['Question Bank', '#bank', 'list'], ['Unit Tests', '#unit-tests', 'check'], ['Free Response Lab', '#lab', 'pen'], ['Calculation Practice', '#calc', 'calc'], ['Skill Builder', '#skills', 'target'], ['Flashcards', '#flashcards', 'cards'], ['Definitions', '#defs', 'vocab'], ['Formulas & reference sheets', '#formulas', 'sigma'], ['Performance', '#analytics', 'chart'], ['About & FAQ', '#about', 'info']].forEach(([t, h, ic]) => out.push({ t, s: 'Tool', h, ic }));
   if (isTeacher()) [['Create Unit Test', '#ut-new', 'plus'], ['Check Results', '#ut-check', 'check'], ['Gradebook & Classes', '#grades', 'grade'], ['Assign Tests', '#assign', 'assign'], ['My Students', '#class', 'users']].forEach(([t, h, ic]) => out.push({ t, s: 'Teacher tool', h, ic }));
   TESTS.forEach(x => Object.entries(DEF_DB[x.id] || {}).forEach(([k, l]) => l.forEach(([term]) => out.push({ t: term, s: `Definition · ${x.subject} Unit ${k}`, h: '#defs', ic: 'vocab', low: 1 }))));
   return out;
@@ -13894,7 +13894,7 @@ function openProfileMenu() {
   $('#pmAdd').onclick = () => { closeModal(); go('profiles'); };
   $('#pmReset').onclick = resetAll; $('#pmPick').onclick = resetPick; $('#pmFb').onclick = () => openReport(null);
   $('#pmDel').onclick = () => confirmBox(`Delete ${m.name}?`, 'This permanently removes this profile and all of its test history on this computer.', 'Delete profile', () => {
-    wipeProfileData(PID); LS.del(`ap.${PID}.level`); LS.set('ap.profiles', profiles().filter(p => p.id !== PID)); PID = null; LS.del('ap.active'); go('profiles'); });
+    wipeProfileData(PID); LS.del(`ap.${PID}.level`); LS.del(skKey()); LS.set('ap.profiles', profiles().filter(p => p.id !== PID)); PID = null; LS.del('ap.active'); go('profiles'); });
 }
 function resetPick() {
   const m = me(); if (!m) return;
@@ -14087,7 +14087,7 @@ function renderReview() {
   const ci = RV.order[RV.i], card = d.cards[ci];
   const firstTest = BY_ID[d.tests[0]];
   $('#hub').innerHTML = nav('review') + `<div class="page">
-    ${pageHead('Resources', 'Flashcards and reference sheets', 'Key ideas, equations, and constants for each course. Set aside cards you know and keep reviewing the rest.')}
+    ${pageHead('Study', RV.tab === 'sheets' ? 'Formulas & reference sheets' : 'Flashcards', 'Key ideas, equations, and constants for each course. Set aside cards you know and keep reviewing the rest.')}
     <div class="qr">
       <nav aria-label="Subjects"><ul class="decklist">${deckOrder().map((k, i, all) => { const b = (BY_ID[k.tests[0]] || {}).band, pb = i ? (BY_ID[all[i - 1].tests[0]] || {}).band : null; return (b && b !== pb ? `<li class="dl-h">${esc(BAND[b].name)}</li>` : '') + `<li><button data-deck="${k.id}" aria-current="${k.id === d.id}">${esc(k.title)}<small>${k.cards.length}</small></button></li>`; }).join('')}</ul></nav>
       <div class="${firstTest ? 'acc-' + firstTest.accent : ''}" style="min-width:0">
@@ -14247,7 +14247,7 @@ function pracBody(q, sel, n) {
   const fb = ck ? `<div class="fb ${ok ? '' : 'no'}" role="status"><h4>${ok ? 'Correct.' : sel.length ? 'Not quite.' : 'No answer given.'}</h4>
       <p><b>Correct answer: ${q.type === 'num' ? F(q.show) + (q.unit ? ' ' + F(q.unit) : '') : q.correct.map(j => LETTERS[j]).join(', ')}</b>${!ok && sel.length && q.type !== 'num' ? ` · you chose ${sel.map(j => LETTERS[j]).join(', ')}` : ''}${!ok && sel.length && q.type === 'num' ? ` · you entered ${esc(sel[0])}` : ''}</p>
       <p>${F(q.expl)}</p>
-      ${deck ? `<p class="tip"><a href="#review" data-rvdeck="${deck.id}">Review ${esc(deck.title)} flashcards →</a></p>` : ''}</div>` : '';
+      ${deck ? `<p class="tip"><a href="#flashcards" data-rvdeck="${deck.id}">Review ${esc(deck.title)} flashcards →</a></p>` : ''}</div>` : '';
   const act = ck ? `<button class="btn primary" id="pNext">${last ? 'See your summary' : 'Next question →'}</button>` : `<button class="btn primary" id="pCheck" ${sel.length ? '' : 'disabled'}>Check answer</button>`;
   const nav = `<div class="qnav"><button class="btn" id="backB2" ${T.cur === 0 ? 'disabled' : ''}>← Back</button>${act}</div>`;
   const kb = `<p class="kbd">Keyboard: ${q.type === 'num' ? 'type your answer' : `1–${q.choices.length} or A–${LETTERS[q.choices.length - 1]} to choose`} · Enter to ${ck ? 'continue' : 'check'}</p>`;
@@ -14650,12 +14650,15 @@ function openReport(ctx, kind0) {
   const snip = ctx ? String(ctx.stem || '').replace(/<[^>]+>/g, ' ').replace(/\^\(([^)]*)\)/g, '^$1').replace(/[{}]/g, '').replace(/\s+/g, ' ').trim().slice(0, 160) : '';
   const subject = ctx ? `${BRAND}: problem with a question (${tx ? tx.subject : ctx.test} Q${ctx.q})` : BRAND + ' feedback';
   const body = ctx ? `Test: ${tx ? tx.subject : ctx.test}\nQuestion ${ctx.q} (id ${ctx.qid || ''})\n"${snip}${snip.length >= 160 ? '…' : ''}"\n\nWhat looks wrong:\n` : '';
+  /* the email itself: most students use Gmail in the browser and have no email app set up, so Gmail is the main button */
+  const mail = { subject, body: body || `Page: ${location.href}\n\nMy feedback:\n` };
   $('#modal-root').innerHTML = `<div class="scrim" id="scrim"><div class="modal sm" role="dialog" aria-modal="true" aria-labelledby="rpT"><div class="mhead"><h3 id="rpT">${ctx ? 'Report a problem with this question' : 'Send feedback'}</h3><button class="btn" id="rpClose">Close</button></div>
     <div class="mbody rep-form">
-      <p style="margin:0">${ctx ? 'Email your teacher the details below so the question can be checked and fixed.' : 'Found a bug or have a suggestion? Email your teacher:'}</p>
+      <p style="margin:0">${ctx ? 'Email us the details below so the question can be checked and fixed.' : 'Found a bug or have a suggestion? Email us:'}</p>
       <div class="row" style="align-items:center"><span class="linkline" style="flex:1">${OWNER_EMAIL}</span><button class="btn" id="rpCopyE">Copy email</button></div>
       ${body ? `<label>Include this in your email<textarea id="rpBody" readonly style="min-height:110px;font-size:13px">${esc(body)}</textarea></label><div class="row"><button class="btn" id="rpCopyB">Copy details</button></div>` : ''}
-      <div class="row"><a class="btn primary" target="_blank" rel="noopener" href="mailto:${OWNER_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}">Open email app</a><span class="small" id="rpMsg" role="status"></span></div></div></div></div>`;
+      <div class="row"><a class="btn primary" target="_blank" rel="noopener" href="${gmailHref(OWNER_EMAIL, mail)}">Open in Gmail</a><a class="btn" href="${mailtoHref(OWNER_EMAIL, mail)}">Other email app</a><span class="small" id="rpMsg" role="status"></span></div>
+      <p class="small muted" style="margin:0">If neither button opens an email, copy the address above and send it from any email account.</p></div></div></div>`;
   const copy = (t, label) => { const ok = () => { $('#rpMsg').textContent = label + ' copied'; }; try { navigator.clipboard.writeText(t).then(ok, () => { $('#rpMsg').textContent = 'Select the text and copy it'; }); } catch (e) { $('#rpMsg').textContent = 'Select the text and copy it'; } };
   $('#rpCopyE').onclick = () => copy(OWNER_EMAIL, 'Email');
   if ($('#rpCopyB')) $('#rpCopyB').onclick = () => copy(body, 'Details');
@@ -15061,23 +15064,26 @@ function pdfLib() {
     s.onload = () => window.html2pdf ? res(window.html2pdf) : rej(new Error('pdf library missing')); s.onerror = () => { PDF_P = null; s.remove(); rej(new Error('pdf library did not load')); }; document.head.appendChild(s); });
   return PDF_P;
 }
-/* printouts: nothing smaller than 12 pt. Sizes below 12 are lifted into 12–13 pt, keeping their order (labels < body < headings) */
-function ptMin(css) { return css.replace(/(\d+(?:\.\d+)?)pt\b/g, (m, v) => { v = +v; return (v < 12 ? Math.round((12 + Math.max(0, v - 8) * 0.25) * 100) / 100 : v) + 'pt'; }); }
+/* printouts: a clean, professional type scale. Body text is 11 pt, headings are scaled down to match (×0.92), and small
+   labels keep their designed size with a floor of 8.5 pt so nothing is too small to read */
+function ptMin(css) { return css.replace(/(\d+(?:\.\d+)?)pt\b/g, (m, v) => { v = +v; return (v >= 12 ? Math.round(v * 0.92 * 10) / 10 : Math.max(8.5, v)) + 'pt'; }); }
+/* large-print supports (modified tests) keep the larger rule: nothing smaller than 12 pt */
+function ptLarge(css) { return css.replace(/(\d+(?:\.\d+)?)pt\b/g, (m, v) => { v = +v; return (v < 12 ? Math.round((12 + Math.max(0, v - 8) * 0.25) * 100) / 100 : v) + 'pt'; }); }
 /* what students may use on a printed test: calculator and/or reference sheet */
 const toolsLine = x => { const c = x.tools.includes('calc'), r = x.tools.some(k => k !== 'calc'); return c && r ? 'A calculator and the course reference sheet are allowed.' : c ? 'A calculator is allowed.' : r ? 'The course reference sheet is allowed.' : ''; };
 const scopeCss = (css, scope) => css.replace(/(^|\})\s*([^{}@]+)\{/g, (m, b, sels) => b + sels.split(',').map(s => s.trim() === 'body' ? scope : scope + ' ' + s.trim()).join(',') + '{');
-const SC_CSS = ptMin(`.pp,.sc{overflow-wrap:anywhere}.pp table{max-width:100%}.ws-q,.ws-key{max-width:100%}.sc{font:10.5pt/1.45 Arial,Helvetica,sans-serif;color:#111}.sc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;border-bottom:3px solid #13284a;padding-bottom:10px;margin-bottom:14px}.sc-brand{font:700 10pt Arial;color:#13284a;letter-spacing:.06em;text-transform:uppercase}.sc-top h1{font:700 18pt Arial;margin:4px 0 2px;color:#0b1730}.sc-top p{margin:0;color:#444}.sc-who{text-align:right;font-size:10pt;color:#333}.sc-who b{font-size:12pt;color:#000}.sc-kpis{display:flex;gap:10px;margin:0 0 14px}.sc-k{flex:1;border:1.5px solid #d5dbe7;border-radius:10px;padding:10px 12px}.sc-k small{display:block;color:#555;font-size:8.5pt;text-transform:uppercase;letter-spacing:.05em}.sc-k b{display:block;font-size:20pt;color:#0b1730;margin-top:2px}.sc-k span{font-size:9pt;color:#555}.sc-ap{display:inline-block;width:30px;height:30px;line-height:30px;text-align:center;border-radius:50%;background:#13284a;color:#fff;font:700 15pt Arial;vertical-align:middle;margin-right:6px}.sc h2{font:700 11.5pt Arial;margin:16px 0 6px;color:#13284a}.sc table{width:100%;border-collapse:collapse;font-size:9.5pt}.sc th{background:#eef2f8;text-align:left}.sc td,.sc th{border:1px solid #c9d1df;padding:4px 7px;vertical-align:top}.sc-bar{height:8px;background:#e8ecf3;border-radius:4px;overflow:hidden;min-width:120px}.sc-bar i{display:block;height:100%;background:#2a9a55}.sc-bar i.mid{background:#d99a1c}.sc-bar i.lo{background:#d0443c}.sc .ok{color:#1d7a40;font-weight:700}.sc .no{color:#b4322b;font-weight:700}.sc-grid{display:grid;grid-template-columns:repeat(10,1fr);gap:4px}.sc-cell{border:1px solid #c9d1df;border-radius:5px;padding:3px 0;text-align:center;font-size:8.5pt}.sc-cell b{display:block;font-size:8pt;color:#666;font-weight:400}.sc-cell.ok{background:#e9f6ee}.sc-cell.no{background:#fbeceb}.sc-frq{border:1px solid #d5dbe7;border-radius:8px;padding:8px 10px;margin:8px 0;break-inside:avoid;page-break-inside:avoid}.sc-frq pre{white-space:pre-wrap;font:9.5pt/1.4 Georgia,serif;margin:6px 0;background:#f7f8fb;padding:6px 8px;border-radius:6px}.sc-frq ul{margin:4px 0 0;padding-left:4px;list-style:none;font-size:9pt}.sc-frq li.on{color:#1d7a40}.sc-frq li.off{color:#777}.sc-foot{margin-top:16px;border-top:1px solid #ccd;padding-top:8px;font-size:8pt;color:#555;word-break:break-all}.sc-note{font-size:9pt;color:#555;margin:6px 0 0}.ws-h{margin:.12in 0 .18in;padding-bottom:10px;border-bottom:2px solid #000;font-family:Arial,sans-serif}.ws-kicker{margin:0;font:700 8.5pt Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#444}.ws-h h1{font:700 15pt Arial,sans-serif;margin:3px 0 2px}.ws-units{margin:0 0 12px;font:9pt/1.4 Arial,sans-serif;color:#333}.ws-fields{display:flex;gap:18px}.ws-fields div{display:flex;align-items:flex-end;gap:8px;font:10pt Arial,sans-serif;flex:1}.ws-fields div:first-child{flex:2}.ws-fields span{font-weight:700;white-space:nowrap}.ws-fields i{flex:1;border-bottom:1px solid #000;height:16px}.ws-q{break-inside:avoid;page-break-inside:avoid;width:94%;box-sizing:border-box;margin:0 auto 16px;border:1px solid #c9d1df;border-radius:8px;padding:10px 12px}.ws-q .ws-n{font:700 10pt Arial;color:#13284a}.ws-work{height:2.7in;border:1px dashed #b8c1d1;border-radius:6px;margin:6px 0 4px;position:relative}.ws-work span{position:absolute;left:8px;top:4px;font:8pt Arial;color:#99a}.ws-ans{display:flex;align-items:flex-end;gap:10px;font:10.5pt Arial,sans-serif;margin-top:10px}.ws-ans span{font-weight:700}.ws-ans i{width:3.2in;height:.42in;border:1px solid #777;border-radius:6px}.ws-ans em{font-style:normal}.ws-ref{break-inside:avoid;width:94%;box-sizing:border-box;margin:0 auto 16px;border:1.5px solid #13284a;border-radius:8px;padding:9px 12px 10px;background:#f6f8fc;font:9.5pt/1.35 Arial,sans-serif}.ws-ref-h{margin:0 0 6px;font:700 10pt Arial,sans-serif;color:#13284a}.ws-ref-h span{font-weight:400;color:#555;font-size:8.5pt;margin-left:6px}.ws-ref-u,.ws-ref-c{display:grid;grid-template-columns:1.45in 1fr;gap:10px;padding:5px 0;border-top:1px solid #d5dbe7}.ws-ref-u b,.ws-ref-c b{font-size:8.5pt;color:#13284a}.ws-ref-u div,.ws-ref-c div{display:flex;flex-wrap:wrap;gap:3px 16px}.ws-ref span{white-space:nowrap}.ws-ref-c span{font-size:8.5pt;color:#333}.ws-ref sub,.ws-ref sup{font-size:70%;line-height:0}.ws-key td:first-child{width:34px}.pp-key td:first-child,.pp-key td.ans,.pp-key th{white-space:nowrap;overflow-wrap:normal}.pp-key td.ans.wr{white-space:normal}`);
+const SC_CSS = ptMin(`.pp,.sc{overflow-wrap:anywhere}.pp table{max-width:100%}.ws-q,.ws-key{max-width:100%}.sc{font:10.5pt/1.45 Arial,Helvetica,sans-serif;color:#111}.sc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;border-bottom:3px solid #13284a;padding-bottom:10px;margin-bottom:14px}.sc-brand{font:700 10pt Arial;color:#13284a;letter-spacing:.06em;text-transform:uppercase}.sc-top h1{font:700 18pt Arial;margin:4px 0 2px;color:#0b1730}.sc-top p{margin:0;color:#444}.sc-who{text-align:right;font-size:10pt;color:#333}.sc-who b{font-size:12pt;color:#000}.sc-kpis{display:flex;gap:10px;margin:0 0 14px}.sc-k{flex:1;border:1.5px solid #d5dbe7;border-radius:10px;padding:10px 12px}.sc-k small{display:block;color:#555;font-size:8.5pt;text-transform:uppercase;letter-spacing:.05em}.sc-k b{display:block;font-size:20pt;color:#0b1730;margin-top:2px}.sc-k span{font-size:9pt;color:#555}.sc .sc-k .sc-ap{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;background:#13284a;color:#fff;font:700 15pt/1 Arial,sans-serif;vertical-align:middle;margin-right:6px}.sc h2{font:700 11.5pt Arial;margin:16px 0 6px;color:#13284a}.sc table{width:100%;border-collapse:collapse;font-size:9.5pt}.sc th{background:#eef2f8;text-align:left}.sc td,.sc th{border:1px solid #c9d1df;padding:3px 7px;vertical-align:middle}.sc-acc{display:flex;align-items:center;gap:8px}.sc-acc .sc-bar{flex:1;min-width:0}.sc-acc span{flex:none;width:34px;text-align:right}.sc-bar{height:8px;background:#e8ecf3;border-radius:4px;overflow:hidden;min-width:120px}.sc-bar i{display:block;height:100%;background:#2a9a55}.sc-bar i.mid{background:#d99a1c}.sc-bar i.lo{background:#d0443c}.sc .ok{color:#1d7a40;font-weight:700}.sc .no{color:#b4322b;font-weight:700}.sc-grid{display:grid;grid-template-columns:repeat(10,1fr);gap:4px}.sc-cell{border:1px solid #c9d1df;border-radius:4px;padding:2px 0;text-align:center;font-size:8.5pt;line-height:1.25}.sc-cell b{display:block;font-size:8pt;color:#666;font-weight:400}.sc-cell.ok{background:#e9f6ee}.sc-cell.no{background:#fbeceb}.sc-frq{border:1px solid #d5dbe7;border-radius:8px;padding:8px 10px;margin:8px 0;break-inside:avoid;page-break-inside:avoid}.sc-frq pre{white-space:pre-wrap;font:9.5pt/1.4 Georgia,serif;margin:6px 0;background:#f7f8fb;padding:6px 8px;border-radius:6px}.sc-frq ul{margin:4px 0 0;padding-left:4px;list-style:none;font-size:9pt}.sc-frq li.on{color:#1d7a40}.sc-frq li.off{color:#777}.sc-foot{margin-top:16px;border-top:1px solid #ccd;padding-top:8px;font-size:8pt;color:#555;word-break:break-all}.sc-note{font-size:9pt;color:#555;margin:6px 0 0}.ws-h{margin:.12in 0 .18in;padding-bottom:10px;border-bottom:2px solid #000;font-family:Arial,sans-serif}.ws-kicker{margin:0;font:700 8.5pt Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#444}.ws-h h1{font:700 15pt Arial,sans-serif;margin:3px 0 2px}.ws-units{margin:0 0 12px;font:9pt/1.4 Arial,sans-serif;color:#333}.ws-fields{display:flex;gap:18px}.ws-fields div{display:flex;align-items:flex-end;gap:8px;font:10pt Arial,sans-serif;flex:1}.ws-fields div:first-child{flex:2}.ws-fields span{font-weight:700;white-space:nowrap}.ws-fields i{flex:1;border-bottom:1px solid #000;height:16px}.ws-q{break-inside:avoid;page-break-inside:avoid;width:94%;box-sizing:border-box;margin:0 auto 16px;border:1px solid #c9d1df;border-radius:8px;padding:10px 12px}.ws-q .ws-n{font:700 10pt Arial;color:#13284a}.ws-work{height:2.7in;border:1px dashed #b8c1d1;border-radius:6px;margin:6px 0 4px;position:relative}.ws-work span{position:absolute;left:8px;top:4px;font:8pt Arial;color:#99a}.ws-ans{display:flex;align-items:flex-end;gap:10px;font:10.5pt Arial,sans-serif;margin-top:10px}.ws-ans span{font-weight:700}.ws-ans i{width:3.2in;height:.42in;border:1px solid #777;border-radius:6px}.ws-ans em{font-style:normal}.ws-ref{break-inside:avoid;width:94%;box-sizing:border-box;margin:0 auto 16px;border:1.5px solid #13284a;border-radius:8px;padding:9px 12px 10px;background:#f6f8fc;font:9.5pt/1.35 Arial,sans-serif}.ws-ref-h{margin:0 0 6px;font:700 10pt Arial,sans-serif;color:#13284a}.ws-ref-h span{font-weight:400;color:#555;font-size:8.5pt;margin-left:6px}.ws-ref-u,.ws-ref-c{display:grid;grid-template-columns:1.45in 1fr;gap:10px;padding:5px 0;border-top:1px solid #d5dbe7}.ws-ref-u b,.ws-ref-c b{font-size:8.5pt;color:#13284a}.ws-ref-u div,.ws-ref-c div{display:flex;flex-wrap:wrap;gap:3px 16px}.ws-ref span{white-space:nowrap}.ws-ref-c span{font-size:8.5pt;color:#333}.ws-ref sub,.ws-ref sup{font-size:70%;line-height:0}.ws-key td:first-child{width:34px}.pp-key td:first-child,.pp-key td.ans,.pp-key th{white-space:nowrap;overflow-wrap:normal}.pp-key td.ans.wr{white-space:normal}`);
 /* Lay the content out into whole pages ourselves, so a question always stays together with its answer choices
    (and a table row, a free-response prompt, a worksheet problem or a score-card block never splits), then draw each
    page separately into the PDF. Lists and tables that continue onto a new page are reopened there (numbering and
    table headers carry over); a 'pb' class starts a new page. */
-const PDF_SPLIT = '.pp, ol.pp-q, table, tbody, section.pp-frq, .pp-lines, .sc';
+const PDF_SPLIT = '.pp, ol.pp-q, table, tbody, section.pp-frq, .pp-lines, .sc, .sc-set';
 function pdfPaginate(src, limit) {
   const units = []; let brk = false;
   const walk = (el, path) => { for (const ch of el.children) { if (ch.tagName === 'STYLE' || ch.tagName === 'THEAD') continue;
     if (ch.classList.contains('pb')) brk = true;
     /* also open up any other block that is too tall to sit on one page (a study-guide unit, a long list), so it breaks between lines, never through them */
-    const tall = () => ch.children.length > 1 && ch.getBoundingClientRect().height > limit * 0.8 && !ch.matches('.pp-fill, svg, figure, img, .ws-work, .as-grid');
+    const tall = () => ch.children.length > 1 && ch.getBoundingClientRect().height > limit * 0.8 && !ch.matches('.pp-fill, svg, figure, img, .ws-work, .as-grid, .sc-p1');
     if ((ch.matches(PDF_SPLIT) && !ch.matches('.pp-fill')) || el === src || tall()) walk(ch, path.concat(ch)); else { units.push({ el: ch, path, brk }); brk = false; } } };
   walk(src, []);
   const cs = el => getComputedStyle(el), px = v => parseFloat(v) || 0;
@@ -15147,6 +15153,10 @@ async function makePdf(pagesHTML, filename, btn) {
     sy = window.scrollY; pinApp(sy); window.scrollTo(0, 0);
     const W = host.querySelector('.pdfdoc').getBoundingClientRect().width;
     const limit = Math.floor(W * (PP.h - M[0] - M[2]) / (PP.w - M[1] - M[3]) * 0.975);
+    /* score cards: the summary always fits on one page by itself (scaled down a little for very long tests) */
+    host.querySelectorAll('.sc-p1').forEach(el => { const h = el.getBoundingClientRect().height, room = limit - 8; if (h <= room) return;
+      const f = room / h, inner = document.createElement('div'); while (el.firstChild) inner.appendChild(el.firstChild);
+      inner.style.transformOrigin = 'top left'; inner.style.transform = `scale(${f})`; inner.style.width = (100 / f) + '%'; el.appendChild(inner); el.style.height = Math.floor(h * f) + 'px'; el.style.overflow = 'hidden'; });
     const pages = pdfPaginate(host.querySelector('.pdfdoc'), limit);
     /* writing-line pages must not run even a pixel past the page, or a sliver spills onto an extra page: measure and trim */
     { const hard = Math.floor(W * (PP.h - M[0] - M[2]) / (PP.w - M[1] - M[3])) - 3, box = document.createElement('div'); host.appendChild(box);
@@ -15176,21 +15186,24 @@ const pdfBtn = (id, label) => `<button class="btn" id="${id}">${SVG(IC.dl)} ${la
 /* ── score cards ── */
 function scoreCardHTML(o) {
   const pc = (a, b) => b ? Math.round(a / b * 100) : 0;
+  const frqHTML = (o.frqs || []).map((f, i) => `<div class="sc-frq"><b>Free response ${i + 1}: ${esc(f.title)}</b> — ${f.pts == null ? 'not scored' : `${f.pts} / ${f.max} points`}${f.text != null ? `<pre>${esc(f.text || '(no answer)')}</pre>` : ''}${f.rubric ? `<ul>${f.rubric.map(r => `<li class="${r.on ? 'on' : 'off'}">${r.on ? '✓' : '○'} (${r.pts}) ${esc(r.t)}</li>`).join('')}</ul>` : ''}</div>`).join('');
+  const frqLong = (o.frqs || []).some(f => f.text != null || (f.rubric && f.rubric.length));
   const bandC = p => p >= 75 ? '' : p >= 60 ? 'mid' : 'lo';
   const kp = [`<div class="sc-k"><small>Multiple choice</small><b>${o.mc.n ? `${o.mc.c}/${o.mc.n}` : '—'}</b><span>${o.mc.n ? pc(o.mc.c, o.mc.n) + '% correct' : 'no multiple choice'}</span></div>`];
   if (o.fr) kp.push(`<div class="sc-k"><small>Free response</small><b>${o.fr.done ? `${o.fr.pts}/${o.fr.max}` : '—'}</b><span>${o.fr.done ? pc(o.fr.pts, o.fr.max) + '% of points' + (o.fr.who ? ' · ' + o.fr.who : '') : 'not scored yet'}</span></div>`);
   if (o.weighted != null) kp.push(`<div class="sc-k"><small>Overall</small><b>${o.weighted}%</b><span>${o.weightNote || ''}</span></div>`);
   if (o.ap) kp.push(`<div class="sc-k"><small>Estimated AP score</small><b><span class="sc-ap">${o.ap.score}</span></b><span>${esc(AP_WORD[o.ap.score])} · practice estimate</span></div>`);
-  return `<div class="sc">
+  return `<div class="sc"><div class="sc-p1">
     <div class="sc-top"><div><div class="sc-brand">Score card</div><h1>${esc(o.title)}</h1><p>${esc(o.course)}${o.sub ? ' · ' + esc(o.sub) : ''}</p></div>
       <div class="sc-who"><b>${esc(o.student || 'Student')}</b>${o.email ? '<br>' + esc(o.email) : ''}<br>${esc(o.date)}${o.used != null ? '<br>Time used: ' + esc(fmtDur(o.used)) : ''}</div></div>
     <div class="sc-kpis">${kp.join('')}</div>
-    ${o.units && o.units.length ? `<h2>By unit</h2><table><thead><tr><th>Unit</th><th style="width:70px">Correct</th><th style="width:44%">Accuracy</th></tr></thead><tbody>${o.units.map(u => { const p = pc(u.ok, u.t); return `<tr><td>${esc(u.name)}</td><td>${u.ok}/${u.t}</td><td><div class="sc-bar"><i class="${bandC(p)}" style="width:${p}%"></i></div> ${p}%</td></tr>`; }).join('')}</tbody></table>` : ''}
+    ${o.units && o.units.length ? `<h2>By unit</h2><table><thead><tr><th>Unit</th><th style="width:70px">Correct</th><th style="width:44%">Accuracy</th></tr></thead><tbody>${o.units.map(u => { const p = pc(u.ok, u.t); return `<tr><td>${esc(u.name)}</td><td>${u.ok}/${u.t}</td><td><div class="sc-acc"><div class="sc-bar"><i class="${bandC(p)}" style="width:${p}%"></i></div><span>${p}%</span></div></td></tr>`; }).join('')}</tbody></table>` : ''}
     ${o.rows && o.rows.length ? `<h2>Question by question</h2><div class="sc-grid">${o.rows.map(r => `<div class="sc-cell ${r.cr ? '' : r.ok ? 'ok' : 'no'}"><b>${r.n}</b>${r.cr ? 'FRQ' : r.w ? 'written' : esc(r.ans || '–')}${!r.cr && !r.w && r.key && !r.ok ? '<br><b>key ' + esc(r.key) + '</b>' : ''}</div>`).join('')}</div>
       ${o.rows.some(r => r.w) ? `<h2>Written definitions</h2><table><thead><tr><th>#</th><th>Answer</th>${o.rows.some(r => r.w && r.key) ? '<th>Expected</th>' : ''}<th></th></tr></thead><tbody>${o.rows.filter(r => r.w).map(r => `<tr><td>${r.n}</td><td>${esc(r.ans || '–')}</td>${o.rows.some(r2 => r2.w && r2.key) ? `<td>${esc(r.key || '')}</td>` : ''}<td class="${r.ok ? 'ok' : 'no'}">${r.ok ? '✓' : '✕'}</td></tr>`).join('')}</tbody></table>` : ''}` : ''}
-    ${(o.frqs || []).map((f, i) => `<div class="sc-frq"><b>Free response ${i + 1}: ${esc(f.title)}</b> — ${f.pts == null ? 'not scored' : `${f.pts} / ${f.max} points`}${f.text != null ? `<pre>${esc(f.text || '(no answer)')}</pre>` : ''}${f.rubric ? `<ul>${f.rubric.map(r => `<li class="${r.on ? 'on' : 'off'}">${r.on ? '✓' : '○'} (${r.pts}) ${esc(r.t)}</li>`).join('')}</ul>` : ''}</div>`).join('')}
+    ${frqLong ? '' : frqHTML}
     ${o.note ? `<p class="sc-note">${esc(o.note)}</p>` : ''}
-    <div class="sc-foot">${esc(DISCLAIMER)} Scores are practice results; AP score estimates are rough and unofficial.${o.check ? '<br>Check code: ' + esc(o.check) : ''}</div></div>`;
+    <div class="sc-foot">${esc(DISCLAIMER)} Scores are practice results; AP score estimates are rough and unofficial.${o.check ? '<br>Check code: ' + esc(o.check) : ''}</div></div>
+    ${frqLong ? `<div class="pb sc-more"><div class="sc-top"><div><div class="sc-brand">Score card · continued</div><h1>Free-response answers</h1><p>${esc(o.title)}</p></div><div class="sc-who"><b>${esc(o.student || 'Student')}</b><br>${esc(o.date)}</div></div>${frqHTML}</div>` : ''}</div>`;
 }
 
 /* ═════ results: the "send to your teacher" box shared by unit tests and exam simulations ═════ */
@@ -16042,7 +16055,7 @@ function renderUtCheck() {
     o.ok = !!v; o.ov = saved['w' + i] != null; r.c = r.rows.filter(z => !z.cr && z.ok).length; r.byCat = {}; r.rows.forEach(z => { if (z.cr) return; const k = z.q.cat; r.byCat[k] = r.byCat[k] || [0, 0]; r.byCat[k][1]++; if (z.ok) r.byCat[k][0]++; }); redo(); });
   $$('[data-ukc]').forEach(b => b.onclick = () => { const [ri, i] = b.dataset.ukc.split('|').map(Number), r = out[ri]; const f = utcFrq(r).find(o => o.i === i); const saved = LS.get(utcKey(r.sig), {}); saved[i] = f.on.slice(); LS.set(utcKey(r.sig), saved); redo(); });
   $$('[data-scp]').forEach(b => b.onclick = () => { const r = out[+b.dataset.scp]; makePdf(utcScorecard(r), fileSafe((r.ut ? r.ut.n : 'results') + ' ' + (r.d.nm || '')) + '-score-card.pdf', b); });
-  if ($('#utcPdfAll')) $('#utcPdfAll').onclick = () => makePdf(good.filter(r => r.kind === 'EX' || r.ut).map((r, i) => `<div class="${i ? 'pb' : ''}">${utcScorecard(r)}</div>`).join(''), 'Score-cards-' + new Date().toISOString().slice(0, 10) + '.pdf', $('#utcPdfAll'));
+  if ($('#utcPdfAll')) $('#utcPdfAll').onclick = () => makePdf(good.filter(r => r.kind === 'EX' || r.ut).map((r, i) => `<div class="sc-set ${i ? 'pb' : ''}">${utcScorecard(r)}</div>`).join(''), 'Score-cards-' + new Date().toISOString().slice(0, 10) + '.pdf', $('#utcPdfAll'));
   if ($('#utcCsv')) $('#utcCsv').onclick = () => { const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
     const rows = [['Student', 'Email', 'Test', 'Course', 'Submitted', 'MC correct', 'MC total', 'FRQ points', 'FRQ max', 'Overall %', 'AP estimate', 'Check code']].concat(good.map(r => { if (r.kind === 'EX') { const d = r.d; return [d.nm, d.em, d.as || 'Exam simulation', (BY_ID[d.t] || {}).subject, d.d, d.mc[0], d.mc[1], d.fr ? d.fr[0] : '', d.fr ? d.fr[1] : '', d.w, d.ap ? d.ap[0] : '', r.sigOk ? 'valid' : 'MISMATCH']; }
       const tt = r.ut ? utcTotals(r) : null; return [r.d.nm, r.d.em, r.ut ? r.ut.n : '', r.ut ? BY_ID[r.ut.t].subject : '', r.d.d, r.ut ? r.c : '', r.ut ? r.n : '', tt && tt.fq.length ? tt.fp : '', tt && tt.fq.length ? tt.fm : '', tt ? tt.comb : '', '', r.sigOk ? 'valid' : 'MISMATCH']; }));
@@ -17034,7 +17047,7 @@ function gbAnalyze(c, s) {
   if (K.calc != null && K.calc < 75) { next.push('Practice calculations by hand: write the equation, substitute with units, then check the answer’s size and units.'); res.push({ t: 'Calculation Practice', href: '#calc', d: 'Worked solutions for every problem' }); }
   if (K.mc != null && K.mc < 70) next.push('On multiple choice, cross out answers you can rule out and explain to yourself why the right one fits.');
   if (s.overall != null && s.overall >= 90 && !weakU.length) { next.push('Keep it up: try the Challenge difficulty or a full timed final exam to stretch further.'); if (x) res.push({ t: `${x.subject} exam`, href: '#' + x.id, d: 'Full timed exam with an answer review' }); }
-  if (x && !res.some(r => r.href === '#review')) res.push({ t: 'Flashcards', href: '#review', d: 'Key ideas for every unit' });
+  if (x && !res.some(r => r.href === '#flashcards')) res.push({ t: 'Flashcards', href: '#flashcards', d: 'Key ideas for every unit' });
   const seen = new Set(); return { strong, weak, next, res: res.filter(r => !seen.has(r.t) && seen.add(r.t)) };
 }
 const gbFirst = n => String(n || '').trim().split(/\s+/)[0] || 'This student';
@@ -17816,7 +17829,7 @@ function openSupports() {
     $$('[data-spt]').forEach(b => b.onclick = () => { cur = b.dataset.spt; draw(); }); };
   draw();
 }
-const SP_CSS = ptMin(`.lp{font-size:15pt}.lp .pp-stem{font-size:15pt;line-height:1.55}.lp .pp-ch li{font-size:14.5pt;margin:7px 0}.lp .pp-q>li{margin-bottom:26px}.sp-pk h2{font:700 14pt Arial,sans-serif;margin:0 0 8px;color:#13284a}.sp-sec{margin-top:14px}.sp-wb{width:100%}.sp-wb td:first-child{width:28%}.sp-note{font:10pt Arial,sans-serif;color:#333;margin:0 0 8px}.sp-tips{padding-left:20px;font-size:12pt;line-height:1.6}.sp-tips li{margin:0 0 6px}.sp-frames{font-size:12.5pt;line-height:1.9}.sp-f{white-space:nowrap}.sp-ref{font-size:10.5pt}`);
+const SP_CSS = ptLarge(`.lp{font-size:15pt}.lp .pp-stem{font-size:15pt;line-height:1.55}.lp .pp-ch li{font-size:14.5pt;margin:7px 0}.lp .pp-q>li{margin-bottom:26px}.sp-pk h2{font:700 14pt Arial,sans-serif;margin:0 0 8px;color:#13284a}.sp-sec{margin-top:14px}.sp-wb{width:100%}.sp-wb td:first-child{width:28%}.sp-note{font:10pt Arial,sans-serif;color:#333;margin:0 0 8px}.sp-tips{padding-left:20px;font-size:12pt;line-height:1.6}.sp-tips li{margin:0 0 6px}.sp-frames{font-size:12.5pt;line-height:1.9}.sp-f{white-space:nowrap}.sp-ref{font-size:10.5pt}`);
 
 /* ═════ SKILL BUILDER ═════
    Focused drills on the topics students struggle with most, by subject. Most questions are generated fresh each time
@@ -18266,8 +18279,14 @@ function renderSkills(arg) {
   $('#hub').innerHTML = nav('skills') + `<div class="page">${pageHead('Skill Builder', 'Focused practice on tricky topics', 'Short drills on the skills that trip students up most. Questions are generated fresh every time, with an explanation after each answer.' + (isTeacher() ? ' Teachers can print any drill as a quiz with an answer key.' : ''))}
     <div class="chips sk-subj" role="tablist">${SK_SUBJ.map(s => `<button class="chip acc-${s.accent}" data-sks="${s.k}" aria-pressed="${s.k === sub.k}">${esc(s.name)} <span class="muted">${s.topics.length}</span></button>`).join('')}</div>
     <div class="sk-grid">${sub.topics.map(t => { const st = stats[t.id]; return `<a class="card sk-card acc-${sub.accent}" href="#skill-${t.id}"><h3>${esc(t.name)}</h3><p class="small muted">${stripTags(t.how).slice(0, 120)}…</p>${st ? `<span class="small"><b>Best: ${st.best}%</b> · ${st.n} drill${st.n > 1 ? 's' : ''}</span>` : '<span class="small muted">Not tried yet</span>'}</a>`; }).join('')}</div>
+    ${Object.keys(stats).length ? `<div class="reset-row">${sub.topics.some(t => stats[t.id]) ? `<button class="linkbtn sm" id="skClrSub">Reset ${esc(sub.name)} scores</button>` : ''}<button class="linkbtn sm" id="skClrAll">Reset all Skill Builder scores</button></div>` : ''}
     ${foot()}</div>`;
   bindNav(); $$('[data-sks]').forEach(b => b.onclick = () => { SK.sub = b.dataset.sks; renderSkills(); });
+  /* reset Skill Builder scores (best score and number of drills), for one subject or everything */
+  if ($('#skClrSub')) $('#skClrSub').onclick = () => { const ids = sub.topics.map(t => t.id).filter(i => stats[i]);
+    confirmBox(`Reset ${sub.name} Skill Builder scores?`, `This clears your best score and drill count for ${ids.length} ${sub.name} skill${ids.length === 1 ? '' : 's'}. Other subjects and your tests are not affected. It cannot be undone.`, 'Reset scores', () => { const st = LS.get(skKey(), {}); ids.forEach(i => delete st[i]); LS.set(skKey(), st); renderSkills(); bindNav(); }); };
+  if ($('#skClrAll')) $('#skClrAll').onclick = () => { const n = Object.keys(stats).length;
+    confirmBox('Reset all Skill Builder scores?', `This clears your best score and drill count for all ${n} skill${n === 1 ? '' : 's'} you have practiced. Your tests are not affected. It cannot be undone.`, 'Reset all scores', () => { LS.del(skKey()); renderSkills(); bindNav(); }); };
 }
 
 
@@ -18603,13 +18622,14 @@ function renderSkillTopic(id) {
       ${a ? `<div class="rat"><div class="rat-h">${a.ok ? '✓ Correct' : '✕ Not quite'}</div>${a.res && a.res.note ? `<p><b>${esc(a.res.note)}</b></p>` : ''}${!a.ok && cur.kind === 'in' && cur.layout === 'eq' ? '' : ''}<p>${F(cur.expl)}</p></div><div class="row"><button class="btn primary" id="skNext">${SK.i + 1 < it.length ? 'Next question' : 'See my score'}</button></div>` : ''}</div>`;
   $('#hub').innerHTML = nav('skills') + `<div class="page" style="max-width:880px"><div class="crumb"><a href="#skills">Skill Builder</a> / ${esc(T.subj.name)}</div>${pageHead(T.subj.name, T.name, '')}
     <section class="card sk-how"><h3>How to do it</h3><p>${T.how}</p></section>
-    <section class="card" style="margin-top:16px" id="skRun">${runner}</section>
+    <section class="card" style="margin-top:16px" id="skRun">${runner}${(() => { const st = LS.get(skKey(), {})[id]; return st && (!it || SK.done) ? `<div class="reset-row"><span class="small muted">Your best: <b>${st.best}%</b> · ${st.n} drill${st.n > 1 ? 's' : ''}</span><span style="flex:1"></span><button class="linkbtn sm" id="skClr">Reset this skill’s score</button></div>` : ''; })()}</section>
     ${tch ? `<section class="card sk-print" style="margin-top:16px"><div class="card-h sm"><h3>${SVG(IC.print)} Printable quiz (teachers)</h3></div>
       <div class="row"><label class="small">Questions <select id="skPN">${[5, 10, 15, 20, 25].map(n => `<option ${n === SK.pn ? 'selected' : ''}>${n}</option>`).join('')}</select></label><label class="chk small"><input type="checkbox" id="skPK" ${SK.key ? 'checked' : ''}> Include the answer key</label>${pdfBtn('skPdf', 'Quiz (PDF)')}${docxBtn('skDoc', 'Quiz (Word)')}${paperSel()}</div>
       <p class="small muted" style="margin:6px 0 0">Every download makes a new set of questions, so you can hand out different versions. Diagrams print with the quiz.</p></section>` : ''}
     ${foot()}</div>`;
   bindNav();
   const fresh = () => { SK.items = skDraw(id, SK.n); SK.i = 0; SK.ans = []; SK.done = false; renderSkillTopic(id); };
+  if ($('#skClr')) $('#skClr').onclick = () => confirmBox(`Reset your ${T.name} score?`, 'This clears your best score and drill count for this skill. It cannot be undone.', 'Reset score', () => { const st = LS.get(skKey(), {}); delete st[id]; LS.set(skKey(), st); renderSkillTopic(id); });
   if ($('#skGo')) $('#skGo').onclick = () => { SK.n = +$('#skN').value; fresh(); };
   const keepView = () => { const el = $('#skRun'); if (el) el.scrollIntoView({ block: 'nearest' }); };
   $$('[data-ska]').forEach(b => b.onclick = () => { const j = +b.dataset.ska; SK.ans[SK.i] = { v: j, ok: cur.correct.includes(j) }; renderSkillTopic(id); keepView(); });
