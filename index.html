@@ -631,6 +631,7 @@ h2.title { font-size: 24px; font-weight: 800; margin: 0 0 8px; letter-spacing: -
 .notice { border-left: 3px solid var(--ember); background: var(--ember-soft); padding: 10px 14px; font-size: 14px; border-radius: 0 8px 8px 0; }
 .foot { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12.5px; display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 18px 40px; }
 .foot p { margin: 0 0 6px; max-width: 70ch; }
+.foot .foot-brand { color: var(--ink); font-weight: 700; font-size: 14px; }
 .foot nav { display: flex; flex-wrap: wrap; gap: 6px 18px; justify-content: flex-end; align-content: start; }
 .foot nav a { color: var(--ink); font-weight: 600; text-decoration: none; }
 .copyline { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -13370,7 +13371,7 @@ function testSummary(x) {
 }
 const DISCLAIMER = 'AP® is a trademark registered by the College Board, and NGSS is a registered trademark of WestEd; neither is affiliated with, or endorses, this site. Every question here is original.';
 function foot() {
-  return `<footer class="foot"><div><p>${esc(DISCLAIMER)}</p><p>Scores and AP score estimates are practice estimates, not official scores. © ${new Date().getFullYear()} ${BRAND}.</p></div>
+  return `<footer class="foot"><div><p class="foot-brand">Scholar Hub</p><p>${esc(DISCLAIMER)}</p><p>Scores and AP score estimates are practice estimates, not official scores. © ${new Date().getFullYear()} ${BRAND}.</p></div>
     <nav aria-label="Footer"><a href="#about">About</a><a href="#faq">FAQ</a><a href="#review">Resources</a><a href="#device" class="foot-ta">${SVG(IC.lock)}Teacher access</a></nav></footer>`;
 }
 /* The sidebar is rebuilt on every page change. Keep its scroll position, so clicking a link low in the menu
