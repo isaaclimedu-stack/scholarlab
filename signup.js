@@ -12,7 +12,7 @@ const SIGNUP_ENDPOINT = 'https://script.google.com/macros/s/AKfycby1jWaTEgqIqPZG
   const T = {
     comma: { contact: 'admin@comma-ltd.com', title: 'Get your Comma access code', lead: 'Comma is free practice for teacher certification exams. Tell us who you are and we’ll email your access code.',
       extra: ['School or organization (optional)', 'suOrg', 'e.g. Lincoln High School'], opt: 'Email me about new Comma products, practice tests, and updates. Optional. You can unsubscribe anytime.' },
-    scholarlab: { contact: 'admin@scholarlab.net', title: 'Sign up for Scholar Hub', lead: 'Free practice for AP, high school, and middle school courses. Tell us who you are and we’ll email your access code.',
+    scholarlab: { contact: 'admin@comma-ltd.com', title: 'Sign up for Scholar Hub', lead: 'Free practice for AP, high school, and middle school courses. Tell us who you are and we’ll email your access code.',
       extra: ['Class code (if your teacher gave you one)', 'suJoin', 'e.g. BIO-P2'], extra2: ['Your teacher’s email (optional)', 'suTeacher', 'teacher@school.org'],
       opt: 'Email me news about new products from Comma, the team behind Scholar Hub. Optional. If you’re under 14, ask a parent first. You can unsubscribe anytime.' },
   }[SITE];
@@ -30,6 +30,7 @@ const SIGNUP_ENDPOINT = 'https://script.google.com/macros/s/AKfycby1jWaTEgqIqPZG
 .su-card input:focus{outline:none;border-color:var(--accent,#1d3e9e)}
 .su-opt{display:flex;gap:10px;align-items:flex-start;margin:4px 0 14px;font-size:13px;line-height:1.45;color:var(--muted,#555);cursor:pointer}
 .su-opt input{margin-top:2px;width:17px;height:17px;flex:none;accent-color:var(--accent,#1d3e9e)}
+.su-agree{display:grid;gap:9px;margin:4px 0 12px;padding:11px 12px;border:1.5px solid var(--line,#ddd);border-radius:10px}.su-agree .su-opt{margin:0;color:var(--ink,#111)}.su-opt a{color:var(--accent,#1d3e9e);font-weight:600;white-space:nowrap}
 .su-row{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
 .su-row button{font:inherit;font-weight:700;font-size:14px;padding:9px 16px;border-radius:9px;cursor:pointer;border:1.5px solid var(--line,#ccc);background:transparent;color:var(--ink,#111)}
 .su-row button.su-go{background:var(--accent,#1d3e9e);border-color:var(--accent,#1d3e9e);color:var(--surface,#fff)}
@@ -50,6 +51,8 @@ const SIGNUP_ENDPOINT = 'https://script.google.com/macros/s/AKfycby1jWaTEgqIqPZG
       <label class="su-f">Email<input type="email" id="suEmail" autocomplete="email" maxlength="80" placeholder="you@school.org"></label>
       ${field(T.extra)}${T.extra2 ? field(T.extra2, 'email') : ''}
       <input class="su-hp" id="suHp" tabindex="-1" autocomplete="off" aria-hidden="true">
+      <div class="su-agree"><label class="su-opt"><input type="checkbox" id="suAg1" required><span>I agree to the <a href="/legal.html#terms" target="_blank" rel="noopener">Terms of Service</a> and <a href="/legal.html#privacy" target="_blank" rel="noopener">Privacy Policy</a>.</span></label>
+        <label class="su-opt"><input type="checkbox" id="suAg2" required><span>I agree to follow the <a href="/legal.html#guidelines" target="_blank" rel="noopener">Community Guidelines</a>.</span></label></div>
       <label class="su-opt"><input type="checkbox" id="suOpt"><span>${esc(T.opt)}</span></label>
       <p class="su-msg" id="suMsg" role="status"></p>
       <div class="su-row"><button type="button" id="suX">Cancel</button><button type="submit" class="su-go" id="suGo">Sign up</button></div>
@@ -65,11 +68,12 @@ const SIGNUP_ENDPOINT = 'https://script.google.com/macros/s/AKfycby1jWaTEgqIqPZG
       const name = $('#suName').value.trim().replace(/\s+/g, ' '), email = $('#suEmail').value.trim().toLowerCase();
       if (name.length < 2) { msg('Please enter your name.', 'bad'); return $('#suName').focus(); }
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { msg('Please enter a valid email address.', 'bad'); return $('#suEmail').focus(); }
+      if (!$('#suAg1').checked || !$('#suAg2').checked) { msg('Please tick both boxes to agree to the Terms of Service, Privacy Policy and Community Guidelines.', 'bad'); return $(!$('#suAg1').checked ? '#suAg1' : '#suAg2').focus(); }
       const join = $('#suJoin') ? $('#suJoin').value.trim() : '', org = $('#suOrg') ? $('#suOrg').value.trim() : '', tch = $('#suTeacher') ? $('#suTeacher').value.trim() : '';
       const details = [org && 'Organization: ' + org, tch && 'Teacher: ' + tch, join && 'Class code: ' + join].filter(Boolean).join(' · ');
       $('#suGo').disabled = true; msg('Sending…');
       try {
-        const r = await fetch(SIGNUP_ENDPOINT, { method: 'POST', body: JSON.stringify({ site: SITE, name, email, join, details, optIn: $('#suOpt').checked, optInText: T.opt, hp: $('#suHp').value }) });
+        const r = await fetch(SIGNUP_ENDPOINT, { method: 'POST', body: JSON.stringify({ site: SITE, name, email, join, details, agree: true, agreeText: 'I agree to the Terms of Service and Privacy Policy. I agree to follow the Community Guidelines.', terms: '2026-10-29', optIn: $('#suOpt').checked, optInText: T.opt, hp: $('#suHp').value }) });
         const d = await r.json();
         if (!d.ok) { msg(d.msg || 'Something went wrong. Please try again.', 'bad'); $('#suGo').disabled = false; return; }
         $('.su-card').innerHTML = `<div class="su-done"><div class="su-ic">${d.status === 'sent' ? '✉️' : '⏳'}</div><h2>${d.status === 'sent' ? 'Check your email' : 'Request sent'}</h2><p class="su-lead">${esc(d.msg)}</p><p class="su-small">Don’t see it in a few minutes? Check your spam folder.</p><div class="su-row" style="justify-content:center"><button type="button" class="su-go" id="suOk">OK</button></div></div>`;

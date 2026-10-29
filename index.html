@@ -1469,6 +1469,9 @@ body.acc-big #exam .qtext, body.acc-big #exam .opt, body.acc-big #exam .stem { f
 @media (max-width: 480px) { .su2-two { grid-template-columns: minmax(0, 1fr); } }
 .su2-f .su2-opt { display: flex; gap: 10px; align-items: flex-start; font-weight: 400; font-size: 13px; line-height: 1.5; color: var(--muted); cursor: pointer; padding: 10px 12px; border-radius: 10px; background: var(--sunk); }
 .su2-opt input { margin-top: 2px; width: 17px; height: 17px; flex: none; accent-color: var(--accent); }
+.su2-agree { display: grid; gap: 9px; padding: 11px 12px; border-radius: 10px; background: var(--sunk); }
+.su2-f .su2-agree .su2-opt { padding: 0; background: none; border-radius: 0; color: var(--ink); }
+.su2-opt a { color: var(--accent); font-weight: 600; white-space: nowrap; }
 .su2-msg { margin: 0; min-height: 0; font-size: 13.5px; font-weight: 600; color: var(--good); }
 .su2-msg:empty { display: none; }
 .su2-msg.bad { color: var(--bad); }
@@ -12963,7 +12966,7 @@ function liveBoxHTML() {
     const dup = pr.a && new Set(LIVE.filter(q => (q.presence || {}).a === pr.a).map(q => q.by || q.peer)).size > 1;
     return `<span class="chip-s"><b>${esc(nm)}</b>${p.guest ? ' (guest)' : ''}${em ? ' · using ' + esc(em) : ''} · ${pr.s === 'test' ? 'taking a test' + (pr.t ? ' (' + esc(pr.t) + ')' : '') : 'browsing'}${dup ? ' <span class="st-off">⚠ same access used by more than one account right now</span>' : ''}</span>`; }).join('')}</div>`;
 }
-const OWNER_EMAIL = 'admin@scholarlab.net', SITE_URL = 'https://scholarlab.net';
+const OWNER_EMAIL = 'admin@comma-ltd.com', SITE_URL = 'https://scholarlab.net';
 const testsIn = k => TESTS.filter(t => t.area === k).sort((a, b) => (a.order || 0) - (b.order || 0) || a.subject.localeCompare(b.subject));
 
 /* ── text rendering ── */
@@ -16606,6 +16609,8 @@ function openSignup() {
         : `<div class="su2-two"><label><span>Class code <span class="muted">(if you have one)</span></span><input id="suJoin" maxlength="40" placeholder="e.g. BIO-P2" autocapitalize="characters" value="${v('suJoin')}"></label>
           <label><span>Teacher’s email <span class="muted">(optional)</span></span><input id="suTch" type="email" maxlength="80" placeholder="teacher@school.org" value="${v('suTch')}"></label></div>`}
         <input class="su-hp" id="suHp" tabindex="-1" autocomplete="off" aria-hidden="true">
+        <div class="su2-agree"><label class="su2-opt"><input type="checkbox" id="suAg1" ${keep.suAg1 ? 'checked' : ''}><span>I agree to the <a href="/legal.html#terms" target="_blank" rel="noopener">Terms of Service</a> and <a href="/legal.html#privacy" target="_blank" rel="noopener">Privacy Policy</a>.</span></label>
+          <label class="su2-opt"><input type="checkbox" id="suAg2" ${keep.suAg2 ? 'checked' : ''}><span>I agree to follow the <a href="/legal.html#guidelines" target="_blank" rel="noopener">Community Guidelines</a>.</span></label></div>
         <label class="su2-opt"><input type="checkbox" id="suOpt" ${keep.suOpt ? 'checked' : ''}><span>${SU_OPT[SU.role]}</span></label>
         <p class="su2-msg ${bad ? 'bad' : ''}" id="suMsg" role="status">${msg ? esc(msg) : ''}</p>
         <div class="su2-act"><button type="button" class="btn" id="suCancel">Cancel</button><button type="submit" class="btn primary" id="suGo">${t ? 'Request teacher access' : 'Sign up'}</button></div>
@@ -16622,11 +16627,12 @@ function openSignup() {
       if (name.length < 2 || (t && !/\s/.test(name))) { say(t ? 'Please enter your first and last name.' : 'Please enter your name.', true); return $('#suName').focus(); }
       if (!isEmail(email)) { say('Please enter a valid email address.', true); return $('#suEmail').focus(); }
       if (t && !$('#suSchool').value.trim()) { say('Please enter your school.', true); return $('#suSchool').focus(); }
+      if (!$('#suAg1').checked || !$('#suAg2').checked) { say('Please tick both boxes to agree to the Terms of Service, Privacy Policy and Community Guidelines.', true); return $(!$('#suAg1').checked ? '#suAg1' : '#suAg2').focus(); }
       const val = id => ($('#' + id) ? $('#' + id).value.trim() : '');
       const details = t ? ['School: ' + val('suSchool'), val('suSubj') && 'Teaches: ' + val('suSubj')].filter(Boolean).join(' · ') : [val('suTch') && 'Teacher: ' + val('suTch'), val('suJoin') && 'Class code: ' + val('suJoin')].filter(Boolean).join(' · ');
       $('#suGo').disabled = true; say('Sending…');
       try {
-        const r = await fetch(cfg.endpoint, { method: 'POST', body: JSON.stringify({ site: cfg.site || 'scholarlab', role: SU.role, name, email, join: val('suJoin'), details, optIn: $('#suOpt').checked, optInText: SU_OPT[SU.role], hp: $('#suHp').value }) });
+        const r = await fetch(cfg.endpoint, { method: 'POST', body: JSON.stringify({ site: cfg.site || 'scholarlab', role: SU.role, name, email, join: val('suJoin'), details, agree: true, agreeText: 'I agree to the Terms of Service and Privacy Policy. I agree to follow the Community Guidelines.', terms: '2026-10-29', optIn: $('#suOpt').checked, optInText: SU_OPT[SU.role], hp: $('#suHp').value }) });
         const d = await r.json();
         if (!d.ok) { say(d.msg || 'Something went wrong. Please try again.', true); $('#suGo').disabled = false; return; }
         $('.su2').innerHTML = `<div class="mhead"><h3>${d.status === 'sent' ? 'Check your email' : 'Request sent'}</h3><button class="btn" id="suX2">Close</button></div>
