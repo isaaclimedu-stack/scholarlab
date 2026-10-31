@@ -18209,6 +18209,122 @@ function genExp() { const [s, iv, dv, cv] = SK_PICK(SK_EXP), others = SK_EXP.fil
   return mc(`${s} Which should be kept the same (a controlled variable)?`, cv.split(/,? or |, /)[0].replace(/^./, c => c.toUpperCase()), [iv, dv, 'Nothing; every variable should change'], `Controlled variables are held constant so only the independent variable affects the results.`); }
 
 /* ── the topics, by subject ── */
+/* ═════ SKILL BUILDER: MENTAL MATH ═════
+   Values worth knowing by heart (√2, √3, fraction–decimal families, special-angle trig, logs, constants) and the
+   shortcuts for working them out fast. Questions are generated fresh each time, and every explanation shows the trick. */
+const MM_ROOT = { 2: [1.414, 'Think “one-four-one-four”: √2 ≈ 1.414.'], 3: [1.732, 'George Washington was born in 1732: √3 ≈ 1.732.'], 5: [2.236, '√5 ≈ 2.236 (“two-two-three-six”).'],
+  6: [2.449, '√6 = √2 × √3 ≈ 1.414 × 1.732 ≈ 2.449.'], 7: [2.646, '√7 ≈ 2.646: a bit past halfway between √4 = 2 and √9 = 3.'], 10: [3.162, '√10 ≈ 3.162, just a little more than π.'] };
+const mmNo0 = s => s.replace(/^0\./, '.');
+function mmSqTrick(n) {
+  if (n % 10 === 5) { const t = (n - 5) / 10; return `Ends in 5: ${t} × ${t + 1} = ${t * (t + 1)}, then write 25 → ${n * n}.`; }
+  const b = Math.round(n / 10) * 10, d = n - b;
+  return `Split it around ${b}: (${b} ${d < 0 ? '−' : '+'} ${Math.abs(d)})² = ${b * b} ${d < 0 ? '−' : '+'} ${2 * b * Math.abs(d)} + ${d * d} = ${n * n}.`;
+}
+function genMmRoots() {
+  const t = SK_RI(0, 4);
+  if (t <= 1) { const n = SK_PICK([2, 3, 5, 6, 7, 10]), [v, hook] = MM_ROOT[n];
+    return skIn(`From memory: what is √${n}, to three decimal places?`, [skNumF(v, v.toFixed(3), `√${n} ≈`, '', { tol: 0.0015 })], hook); }
+  if (t === 2) { const b = SK_PICK([2, 3, 5]), a = SK_RI(2, 9), N = a * a * b, v = a * MM_ROOT[b][0];
+    return skIn(`Simplify √${N} into the form a√b, then use √${b} ≈ ${MM_ROOT[b][0]} to estimate it.`, [skNumF(a, String(a), 'a (outside the root)'), skNumF(b, String(b), 'b (inside the root)'), skNumF(+v.toFixed(2), v.toFixed(2), 'Decimal value ≈', '', { tol: 0.03 })],
+      `Pull out the largest perfect square: ${N} = ${a * a} × ${b}, so √${N} = √${a * a} × √${b} = ${a}√${b} ≈ ${a} × ${MM_ROOT[b][0]} = ${v.toFixed(2)}.`); }
+  if (t === 3) { const n = SK_RI(11, 25);
+    return Math.random() < .5 ? skIn(`What is ${n}²?`, [skNumF(n * n, String(n * n), `${n}² =`)], mmSqTrick(n))
+      : skIn(`What is √${n * n}?`, [skNumF(n, String(n), `√${n * n} =`)], `${n} × ${n} = ${n * n}, so √${n * n} = ${n}. Knowing the squares 1² to 25² makes square roots instant. ${mmSqTrick(n)}`); }
+  let N; do { N = SK_RI(12, 140); } while (Number.isInteger(Math.sqrt(N)));
+  const lo = Math.floor(Math.sqrt(N)), hi = lo + 1, est = Math.sqrt(N), lin = lo + (N - lo * lo) / (hi * hi - lo * lo);
+  return mc(`Without a calculator, which is the best estimate of √${N}?`, est.toFixed(1), [(est + .5).toFixed(1), (est - .5).toFixed(1), (N / 2 > 20 ? (est + 1).toFixed(1) : (N / 2).toFixed(1)), (est - 1).toFixed(1)],
+    `√${N} is between √${lo * lo} = ${lo} and √${hi * hi} = ${hi}. ${N} is ${N - lo * lo} of the ${hi * hi - lo * lo} steps from ${lo * lo} to ${hi * hi}, so √${N} ≈ ${lo} + ${N - lo * lo}/${hi * hi - lo * lo} ≈ ${lin.toFixed(2)} (the true value, ${est.toFixed(2)}, is a hair higher).`);
+}
+
+/* fractions ↔ decimals, by family */
+const MM_FAM = { 8: [1, 3, 5, 7], 5: [1, 2, 3, 4], 20: [1, 3, 7, 9, 11, 13, 17, 19], 25: [1, 2, 3, 4, 6, 7, 8, 9], 4: [1, 3], 3: [1, 2], 6: [1, 5], 9: [1, 2, 4, 5, 7, 8], 11: [1, 2, 3, 4, 5, 6], 7: [1, 2, 3], 16: [1, 3, 5, 7], 12: [1, 5, 7], 40: [1, 3, 7] };
+const mmTerm = d => { while (d % 2 === 0) d /= 2; while (d % 5 === 0) d /= 5; return d === 1; };
+function mmDecAns(n, d) { const v = n / d;
+  if (mmTerm(d)) { const s = String(+v.toFixed(6)); return { show: s, acc: [s, mmNo0(s)] }; }
+  const acc = []; for (const k of [3, 4, 5, 6]) { const r = v.toFixed(k), tr = (Math.floor(v * 10 ** k + 1e-9) / 10 ** k).toFixed(k); acc.push(r, mmNo0(r), tr, mmNo0(tr)); }
+  return { show: v.toFixed(4) + '…', acc: [...new Set(acc)] }; }
+function mmFracWhy(n, d) { const v = n / d;
+  if (d === 8) return `1/8 = 0.125, so ${n}/8 = ${n} × 0.125 = ${+v.toFixed(4)}.`;
+  if (d === 16) return `1/16 is half of 1/8: 0.0625. So ${n}/16 = ${n} × 0.0625 = ${+v.toFixed(4)}.`;
+  if (d === 40) return `1/40 = 0.025 (a quarter of 0.1). So ${n}/40 = ${n} × 0.025 = ${+v.toFixed(4)}.`;
+  if ([4, 5, 20, 25].includes(d)) return `Scale the bottom up to 100: ${n}/${d} = ${n * 100 / d}/100 = ${+v.toFixed(4)}.`;
+  if (d === 3 || d === 6) return `1/3 = 0.333… and 2/3 = 0.666…. Sixths are half of thirds: 1/6 = 0.1666…, and 5/6 = 1 − 1/6 = 0.8333…. So ${n}/${d} = ${v.toFixed(4)}….`;
+  if (d === 9) return `Ninths just repeat the top digit: ${n}/9 = 0.${String(n).repeat(4)}….`;
+  if (d === 11) { const p = String(9 * n).padStart(2, '0'); return `Elevenths repeat 9 × the top number: 9 × ${n} = ${p}, so ${n}/11 = 0.${p}${p}….`; }
+  if (d === 7) return `1/7 = 0.142857 repeating. The other sevenths use the same six digits in the same order, just starting somewhere else: 2/7 = 0.285714…, 3/7 = 0.428571…. So ${n}/7 ≈ ${v.toFixed(4)}.`;
+  if (d === 12) return `1/12 is half of 1/6: 0.08333…. So ${n}/12 = ${n} × 0.08333… = ${v.toFixed(4)}….`;
+  return `${n} ÷ ${d} = ${v}.`; }
+function genMmFrac() {
+  const t = SK_RI(0, 5), dens = Object.keys(MM_FAM).map(Number);
+  if (t <= 2) { const d = SK_PICK(dens), n = SK_PICK(MM_FAM[d]), A = mmDecAns(n, d);
+    return skIn(`Write ${n}/${d} as a decimal.${mmTerm(d) ? '' : ' It repeats, so give at least three decimal places.'}`, [{ ...skTxt(A.acc, 'plain', `${n}/${d} =`, 9), show: A.show }], mmFracWhy(n, d)); }
+  if (t <= 4) { const d = SK_PICK([8, 8, 16, 20, 25, 40]), n = SK_PICK(MM_FAM[d]), dec = String(+(n / d).toFixed(6));
+    return skIn(`${dec} = ? / ${d}. Find the missing numerator.`, [skNumF(n, String(n), 'Numerator', `/ ${d}`)], `Multiply the decimal by the denominator: ${dec} × ${d} = ${n}. So ${dec} = ${n}/${d}.${d === 8 ? ' Eighths are steps of 0.125: 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875.' : ''}`); }
+  const d = SK_PICK([8, 6, 9, 11, 7, 16, 12, 3]), n = SK_PICK(MM_FAM[d]), v = n / d, A = mmDecAns(n, d);
+  const pool = []; for (const dd of dens) for (const nn of MM_FAM[dd]) if (Math.abs(nn / dd - v) > 1e-9) pool.push(mmDecAns(nn, dd).show);
+  const near = [...new Set(pool)].sort((a, b) => Math.abs(parseFloat(a) - v) - Math.abs(parseFloat(b) - v)).slice(0, 6);
+  return mc(`Which decimal equals ${n}/${d}?`, A.show, R.shuf(near).slice(0, 3), mmFracWhy(n, d));
+}
+
+/* percents */
+function genMmPct() {
+  const t = SK_RI(0, 4);
+  if (t <= 1) { const p = SK_PICK([5, 10, 15, 20, 25, 30, 40, 75, 12.5, 1]), base = p === 12.5 ? SK_PICK([16, 24, 32, 40, 48, 64, 72, 88]) : p === 25 || p === 75 ? SK_PICK([24, 36, 44, 60, 84, 120, 160]) : SK_RI(4, 40) * 10, ans = +(base * p / 100).toFixed(2);
+    const how = { 5: `10% of ${base} is ${base / 10}; 5% is half of that: ${ans}.`, 10: `10%: move the decimal point one place left: ${ans}.`, 1: `1%: move the decimal point two places left: ${ans}.`, 15: `10% is ${base / 10} and 5% is ${base / 20}; add them: ${ans}.`,
+      20: `10% is ${base / 10}; double it: ${ans}.`, 30: `10% is ${base / 10}; triple it: ${ans}.`, 40: `10% is ${base / 10}; times 4: ${ans}.`, 25: `25% is one quarter: ${base} ÷ 4 = ${ans}.`, 75: `25% is ${base / 4}; 75% is three of those: ${ans}.`, 12.5: `12.5% is one eighth: ${base} ÷ 8 = ${ans}.` }[p];
+    return skIn(`What is ${p}% of ${base}?`, [skNumF(ans, String(ans), 'Answer', '', { tol: 0.001 })], how); }
+  if (t === 2) { const y = SK_PICK([25, 50, 20, 10]), x = y === 25 ? SK_PICK([4, 8, 12, 16, 24, 36, 44]) : y === 20 ? SK_PICK([5, 15, 35, 45, 55]) : y === 10 ? SK_PICK([7, 13, 23, 37, 49]) : SK_PICK([6, 14, 18, 22, 38]), ans = +(x * y / 100).toFixed(2);
+    return skIn(`What is ${x}% of ${y}?`, [skNumF(ans, String(ans), 'Answer', '', { tol: 0.001 })], `Swap trick: x% of y = y% of x. ${x}% of ${y} is the same as ${y}% of ${x}, which is easy: ${ans}.`); }
+  if (t === 3) { const bill = SK_RI(2, 12) * 10 + SK_PICK([0, 0, 5]), p = SK_PICK([15, 18, 20]), ans = +(bill * p / 100).toFixed(2);
+    return skIn(`A meal costs $${bill}. What is ${p === 18 ? 'an' : 'a'} ${p}% tip?`, [skNumF(ans, ans.toFixed(2), 'Tip', '', { pre: '$', tol: 0.006 })], p === 18 ? `20% is ${(bill / 5).toFixed(2)}; 2% is ${(bill / 50).toFixed(2)}; 20% − 2% = ${ans.toFixed(2)}.` : p === 15 ? `10% is ${(bill / 10).toFixed(2)}; 5% is half of that, ${(bill / 20).toFixed(2)}; together ${ans.toFixed(2)}.` : `10% is ${(bill / 10).toFixed(2)}; double it: ${ans.toFixed(2)}.`); }
+  const old = SK_PICK([20, 25, 40, 50, 80, 200, 400]), pct = SK_PICK([10, 20, 25, 50, 75, -10, -20, -25, -50]), nw = old * (1 + pct / 100);
+  return skIn(`A price goes from $${old} to $${nw}. What is the percent change? (Use a minus sign for a decrease.)`, [skNumF(pct, (pct > 0 ? '' : '−') + Math.abs(pct), 'Percent change', '%')], `Change = ${nw} − ${old} = ${nw - old}. Divide by the original: ${nw - old} ÷ ${old} = ${(pct / 100).toFixed(2)} → ${pct}%.`);
+}
+
+/* multiplication shortcuts */
+function genMmMult() {
+  const t = SK_RI(0, 6); let a, b, why;
+  if (t === 0) { a = SK_RI(13, 99); b = 5; why = `×5 = ×10, then halve: ${a} × 10 = ${a * 10}, and ${a * 10} ÷ 2 = ${a * 5}.`; }
+  else if (t === 1) { a = SK_PICK([12, 16, 24, 28, 32, 36, 44, 48, 52, 64, 72, 84, 96]); b = 25; why = `×25 = ×100, then ÷4: ${a} × 100 = ${a * 100}, and ${a * 100} ÷ 4 = ${a * 25}.`; }
+  else if (t === 2) { a = SK_RI(12, 98); b = 11; const s = Math.floor(a / 10) + a % 10; why = s < 10 ? `×11 for two digits: put their sum in the middle. ${Math.floor(a / 10)} + ${a % 10} = ${s}, so ${a} × 11 = ${Math.floor(a / 10)}${s}${a % 10}.` : `×11 for two digits: put their sum in the middle and carry. ${Math.floor(a / 10)} + ${a % 10} = ${s}, so ${Math.floor(a / 10)}|${s}|${a % 10} → carry the 1 → ${a * 11}.`; }
+  else if (t === 3) { a = SK_RI(12, 99); b = 9; why = `×9 = ×10, then subtract the number once: ${a * 10} − ${a} = ${a * 9}.`; }
+  else if (t === 4) { const n = SK_RI(1, 12) * 10 + 5, k = (n - 5) / 10; return skIn(`What is ${n}²?`, [skNumF(n * n, String(n * n), `${n}² =`)], `Squares ending in 5: take the front number (${k}), multiply it by the next number up (${k} × ${k + 1} = ${k * (k + 1)}), then write 25 → ${n * n}.`); }
+  else if (t === 5) { const m = SK_PICK([20, 30, 40, 50, 60, 70, 80, 100]), d = SK_RI(1, 4); a = m - d; b = m + d; why = `Difference of squares: (${m} − ${d})(${m} + ${d}) = ${m}² − ${d}² = ${m * m} − ${d * d} = ${a * b}.`; }
+  else { const x = SK_RI(1, 9), y = SK_RI(1, 9); a = 100 - x; b = 100 - y; why = `Near 100: ${a} is ${x} below and ${b} is ${y} below. Cross-subtract: ${a} − ${y} = ${a - y}. Multiply the gaps: ${x} × ${y} = ${String(x * y).padStart(2, '0')}. Put them together: ${a * b}.`; }
+  return skIn(`What is ${a} × ${b}?`, [skNumF(a * b, String(a * b), `${a} × ${b} =`)], why);
+}
+
+/* powers, logs and constants */
+const MM_LOG = { 2: [0.301, 'log 2 ≈ 0.301 (memorize).'], 3: [0.477, 'log 3 ≈ 0.477 (memorize).'], 4: [0.602, 'log 4 = log(2 × 2) = 0.301 + 0.301 = 0.602.'], 5: [0.699, 'log 5 = log(10 ÷ 2) = 1 − 0.301 = 0.699.'],
+  6: [0.778, 'log 6 = log 2 + log 3 = 0.301 + 0.477 = 0.778.'], 8: [0.903, 'log 8 = 3 × log 2 = 3 × 0.301 = 0.903.'], 9: [0.954, 'log 9 = 2 × log 3 = 2 × 0.477 = 0.954.'], 12: [1.079, 'log 12 = log 4 + log 3 = 0.602 + 0.477 = 1.079.'], 15: [1.176, 'log 15 = log 3 + log 5 = 0.477 + 0.699 = 1.176.'] };
+function genMmPow() {
+  const t = SK_RI(0, 4);
+  if (t === 0) { const n = SK_RI(5, 12), v = 2 ** n; return skIn(`What is 2^(${n})?`, [skNumF(v, String(v), `2^(${n}) =`)], `Anchor on 2^(10) = 1024. ${n > 10 ? `Then double ${n - 10} more time${n > 11 ? 's' : ''}: ${v}.` : n < 10 ? `Then halve ${10 - n} time${10 - n > 1 ? 's' : ''}: ${v}.` : ''} Handy: 2^(10) ≈ 10^(3), which is why a kilobyte is about 1000 bytes.`); }
+  if (t === 1) { const n = SK_PICK(Object.keys(MM_LOG).map(Number)), [v, why] = MM_LOG[n];
+    return skIn(`Using log 2 ≈ 0.301 and log 3 ≈ 0.477, find log ${n} (to three decimal places).`, [skNumF(v, v.toFixed(3), `log ${n} ≈`, '', { tol: 0.003 })], why + ' Log rules: log(ab) = log a + log b, log(a/b) = log a − log b, log(aⁿ) = n log a.'); }
+  if (t === 2) { const a = SK_PICK([2, 3, 4, 5, 6, 8]), b = SK_RI(2, 11), ph = b - MM_LOG[a][0];
+    return skIn(`[H⁺] = ${a} × 10^(-${b}) M. What is the pH, to two decimal places?`, [skNumF(+ph.toFixed(2), ph.toFixed(2), 'pH', '', { tol: 0.015 })], `pH = −log(${a} × 10^(-${b})) = ${b} − log ${a} = ${b} − ${MM_LOG[a][0]} = ${ph.toFixed(2)}. Quick check: the pH must be between ${b - 1} and ${b}.`); }
+  const c = SK_PICK([['π', 3.142, 'π ≈ 3.14159… (“3.14” plus 159).'], ['e', 2.718, 'e ≈ 2.718 (2.7, then 1828 twice: 2.718281828).'], ['ln 2', 0.693, 'ln 2 ≈ 0.693, the number in half-life formulas: t½ = 0.693 / k.'], ['ln 10', 2.303, 'ln 10 ≈ 2.303, which converts between ln and log: ln x = 2.303 log x.'], ['log 2', 0.301, 'log 2 ≈ 0.301. Then log 5 = 1 − 0.301 = 0.699.']]);
+  return skIn(`From memory: what is ${c[0]}, to three decimal places?`, [skNumF(c[1], c[1].toFixed(3), `${c[0]} ≈`, '', { tol: 0.0015 })], c[2]);
+}
+
+/* special angles */
+const MM_TRIG = { sin: { 0: [0, '0'], 30: [.5, '1/2'], 45: [.7071, '√2/2'], 60: [.8660, '√3/2'], 90: [1, '1'] }, cos: { 0: [1, '1'], 30: [.8660, '√3/2'], 45: [.7071, '√2/2'], 60: [.5, '1/2'], 90: [0, '0'] }, tan: { 30: [.5774, '1/√3 = √3/3'], 45: [1, '1'], 60: [1.7321, '√3'] } };
+function mmTrigWhy(f, a) { const [, ex] = MM_TRIG[f][a];
+  return `${f} ${a}° = ${ex}${/√/.test(ex) ? ` ≈ ${MM_TRIG[f][a][0].toFixed(3)}` : ''}. ${a === 45 ? 'Use the 45-45-90 triangle with sides 1, 1, √2.' : a === 30 || a === 60 ? 'Use the 30-60-90 triangle with sides 1, √3, 2 (short side opposite 30°).' : ''} Remember: sin goes 0, ½, √2/2, √3/2, 1 from 0° to 90°, and cos runs the same list backwards.`; }
+function genMmTrig() {
+  const t = SK_RI(0, 4);
+  if (t <= 1) { const f = SK_PICK(['sin', 'cos', 'tan', 'sin', 'cos']), a = SK_PICK(Object.keys(MM_TRIG[f]).map(Number).filter(x => x > 0 && x < 90)), v = MM_TRIG[f][a][0];
+    return skIn(`From memory: ${f} ${a}° as a decimal (three places).`, [skNumF(+v.toFixed(3), v.toFixed(3), `${f} ${a}° ≈`, '', { tol: 0.002 })], mmTrigWhy(f, a)); }
+  if (t === 2) { const f = SK_PICK(['sin', 'cos', 'tan']), a = SK_PICK(Object.keys(MM_TRIG[f]).map(Number).filter(x => x > 0 && x < 90)), ex = MM_TRIG[f][a][1].split(' = ')[0];
+    return mc(`What is the exact value of ${f} ${a}°?`, ex, ['1/2', '√2/2', '√3/2', '√3', '1/√3', '2', '√2'].filter(x => x !== ex), mmTrigWhy(f, a)); }
+  if (t === 3) { const [deg, rad] = SK_PICK([[30, 'π/6'], [45, 'π/4'], [60, 'π/3'], [90, 'π/2'], [120, '2π/3'], [135, '3π/4'], [180, 'π'], [270, '3π/2']]);
+    return mc(`What is ${deg}° in radians?`, rad, ['π/6', 'π/4', 'π/3', 'π/2', '2π/3', '3π/4', 'π', '3π/2', '2π'].filter(x => x !== rad), `180° = π radians, so multiply by π/180: ${deg} × π/180 = ${rad}.`); }
+  const v = SK_PICK([10, 20, 30, 40, 50, 60]), a = SK_PICK([30, 45, 60]), comp = SK_PICK(['horizontal', 'vertical']), f = comp === 'horizontal' ? 'cos' : 'sin', ans = v * MM_TRIG[f][a][0];
+  return skIn(`A ${v} m/s velocity points ${a}° above the horizontal. What is its ${comp} component? (Use the special-angle values, no calculator.)`, [skNumF(+ans.toFixed(1), ans.toFixed(1), `${comp === 'horizontal' ? 'v<sub>x</sub>' : 'v<sub>y</sub>'} ≈`, 'm/s', { tol: 0.06 })],
+    `${comp === 'horizontal' ? 'v<sub>x</sub> = v cos θ' : 'v<sub>y</sub> = v sin θ'} = ${v} × ${f} ${a}° = ${v} × ${MM_TRIG[f][a][0].toFixed(3)} ≈ ${ans.toFixed(1)} m/s.`);
+}
+
 const SK_SUBJ = [
   { k: 'chem', name: 'Chemistry', accent: 'chem', topics: [
     { id: 'lewis', name: 'Lewis structures & VSEPR', how: 'Count valence electrons (adjust for charge), place the least electronegative atom in the center, connect atoms with single bonds, complete octets on outer atoms, then put leftovers on the central atom. Count electron domains to find the geometry: 2 linear, 3 trigonal planar, 4 tetrahedral, 5 trigonal bipyramidal, 6 octahedral. Lone pairs change the shape name.', gen: genLewis },
@@ -18266,6 +18382,14 @@ const SK_SUBJ = [
     { id: 'elasticity', name: 'Elasticity & surplus (micro)', how: 'Elasticity = %ΔQ ÷ %ΔP (midpoint method). Consumer surplus = ½ × base × height.', gen: () => SK_PICK([skRef('micro', 'elast'), skRef('micro', 'csurplus'), skRef('micro', 'equil'), skRef('micro', 'dwltax')])() },
     { id: 'multipliers', name: 'Multipliers & banking (macro)', how: 'Spending multiplier = 1/(1 − MPC); tax multiplier = MPC/(1 − MPC); money multiplier = 1/reserve requirement.', gen: () => SK_PICK([skRef('macro', 'mult'), skRef('macro', 'taxmult'), skRef('macro', 'moneymult'), skRef('macro', 'deposit')])() },
     { id: 'indicators', name: 'GDP, inflation & unemployment', how: 'GDP = C + I + G + (X − M). Inflation = % change in CPI. Unemployment rate = unemployed ÷ labor force.', gen: () => SK_PICK([skRef('macro', 'urate'), skRef('macro', 'cpi'), skRef('macro', 'infl'), skRef('macro', 'realgdp'), skRef('macro', 'gdpexp')])() },
+  ] },
+  { k: 'mental', name: 'Mental math', accent: 'cs', topics: [
+    { id: 'mm-roots', name: 'Square roots to know', how: 'Memorize: √2 ≈ 1.414, √3 ≈ 1.732 (George Washington was born in 1732), √5 ≈ 2.236, √6 ≈ 2.449, √7 ≈ 2.646, √10 ≈ 3.162, and the perfect squares from 1² to 25². To simplify a root, pull out the largest perfect square: √50 = √(25 × 2) = 5√2 ≈ 5 × 1.414 = 7.07. To estimate √n, find the perfect squares on either side: √40 is between 6 (√36) and 7 (√49), about 4/13 of the way, so ≈ 6.3. Squares ending in 5: 35² = 3 × 4 = 12, then 25 → 1225.', gen: genMmRoots },
+    { id: 'mm-frac', name: 'Fractions ↔ decimals', how: 'Learn them in families. <b>Eighths:</b> 1/8 = 0.125, so n/8 = n × 0.125 (3/8 = 0.375, 5/8 = 0.625, 7/8 = 0.875); to go back, multiply the decimal by 8 (0.625 × 8 = 5, so 0.625 = 5/8). <b>Fifths, twentieths, quarters:</b> scale the bottom to 100 (7/20 = 35/100 = 0.35). <b>Thirds and sixths:</b> 1/3 = 0.333…, 1/6 = 0.1666…, 5/6 = 0.8333…. <b>Ninths</b> repeat the top digit (4/9 = 0.444…). <b>Elevenths</b> repeat 9 × the top (3/11 = 0.2727…). <b>Sevenths:</b> 1/7 = 0.142857 repeating. Also 1/16 = 0.0625, 1/12 = 0.0833…, 1/40 = 0.025.', gen: genMmFrac },
+    { id: 'mm-pct', name: 'Percents in your head', how: '<b>10%:</b> move the decimal point one place left. <b>1%:</b> two places. <b>5%:</b> half of 10%. Build the rest: 15% = 10% + 5%, 20% = 2 × 10%, 18% = 20% − 2%. <b>25%</b> = ÷ 4, <b>50%</b> = ÷ 2, <b>12.5%</b> = ÷ 8. <b>Swap trick:</b> x% of y = y% of x, so 8% of 25 = 25% of 8 = 2. Percent change = (new − old) ÷ old × 100.', gen: genMmPct },
+    { id: 'mm-mult', name: 'Multiplication shortcuts', how: '<b>×5:</b> ×10, then halve. <b>×25:</b> ×100, then ÷4. <b>×9:</b> ×10, then subtract the number. <b>×11</b> (two digits): put the digits’ sum in the middle, 52 × 11 = 5|7|2 = 572 (carry if the sum is 10 or more). <b>Squares ending in 5:</b> 65² → 6 × 7 = 42, then 25 → 4225. <b>Difference of squares:</b> 47 × 53 = 50² − 3² = 2491. <b>Near 100:</b> 97 × 96 → 97 − 4 = 93, then 3 × 4 = 12 → 9312.', gen: genMmMult },
+    { id: 'mm-pow', name: 'Powers, logs & constants', how: '<b>Powers of 2:</b> anchor on 2¹⁰ = 1024 ≈ 10³. <b>Logs:</b> memorize log 2 ≈ 0.301 and log 3 ≈ 0.477, then build the rest: log 4 = 2 log 2, log 5 = 1 − log 2, log 6 = log 2 + log 3, log 8 = 3 log 2. <b>Quick pH:</b> for [H⁺] = a × 10⁻ᵇ, pH = b − log a (2 × 10⁻³ M → 3 − 0.301 = 2.70). <b>Constants:</b> π ≈ 3.1416, e ≈ 2.718, ln 2 ≈ 0.693 (half-lives), ln 10 ≈ 2.303.', gen: genMmPow },
+    { id: 'mm-trig', name: 'Special angles (trig)', how: 'Two triangles hold everything: 45-45-90 with sides 1, 1, √2 and 30-60-90 with sides 1, √3, 2. <b>sin</b> from 0° to 90° goes 0, 1/2, √2/2, √3/2, 1 (≈ 0, 0.5, 0.707, 0.866, 1); <b>cos</b> runs the same list backwards. <b>tan</b> 30° = 1/√3 ≈ 0.577, tan 45° = 1, tan 60° = √3 ≈ 1.732. Radians: 180° = π, so 30° = π/6, 45° = π/4, 60° = π/3, 90° = π/2.', gen: genMmTrig },
   ] },
 ];
 const SK_TOPIC = Object.fromEntries(SK_SUBJ.flatMap(s => s.topics.map(t => [t.id, { ...t, subj: s }])));
