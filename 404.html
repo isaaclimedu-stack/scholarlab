@@ -374,107 +374,168 @@ details.rv-psg .psg { position: static; max-height: 360px; margin-top: 8px; }
 .qr-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--line); margin-bottom: 18px; }
 .qr-tabs button { border: 0; background: transparent; padding: 10px 16px; font-weight: 600; color: var(--muted); cursor: pointer; position: relative; }
 .qr-tabs button[aria-selected="true"] { color: var(--ink); }
-/* ── interactive diagrams (Formulas & Reference) ── */
-.dg-pick { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
-.dg-pick button { display: grid; text-align: left; gap: 1px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); cursor: pointer; font: inherit; font-weight: 650; font-size: 14px; }
-.dg-pick button small { font-weight: 500; font-size: 11.5px; color: var(--muted); }
-.dg-pick button:hover { border-color: var(--accent, var(--ember)); }
-.dg-pick button[aria-selected="true"] { border-color: var(--accent, var(--ember)); background: var(--accent-soft, var(--ember-soft)); }
-/* the explanation sits above the diagram so the drawing gets the full width; side by side only on very wide screens */
-.dg { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: start; }
-.dg .dg-side { order: -1; min-height: 118px; position: static; }
-@media (min-width: 1500px) { .dg { grid-template-columns: minmax(0, 2.2fr) minmax(260px, 1fr); } .dg .dg-side { order: 0; position: sticky; top: 76px; } }
-.dg-stage { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); overflow: hidden; min-width: 0; }
-.dg-svg { display: block; width: 100%; height: auto; color: var(--ink); font-family: var(--font-body, system-ui, sans-serif); user-select: none; -webkit-user-select: none; }
-.dg-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: flex-end; padding: 10px 12px; border-top: 1px solid var(--line); }
-.dg-bar > .small { margin-right: auto; }
+/* ── Interactive diagrams page (infographic style: navy banners, light-blue cards, gold highlights) ── */
+.dgp-bar { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; margin: 0 0 14px; }
+.dgp-sel { display: inline-flex; align-items: center; gap: 0; border-radius: 999px; background: linear-gradient(90deg, #173a6b, #25548f); padding: 4px 4px 4px 16px; box-shadow: 0 4px 12px rgba(23, 58, 107, .22); }
+.dgp-sel span { color: #ffd23f; font-size: 11.5px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; margin-right: 10px; }
+.dgp-sel select { font: inherit; font-weight: 700; font-size: 15px; color: #173a6b; background: #fff; border: 0; border-radius: 999px; padding: 7px 34px 7px 14px; min-width: 240px; cursor: pointer; }
+.dgp-tip { font-size: 13px; color: var(--muted); }
+.dgp-tip b { color: var(--ink); }
+.dgp .dgp-subj { display: grid; gap: 10px; margin: 0 0 22px; padding: 14px 16px; border-radius: 16px; background: linear-gradient(180deg, #f4f8ff, #e8f0fc); border: 1px solid #cddcf2; }
+.dgp-band { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 10px; align-items: start; }
+@media (max-width: 700px) { .dgp-band { grid-template-columns: minmax(0, 1fr); gap: 4px; } }
+.dgp-bh { font-size: 11.5px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #3b5784; padding-top: 7px; }
+.dgp-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.dgp-chip { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border-radius: 999px; border: 1.5px solid #c3d4ee; background: #fff; color: #173a6b; font: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer; transition: transform .12s, box-shadow .12s; }
+.dgp-chip small { font-size: 11px; font-weight: 800; padding: 1px 7px; border-radius: 999px; background: #e3ecfa; color: #3b5784; }
+.dgp-chip:hover { transform: translateY(-1px); box-shadow: 0 3px 10px rgba(23, 58, 107, .14); }
+.dgp-chip[aria-pressed="true"] { background: linear-gradient(90deg, #173a6b, #25548f); border-color: #173a6b; color: #fff; }
+.dgp-chip[aria-pressed="true"] small { background: #ffd23f; color: #173a6b; }
+.dgp-main .dgp-h .title { margin: 0 0 12px; }
+.dg-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; margin: 0 0 16px; }
+.dg-pick button { display: flex; gap: 10px; align-items: center; text-align: left; padding: 10px 12px; border: 1.5px solid #cddcf2; border-radius: 14px; background: linear-gradient(180deg, #fff, #eef4fd); color: #13294b; cursor: pointer; font: inherit; transition: transform .12s, box-shadow .12s; }
+.dg-pick button:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(23, 58, 107, .14); }
+.dg-pick .dg-pi { flex: none; width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; background: #dfeaf9; color: #1d4e89; }
+.dg-pick button[data-kind="steps"] .dg-pi { background: #e4f4ef; color: #0f766e; }
+.dg-pick button[data-kind="map"] .dg-pi { background: #f3e9fb; color: #5b2bb5; }
+.dg-pick .dg-pi svg { width: 20px; height: 20px; }
+.dg-pick .dg-pt { display: grid; gap: 1px; min-width: 0; }
+.dg-pick .dg-pt b { font-size: 14.5px; line-height: 1.25; }
+.dg-pick .dg-pt small { font-size: 11.5px; color: #4f6a92; font-weight: 600; }
+.dg-pick button[aria-selected="true"] { background: linear-gradient(90deg, #173a6b, #25548f); border-color: #173a6b; color: #fff; box-shadow: 0 6px 18px rgba(23, 58, 107, .28); }
+.dg-pick button[aria-selected="true"] .dg-pi { background: rgba(255, 255, 255, .16); color: #ffd23f; }
+.dg-pick button[aria-selected="true"] small { color: #c9d9f2; }
+/* layout: the explanation card sits above the drawing so the drawing gets the full width; side by side on very wide screens */
+.dg { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; align-items: start; }
+.dg .dg-side { order: -1; }
+@media (min-width: 1500px) { .dg { grid-template-columns: minmax(0, 2.3fr) minmax(270px, 1fr); } .dg .dg-side { order: 0; position: sticky; top: 76px; } }
+.dg:fullscreen { background: #eaf1fb; padding: 18px; overflow: auto; grid-template-columns: minmax(0, 2.6fr) minmax(280px, 1fr); }
+.dg:fullscreen .dg-side { order: 0; }
+.dg:fullscreen .dg-view svg { max-height: calc(100vh - 190px); }
+.dg-side { position: relative; border-radius: 16px; background: linear-gradient(180deg, #ffffff, #eef4fd); border: 1.5px solid #cddcf2; padding: 16px 18px 14px 22px; color: #13294b; min-height: 110px; box-shadow: 0 4px 14px rgba(23, 58, 107, .08); }
+.dg-side::before { content: ""; position: absolute; left: 0; top: 14px; bottom: 14px; width: 6px; border-radius: 0 6px 6px 0; background: linear-gradient(180deg, #ffd23f, #f2a900); }
+.dg-side .eyebrow { margin: 0 0 3px; color: #b4540a; }
+.dg-side h4 { margin: 0 0 8px; font-family: var(--font-display); font-size: 20px; line-height: 1.25; color: #173a6b; display: flex; align-items: center; gap: 8px; }
+.dg-side p { margin: 0 0 10px; font-size: 15px; line-height: 1.6; color: #22385e; }
+.dg-side b { color: #173a6b; }
+.dg-side .muted { color: #5a7092 !important; }
+.dg-sw { width: 14px; height: 14px; border-radius: 4px; flex: none; }
+.dg-rels { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 6px 20px; }
+.dg-rel { display: grid; gap: 4px; align-content: start; }
+.dg-rel b { font-size: 11.5px; text-transform: uppercase; letter-spacing: .1em; color: #4f6a92; }
+.dg-link { display: grid; text-align: left; border: 1px solid #cddcf2; border-radius: 10px; background: #fff; color: #1d4e89; font: inherit; font-weight: 700; font-size: 14px; padding: 6px 10px; cursor: pointer; }
+.dg-link:hover { border-color: #1d4e89; }
+.dg-link small { color: #5a7092; font-weight: 500; font-size: 12.5px; }
+.dg-fb.ok { color: #0f766e; font-weight: 700; }
+.dg-fb.bad { color: #b42318; font-weight: 700; }
+.dg-qbar { height: 7px; border-radius: 4px; background: #dbe6f6; overflow: hidden; margin: 0 0 10px; }
+.dg-qbar i { display: block; height: 100%; background: linear-gradient(90deg, #ffd23f, #f2a900); }
+.dg-side .btn { margin-right: 6px; }
+/* the stage: a light illustration card (stays light in dark mode, like a printed infographic) */
+.dg-stage { position: relative; border-radius: 18px; background: radial-gradient(120% 80% at 50% 0%, #ffffff 0%, #eef4fd 55%, #e1ebf9 100%); border: 1.5px solid #cddcf2; overflow: hidden; min-width: 0; box-shadow: 0 6px 22px rgba(23, 58, 107, .1); }
+.dg-banner { display: grid; justify-items: center; padding: 16px 16px 0; text-align: center; }
+.dg-banner h3 { margin: 0; padding: 8px 26px; border-radius: 14px; background: linear-gradient(90deg, #173a6b, #25548f); color: #fff; font-family: var(--font-display); font-size: 22px; font-weight: 800; letter-spacing: -.01em; box-shadow: 0 4px 12px rgba(23, 58, 107, .25); }
+.dg-banner p { margin: 6px 0 0; font-style: italic; color: #3b5784; font-size: 14px; }
+.dg-view { padding: 6px 10px; touch-action: pan-y; cursor: default; }
+.dg-view.zoomed { cursor: grab; touch-action: none; }
+.dg-view.zoomed:active { cursor: grabbing; }
+.dg-zoom { position: absolute; top: 12px; right: 12px; z-index: 2; display: flex; border-radius: 12px; background: #fff; border: 1.5px solid #cddcf2; box-shadow: 0 3px 10px rgba(23, 58, 107, .12); overflow: hidden; }
+.dg-zoom button { border: 0; background: transparent; color: #173a6b; width: 36px; height: 34px; font: inherit; font-size: 19px; font-weight: 800; cursor: pointer; display: grid; place-items: center; }
+.dg-zoom button + button { border-left: 1px solid #e1eaf7; }
+.dg-zoom button.pct { width: 54px; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.dg-zoom button:hover:not(:disabled) { background: #eaf1fb; }
+.dg-zoom button:disabled { opacity: .35; cursor: default; }
+.dg-zoom .fs svg { width: 17px; height: 17px; }
+@media (max-width: 560px) { .dg-zoom { top: 8px; right: 8px; } .dg-banner { padding-top: 52px; } .dg-banner h3 { font-size: 18px; padding: 6px 16px; } }
+.dg-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: flex-end; padding: 10px 14px; border-top: 1px solid #d5e2f4; background: rgba(255, 255, 255, .7); }
+.dg-bar > .small { margin-right: auto; color: #4f6a92 !important; }
+.dg-bar .btn { border-color: #c3d4ee; background: #fff; color: #173a6b; }
+.dg-bar .btn.primary { background: linear-gradient(90deg, #173a6b, #25548f); border-color: #173a6b; color: #fff; }
+.dg-bar .btn:disabled { opacity: .45; }
 .dg-dots { display: flex; gap: 6px; margin-right: auto; flex-wrap: wrap; }
-.dg-dots button { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--rule); background: transparent; padding: 0; cursor: pointer; }
-.dg-dots button.on { background: var(--accent, var(--ember)); border-color: var(--accent, var(--ember)); }
-.dg-side { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); padding: 16px 18px; position: sticky; top: 76px; min-width: 0; }
-.dg-side h4 { margin: 0 0 8px; font-family: var(--font-display); font-size: 18px; line-height: 1.25; }
-.dg-side p { margin: 0 0 10px; font-size: 14.5px; line-height: 1.55; }
-.dg-side .eyebrow { margin: 0 0 4px; }
-.dg-rel { display: grid; gap: 2px; }
-.dg-rel b { font-size: 11.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 2px; }
-.dg-link { text-align: left; border: 0; background: none; color: var(--accent, var(--ember)); font: inherit; font-weight: 650; font-size: 14px; padding: 2px 0; cursor: pointer; }
-.dg-link:hover { text-decoration: underline; }
-.dg-rel small { color: var(--muted); margin: -2px 0 4px 14px; display: block; }
-.dg-fb.ok { color: var(--good); font-weight: 650; }
-.dg-fb.bad { color: var(--bad); font-weight: 650; }
-/* svg pieces */
-.dg-svg text { fill: currentColor; font-size: 13px; }
-.dg-svg .lbl { font-size: 12.5px; font-weight: 600; }
+.dg-dots button { width: 13px; height: 13px; border-radius: 50%; border: 2px solid #9db6da; background: #fff; padding: 0; cursor: pointer; }
+.dg-dots button.done { background: #9db6da; }
+.dg-dots button.on { background: #ffd23f; border-color: #f2a900; transform: scale(1.2); }
+/* drawing basics */
+.dg-svg { display: block; width: 100%; height: auto; color: #13294b; font-family: var(--font-body, system-ui, sans-serif); user-select: none; -webkit-user-select: none; }
+.dg-svg text { fill: currentColor; font-size: 13.5px; }
+.dg-svg .lbl { font-size: 13px; font-weight: 700; }
 .dg-svg .lbl:not([text-anchor]) { text-anchor: middle; }
 .dg-svg text.b, .dg-svg tspan.b { font-weight: 800; }
 .dg-svg [data-p] { cursor: pointer; transition: opacity .2s, filter .2s; outline: none; }
-.dg-svg [data-p]:hover, .dg-svg [data-p]:focus-visible { filter: drop-shadow(0 0 3px rgba(47, 91, 211, .55)); }
-.dg-svg.has-sel [data-p]:not(.dg-on):not(.dg-near), .dg-svg.has-sel .dg-e:not(.dg-on) { opacity: .25; }
-.dg-svg .dg-on { filter: drop-shadow(0 0 5px rgba(47, 91, 211, .8)); }
+.dg-svg [data-p]:hover, .dg-svg [data-p]:focus-visible { filter: drop-shadow(0 0 4px rgba(242, 169, 0, .9)); }
+.dg-svg.has-sel [data-p]:not(.dg-on):not(.dg-near), .dg-svg.has-sel .dg-e:not(.dg-on), .dg-svg.has-sel .dg-el:not(.dg-on) { opacity: .2; }
+.dg-svg .dg-on { filter: drop-shadow(0 0 5px rgba(242, 169, 0, .95)) drop-shadow(0 0 2px rgba(242, 169, 0, .9)); }
 .dg.quiz .dg-lab, .dg.quiz .dg-f text, .dg.quiz .dg-tr text { visibility: hidden; }
-.dg-lab line { stroke: currentColor; stroke-width: 1.3; opacity: .55; }
-.dg-lab circle { fill: currentColor; }
-.dg-lab text { font-weight: 650; }
-.dg-zone { font-size: 11.5px !important; letter-spacing: .1em; text-transform: uppercase; opacity: .6; font-weight: 700; }
-.dg-bx rect, .dg-bx circle { fill: var(--surface); stroke: var(--accent, var(--ember)); stroke-width: 2.5; }
-.dg-bx text { text-anchor: middle; font-size: 13px; }
-.dg-ar path { fill: none; stroke: currentColor; stroke-width: 2.4; }
-.dg-ar.dash path { stroke-dasharray: 6 5; }
-.dg-ar text { font-size: 12px; font-weight: 600; }
-.dg-svg marker path { fill: currentColor; }
+.dg-lab line { stroke: #4f6a92; stroke-width: 1.4; }
+.dg-lab circle { fill: #173a6b; }
+.dg-lab text { font-weight: 700; font-size: 14px; fill: #173a6b; }
+.dg-zone { font-size: 12px !important; letter-spacing: .12em; text-transform: uppercase; fill: #3b5784 !important; font-weight: 800; }
+/* cards inside step diagrams (respiration) */
+.dg-bx .card { stroke-width: 2; }
+.dg-bx text { text-anchor: middle; font-size: 13.5px; fill: #13294b; }
+.dg-bx text.hd { fill: #fff; font-weight: 800; font-size: 14.5px; }
+.dg-ar path { fill: none; stroke: #1d4e89; stroke-width: 3; }
+.dg-ar.dash path { stroke-dasharray: 7 6; stroke: #5b2bb5; }
+.dg-ar text { font-size: 12.5px; font-weight: 700; fill: #1d4e89; }
+.dg-ar.dash text { fill: #5b2bb5; }
 /* concept maps */
-.dg-n rect { fill: var(--surface); stroke: var(--rule); stroke-width: 2; }
-.dg-n text { text-anchor: middle; font-weight: 650; font-size: 15px; }
-.dg-n.hub rect { fill: var(--accent-soft, var(--ember-soft)); stroke: var(--accent, var(--ember)); }
-.dg-n.dg-on rect { stroke: var(--accent, var(--ember)); stroke-width: 3.5; fill: var(--accent-soft, var(--ember-soft)); }
-.dg-n.dg-near rect { stroke: var(--accent, var(--ember)); }
-.dg-e line, .dg-e path { stroke: var(--muted); stroke-width: 1.8; }
-.dg-e.dg-on line, .dg-e.dg-on path { stroke: var(--accent, var(--ember)); stroke-width: 2.8; }
-.dg-el { font-size: 12.5px !important; text-anchor: middle; paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; font-weight: 600; }
+.dg-n text { text-anchor: middle; font-weight: 700; font-size: 15px; }
+.dg-n text.hd { fill: #fff; font-weight: 800; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; }
+.dg-n.dg-on .card { stroke-width: 3.5; }
+.dg-e path { stroke-width: 3; opacity: .8; }
+.dg-e.dg-on path { stroke-width: 4.5; opacity: 1; }
+.dg-el rect { fill: #fff; stroke-width: 1.6; }
+.dg-el text { text-anchor: middle; font-size: 12.5px; font-weight: 700; }
 /* glycolysis */
-.dg-mol rect { fill: var(--sunk); stroke: var(--rule); stroke-width: 1.5; }
-.dg-mol.on rect { fill: var(--accent-soft, var(--ember-soft)); stroke: var(--accent, var(--ember)); stroke-width: 2.5; }
-.dg-mol text { font-weight: 650; } .dg-mol text.c { font-weight: 500; opacity: .7; font-size: 12px; }
-.dg-rx path { stroke: currentColor; stroke-width: 2; fill: none; }
-.dg-rx text.enz { font-size: 12px; font-weight: 600; opacity: .8; }
-.dg-rx.on text.enz { opacity: 1; font-weight: 800; fill: var(--accent, var(--ember)); }
-.dg-rx text.note { font-size: 12px; font-weight: 600; }
-.dg-svg .use { fill: var(--bad); } .dg-svg .make { fill: var(--good); } .dg-svg .nadh { fill: var(--ember); }
-.dg-phase text { font-size: 11.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; text-anchor: middle; opacity: .7; }
-.dg-tally rect { fill: var(--sunk); stroke: var(--rule); }
-.dg-tally text { font-size: 14px; font-weight: 650; }
+.dg-mol rect { fill: url(#dgCard); stroke: #9db6da; stroke-width: 1.6; }
+.dg-mol.on rect { fill: #fff3c4; stroke: #f2a900; stroke-width: 2.6; }
+.dg-mol text { font-weight: 700; } .dg-mol text.c { font-weight: 700; fill: #4f6a92; font-size: 12.5px; }
+.dg-rx path { stroke: #1d4e89; stroke-width: 2.4; fill: none; }
+.dg-rx text.enz { font-size: 13px; font-weight: 700; fill: #3b5784; }
+.dg-rx.on text.enz { font-weight: 800; fill: #b4540a; }
+.dg-rx text.note { font-size: 13px; font-weight: 700; }
+.dg-svg .use { fill: #b42318; } .dg-svg .make { fill: #0f766e; } .dg-svg .nadh { fill: #5b2bb5; }
+.dg-phase text { font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; text-anchor: middle; fill: #3b5784; }
+.dg-tally rect { fill: url(#dgCard); stroke: #9db6da; stroke-width: 1.6; }
+.dg-tally text { font-size: 15px; font-weight: 700; }
 /* signal transduction */
 .dg-svg .w { fill: #fff !important; text-anchor: middle; font-weight: 800; }
-.dg-glow { filter: drop-shadow(0 0 6px rgba(242, 179, 61, .95)); }
-.dg-arp { stroke: currentColor; stroke-width: 2.4; fill: none; }
+.dg-glow { filter: drop-shadow(0 0 7px rgba(242, 169, 0, 1)); }
+.dg-arp { stroke: #1d4e89; stroke-width: 3; fill: none; }
 /* forces and trends */
-.dg-f text { font-size: 15px; }
-.dg-cell text { text-anchor: middle; font-size: 11px; font-weight: 700; fill: #1b2333 !important; }
-.dg-tr line:first-child { stroke: currentColor; stroke-width: 3; }
-.dg-tr text { font-weight: 700; font-size: 13px; }
-.dg-mt { opacity: .75; }
+.dg-f text { font-size: 17px; }
+.dg-cell text { text-anchor: middle; font-size: 11.5px; font-weight: 800; fill: #13294b !important; }
+.dg-tr line:first-child { stroke: #173a6b; stroke-width: 3.5; }
+.dg-tr text { font-weight: 800; font-size: 14px; fill: #173a6b; }
 /* graphs */
-.dg-graph .ax { stroke: currentColor; stroke-width: 2; }
-.dgD line { stroke: #2f5bd3; stroke-width: 3.5; } .dgD text { fill: #2f5bd3; font-weight: 800; font-size: 15px; }
-.dgS line { stroke: #c2412d; stroke-width: 3.5; } .dgS text { fill: #c2412d; font-weight: 800; font-size: 15px; }
-.dgD.old, .dgS.old { opacity: .38; } .dgD.old line, .dgS.old line { stroke-dasharray: 7 5; }
-.dg-eq line { stroke: var(--muted); stroke-dasharray: 4 4; } .dg-eq circle { fill: currentColor; } .dg-eq text { font-weight: 700; }
+.dg-graph .ax { stroke: #173a6b; stroke-width: 2.4; }
+.dgD line { stroke: #1d4e89; stroke-width: 4; } .dgD text { fill: #1d4e89; font-weight: 800; font-size: 16px; }
+.dgS line { stroke: #b42318; stroke-width: 4; } .dgS text { fill: #b42318; font-weight: 800; font-size: 16px; }
+.dgD.old, .dgS.old { opacity: .35; } .dgD.old line, .dgS.old line { stroke-dasharray: 7 5; }
+.dg-eq line { stroke: #6f86a8; stroke-dasharray: 4 4; } .dg-eq circle { fill: #f2a900; stroke: #173a6b; stroke-width: 2; } .dg-eq text { font-weight: 800; }
 .dg-eq.old { opacity: .4; }
-.dg-mv { stroke: var(--good); stroke-width: 3; fill: none; color: var(--good); }
-.dg-ctl { stroke: #a86a0c; stroke-width: 3; }
-.dg-dsh { stroke: var(--muted); stroke-dasharray: 4 4; }
-.dg-gap { fill: rgba(168, 106, 12, .2); }
-.dg-pt { fill: currentColor; }
-.dg-band { fill: transparent; } .dg-band.on { fill: var(--accent-soft, var(--ember-soft)); }
-.dg-l { fill: none; stroke-width: 3.5; } .dg-l.cbr { stroke: #2f5bd3; } .dg-l.cdr { stroke: #c2412d; } .dg-l.pop { stroke: #1f8a4c; stroke-dasharray: 8 5; }
+.dg-mv { stroke: #0f766e; stroke-width: 3.5; fill: none; color: #0f766e; }
+.dg-ctl { stroke: #b4540a; stroke-width: 3.5; }
+.dg-dsh { stroke: #6f86a8; stroke-dasharray: 4 4; }
+.dg-gap { fill: rgba(242, 169, 0, .28); }
+.dg-pt { fill: #173a6b; }
+.dg-band { fill: transparent; } .dg-band.on { fill: rgba(255, 210, 63, .28); }
+.dg-l { fill: none; stroke-width: 4; } .dg-l.cbr { stroke: #1d4e89; } .dg-l.cdr { stroke: #b42318; } .dg-l.pop { stroke: #0f766e; stroke-dasharray: 9 6; }
 /* network */
-.dg-wire { stroke: var(--rule); stroke-width: 3; } .dg-wire.on { stroke: var(--accent, var(--ember)); } .dg-wire.faint { stroke-dasharray: 5 5; }
-.dg-node circle, .dg-node rect { fill: var(--surface); stroke: currentColor; stroke-width: 2; }
-.dg-node.big rect { fill: var(--sunk); }
-.dg-pkt rect { fill: #f2b33d; stroke: #a86a0c; stroke-width: 1.5; }
-.dg-pkt text { text-anchor: middle; font-weight: 800; fill: #1b2333 !important; }
-.dg-pkt.lost rect { fill: var(--bad-soft); stroke: var(--bad); stroke-dasharray: 3 3; }
-.dg-svg .lbl.bad { fill: var(--bad); }
+.dg-wire { stroke: #9db6da; stroke-width: 3.5; } .dg-wire.on { stroke: #f2a900; } .dg-wire.faint { stroke-dasharray: 5 5; }
+.dg-node circle, .dg-node rect { fill: url(#dgCard); stroke: #1d4e89; stroke-width: 2.4; }
+.dg-pkt rect { fill: url(#dgGold); stroke: #b4540a; stroke-width: 1.6; }
+.dg-pkt text { text-anchor: middle; font-weight: 800; fill: #13294b !important; }
+.dg-pkt.lost rect { fill: #fde4e1; stroke: #b42318; stroke-dasharray: 3 3; }
+.dg-svg .lbl.bad { fill: #b42318; }
+/* action potential */
+.dg-ap .trace { fill: none; stroke: #1d4e89; stroke-width: 4; stroke-linejoin: round; }
+.dg-ap .ghost { fill: none; stroke: #9db6da; stroke-width: 2.5; stroke-dasharray: 5 6; }
+.dg-ap .thr { stroke: #b4540a; stroke-width: 2; stroke-dasharray: 8 6; }
+.dg-ap .rest { stroke: #6f86a8; stroke-width: 1.5; stroke-dasharray: 3 5; }
+.dg-ap .dot { fill: url(#dgGold); stroke: #b4540a; stroke-width: 2; }
+.dg-stage{scroll-margin-top:96px}
 .qr-tabs button[aria-selected="true"]::after { content: ""; position: absolute; left: 12px; right: 12px; bottom: -1px; height: 3px; background: var(--ember); }
 .card-tools { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; }
 .fcard { perspective: 1400px; max-width: 680px; }
@@ -13348,7 +13409,8 @@ function route() {
   else if (h === 'grades') renderGrades();
   else if (h === 'defs' || h.startsWith('defs-')) renderDefs(h.slice(5));
   else if (h === 'skills' || h.startsWith('skill-')) renderSkills(h.startsWith('skill-') ? h.slice(6) : null);
-  else if (h === 'flashcards' || h === 'formulas') { RV.tab = h === 'flashcards' ? 'cards' : RV.tab === 'diagrams' ? 'diagrams' : 'sheets'; RV.via = h; renderReview(); }
+  else if (h === 'diagrams') renderDiagrams();
+  else if (h === 'flashcards' || h === 'formulas') { RV.tab = h === 'flashcards' ? 'cards' : 'sheets'; RV.via = h; renderReview(); }
   else if (h === 'review' || h === 'resources') { RV.via = RV.tab === 'cards' ? 'flashcards' : 'formulas'; renderReview(); } /* old Resources links: same screen as Flashcards / Formulas & Reference */
   else if (h === 'about' || h === 'faq' || h === 'about-faq') renderAbout();
   else if (BY_ID[h]) renderTestPage(BY_ID[h]);
@@ -13411,7 +13473,7 @@ const subjIcon = (k, cls = '') => `<span class="sico acc-${(AREA[k] || {}).accen
 const SIDE = [['home', 'Home', 'home']];
 const SIDE_GROUPS = [
   ['Practice', [['tests', 'Practice Tests', 'file'], ['bank', 'Question Bank', 'list'], ['unit-tests', 'Unit Tests', 'check'], ['lab', 'Free Response', 'pen'], ['calc', 'Calculation Practice', 'calc'], ['skills', 'Skill Builder', 'target']]],
-  ['Study', [['flashcards', 'Flashcards', 'cards'], ['defs', 'Definitions', 'vocab'], ['formulas', 'Formulas & Reference', 'sigma']]],
+  ['Study', [['flashcards', 'Flashcards', 'cards'], ['defs', 'Definitions', 'vocab'], ['formulas', 'Formulas & Reference', 'sigma'], ['diagrams', 'Interactive Diagrams', 'atom']]],
   ['Progress', [['analytics', 'Performance', 'chart']]],
 ];
 let PREF_MODE = 'practice';
@@ -13653,7 +13715,7 @@ function homeSearchIndex() {
   SUBJ_GROUPS.forEach(g => out.push({ t: g.name, s: 'Subject · every level', h: '#topic-' + g.k, ic: g.ic }));
   TESTS.forEach(x => { out.push({ t: x.subject, s: 'Course · practice tests, question bank, exam', h: '#' + x.id, ic: SUBJ_IC[x.area] }); srCatsOf(x).forEach(c => out.push({ t: `Unit ${c.k}: ${c.name}`, s: x.subject, h: '#' + x.id, ic: 'list' })); });
   if (typeof SK_SUBJ !== 'undefined') SK_SUBJ.forEach(g => g.topics.forEach(t => out.push({ t: t.name, s: 'Skill Builder · ' + g.name, h: '#skill-' + t.id, ic: 'target' })));
-  [['Practice Tests', '#tests', 'file'], ['Question Bank', '#bank', 'list'], ['Unit Tests', '#unit-tests', 'check'], ['Free Response Lab', '#lab', 'pen'], ['Calculation Practice', '#calc', 'calc'], ['Skill Builder', '#skills', 'target'], ['Flashcards', '#flashcards', 'cards'], ['Definitions', '#defs', 'vocab'], ['Formulas & reference sheets', '#formulas', 'sigma'], ['Performance', '#analytics', 'chart'], ['About & FAQ', '#about', 'info']].forEach(([t, h, ic]) => out.push({ t, s: 'Tool', h, ic }));
+  [['Practice Tests', '#tests', 'file'], ['Question Bank', '#bank', 'list'], ['Unit Tests', '#unit-tests', 'check'], ['Free Response Lab', '#lab', 'pen'], ['Calculation Practice', '#calc', 'calc'], ['Skill Builder', '#skills', 'target'], ['Flashcards', '#flashcards', 'cards'], ['Definitions', '#defs', 'vocab'], ['Formulas & reference sheets', '#formulas', 'sigma'], ['Interactive diagrams', '#diagrams', 'atom'], ['Performance', '#analytics', 'chart'], ['About & FAQ', '#about', 'info']].forEach(([t, h, ic]) => out.push({ t, s: 'Tool', h, ic }));
   if (isTeacher()) [['Create Unit Test', '#ut-new', 'plus'], ['Check Results', '#ut-check', 'check'], ['Gradebook & Classes', '#grades', 'grade'], ['Assign Tests', '#assign', 'assign'], ['My Students', '#class', 'users']].forEach(([t, h, ic]) => out.push({ t, s: 'Teacher tool', h, ic }));
   TESTS.forEach(x => Object.entries(DEF_DB[x.id] || {}).forEach(([k, l]) => l.forEach(([term]) => out.push({ t: term, s: `Definition · ${x.subject} Unit ${k}`, h: '#defs', ic: 'vocab', low: 1 }))));
   return out;
@@ -14170,97 +14232,163 @@ function renderLab() {
 }
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && ROUTE === 'lab' && LAB.closeCoach && !$('#modal-root').innerHTML) LAB.closeCoach(); });
-/* ═════ INTERACTIVE DIAGRAMS (Formulas & Reference page) ═════
-   Three kinds, all drawn in SVG so they work offline and print cleanly:
+/* ═════ INTERACTIVE DIAGRAMS (their own page in the Study menu: #diagrams) ═════
+   Three kinds, all drawn in SVG so they stay sharp at any zoom:
      parts: a labeled drawing. Click a part to read about it; Quiz me hides the labels and asks you to find each part.
      steps: a process to step through (Prev / Next / Play). steps[i].on lists the parts lit at that step;
             svg may be a function of the step index for diagrams that change as you go.
      map:   a concept map / unit roadmap. Click a node to light up what it builds on and what it leads to.
-   A diagram lists the decks (Formulas & Reference subjects) it appears under. */
+   Every diagram can be zoomed (buttons, pinch, Ctrl/⌘ + scroll), dragged around when zoomed, and opened full screen.
+   A diagram lists the subjects (deck ids) it appears under. */
 const DIAGRAMS = [];
 const DGM = o => { DIAGRAMS.push(o); return o; };
-let DG = { id: null, step: 0, sel: null, quiz: null, play: null };
+let DG = { deck: null, id: null, step: 0, sel: null, quiz: null, play: null, z: { k: 1, x: 0, y: 0 } };
 const dgFor = deckId => DIAGRAMS.filter(d => d.decks.includes(deckId));
-const DGK = { parts: 'Labeled diagram', steps: 'Step through', map: 'Concept map' };
+const DGK = { parts: ['Labeled diagram', 'Click the parts · quiz yourself'], steps: ['Step-through', 'Watch it happen, step by step'], map: ['Concept map', 'See how the ideas connect'] };
+/* node colours for concept maps: a strong colour for borders and arrows, a soft tint for the fill */
+const DG_PAL = ['#1d4e89', '#0f766e', '#b4540a', '#a3174f', '#5b2bb5', '#0e7490', '#8a6a00', '#3f6b12', '#b42318', '#334e7a'];
+const dgTint = (h, t = .84) => { const n = parseInt(h.slice(1), 16), c = [n >> 16 & 255, n >> 8 & 255, n & 255].map(v => Math.round(v + (255 - v) * t)); return '#' + c.map(v => v.toString(16).padStart(2, '0')).join(''); };
 
-/* ── map drawing: rounded boxes with wrapped labels, arrows that stop at box edges ── */
+/* shared look (infographic style): light-blue card gradient and a soft drop shadow, used by every diagram */
+const DG_DEFS = `<linearGradient id="dgCard" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#e3eefc"/></linearGradient><linearGradient id="dgNavy" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#173a6b"/><stop offset="1" stop-color="#25548f"/></linearGradient><radialGradient id="dgGold" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="#fff6c9"/><stop offset=".55" stop-color="#ffd23f"/><stop offset="1" stop-color="#f2a900"/></radialGradient><filter id="dgSh" x="-10%" y="-10%" width="120%" height="140%"><feDropShadow dx="0" dy="3" stdDeviation="3.5" flood-color="#1b3a66" flood-opacity=".18"/></filter>`;
+/* ── concept maps: spaced-out coloured boxes, curved or straight arrows, and labels that move out of each other's way ── */
 function dgMapSVG(d) {
-  const W = d.w || 900, H = d.h || 560, box = n => { const lines = n.t.split('\n'), w = n.w || Math.max(124, Math.max(...lines.map(l => l.length)) * 8.3 + 26), h = 20 + lines.length * 18; return { ...n, lines, w, h }; };
-  const N = {}; d.nodes.forEach(n => { N[n.id] = box(n); });
-  const edgePt = (a, b) => { const dx = b.x - a.x, dy = b.y - a.y, sx = a.w / 2 / Math.abs(dx || 1e-6), sy = a.h / 2 / Math.abs(dy || 1e-6), s = Math.min(sx, sy); return { x: a.x + dx * s, y: a.y + dy * s }; };
-  /* an edge can bend (4th value, in px) so two-way pairs like melting / freezing don't sit on top of each other */
-  const edges = d.edges.map(([f, t, lab, bend], i) => { const a = N[f], b = N[t];
-    if (!bend) { const p = edgePt(a, b), q = edgePt(b, a), mx = (p.x + q.x) / 2, my = (p.y + q.y) / 2;
-      return `<g class="dg-e" data-e="${i}" data-f="${f}" data-t="${t}"><line x1="${p.x.toFixed(1)}" y1="${p.y.toFixed(1)}" x2="${q.x.toFixed(1)}" y2="${q.y.toFixed(1)}" marker-end="url(#dgArr)"/>${lab ? `<text x="${mx.toFixed(1)}" y="${(my - 5).toFixed(1)}" class="dg-el">${esc(lab)}</text>` : ''}</g>`; }
-    const dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L, cx = (a.x + b.x) / 2 + nx * bend * 2, cy = (a.y + b.y) / 2 + ny * bend * 2;
-    const p = edgePt(a, { x: cx, y: cy }), q = edgePt(b, { x: cx, y: cy }), mx = .25 * p.x + .5 * cx + .25 * q.x, my = .25 * p.y + .5 * cy + .25 * q.y;
-    return `<g class="dg-e" data-e="${i}" data-f="${f}" data-t="${t}"><path d="M${p.x.toFixed(1)},${p.y.toFixed(1)} Q${cx.toFixed(1)},${cy.toFixed(1)} ${q.x.toFixed(1)},${q.y.toFixed(1)}" fill="none" marker-end="url(#dgArr)"/>${lab ? `<text x="${mx.toFixed(1)}" y="${(my + (ny > 0 ? 14 : -5)).toFixed(1)}" class="dg-el">${esc(lab)}</text>` : ''}</g>`; }).join('');
-  const nodes = Object.values(N).map(n => `<g class="dg-n ${n.hub ? 'hub' : ''}" data-p="${n.id}" tabindex="0" role="button" aria-label="${esc(n.t.replace(/\n/g, ' '))}"><rect x="${(n.x - n.w / 2).toFixed(1)}" y="${(n.y - n.h / 2).toFixed(1)}" width="${n.w.toFixed(1)}" height="${n.h}" rx="10"/>${n.lines.map((l, i) => `<text x="${n.x}" y="${(n.y - n.h / 2 + 24 + i * 18).toFixed(1)}">${esc(l)}</text>`).join('')}</g>`).join('');
-  return `<svg viewBox="0 0 ${W} ${H}" class="dg-svg dg-map" role="img" aria-label="${esc(d.title)}"><defs><marker id="dgArr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10z" fill="currentColor"/></marker></defs>${edges}${nodes}</svg>`;
+  const S = d.spread || 1.3, W = (d.w || 900) * S, H = (d.h || 560) * S;
+  /* a node is a card: a coloured header strip (the first line, e.g. "Unit 3") over a light body (the rest) */
+  const box = (n, i) => { const lines = n.t.split('\n'), isU = lines.length > 1 && /^Unit\b/.test(lines[0]), head = isU ? lines[0] : '', body = isU ? lines.slice(1) : lines, w = n.w || Math.max(140, Math.max(...lines.map(l => l.length)) * 8.8 + 34), h = (head ? 30 : 0) + 18 + body.length * 20, c = n.c || DG_PAL[i % DG_PAL.length]; return { ...n, x: n.x * S, y: n.y * S, lines, head, body, w, h, c }; };
+  const N = {}; d.nodes.forEach((n, i) => { N[n.id] = box(n, i); });
+  const edgePt = (a, b) => { const dx = b.x - a.x, dy = b.y - a.y, sx = (a.w / 2 + 4) / Math.abs(dx || 1e-6), sy = (a.h / 2 + 4) / Math.abs(dy || 1e-6), s = Math.min(sx, sy); return { x: a.x + dx * s, y: a.y + dy * s }; };
+  /* place each label at its edge's middle, then slide it along the edge's normal until it overlaps no box and no other label */
+  const taken = Object.values(N).map(n => [n.x - n.w / 2 - 6, n.y - n.h / 2 - 6, n.x + n.w / 2 + 6, n.y + n.h / 2 + 6]);
+  const hit = r => taken.some(t => r[0] < t[2] && r[2] > t[0] && r[1] < t[3] && r[3] > t[1]);
+  const place = (lab, mx, my, nx, ny, tx, ty) => { const w = lab.length * 7.1 + 16, h = 22;
+    for (const k of [0, 1, -1, 2, -2, 3, -3, 4, -4, 5, -5, 6, -6]) for (const j of [0, 1, -1]) { const x = mx + nx * k * 15 + tx * j * 30, y = my + ny * k * 15 + ty * j * 30, r = [x - w / 2, y - h / 2, x + w / 2, y + h / 2]; if (!hit(r)) { taken.push(r); return { x, y, w, h }; } }
+    taken.push([mx - w / 2, my - h / 2, mx + w / 2, my + h / 2]); return { x: mx, y: my, w, h }; };
+  const edges = d.edges.map(([f, t, lab, bend], i) => { const a = N[f], b = N[t], col = a.c;
+    const dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L, tx = dx / L, ty = dy / L;
+    let path, mx, my;
+    if (!bend) { const p = edgePt(a, b), q = edgePt(b, a); path = `M${p.x.toFixed(1)},${p.y.toFixed(1)} L${q.x.toFixed(1)},${q.y.toFixed(1)}`; mx = (p.x + q.x) / 2; my = (p.y + q.y) / 2; }
+    else { const cx = (a.x + b.x) / 2 + nx * bend * 2 * S, cy = (a.y + b.y) / 2 + ny * bend * 2 * S, p = edgePt(a, { x: cx, y: cy }), q = edgePt(b, { x: cx, y: cy });
+      path = `M${p.x.toFixed(1)},${p.y.toFixed(1)} Q${cx.toFixed(1)},${cy.toFixed(1)} ${q.x.toFixed(1)},${q.y.toFixed(1)}`; mx = .25 * p.x + .5 * cx + .25 * q.x; my = .25 * p.y + .5 * cy + .25 * q.y; }
+    const lb = lab ? place(lab, mx, my, nx, ny, tx, ty) : null;
+    return { i, f, t, col, path, lb, lab }; });
+  const markers = [...new Set(Object.values(N).map(n => n.c))].map(c => `<marker id="dgA${c.slice(1)}" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10z" fill="${c}"/></marker>`).join('');
+  const lines = edges.map(e => `<g class="dg-e" data-e="${e.i}" data-f="${e.f}" data-t="${e.t}"><path d="${e.path}" fill="none" stroke="${e.col}" marker-end="url(#dgA${e.col.slice(1)})"/></g>`).join('');
+  const labels = edges.filter(e => e.lb).map(e => `<g class="dg-el" data-e="${e.i}"><rect x="${(e.lb.x - e.lb.w / 2).toFixed(1)}" y="${(e.lb.y - e.lb.h / 2).toFixed(1)}" width="${e.lb.w.toFixed(1)}" height="${e.lb.h}" rx="11" stroke="${e.col}"/><text x="${e.lb.x.toFixed(1)}" y="${(e.lb.y + 4.5).toFixed(1)}" fill="${e.col}">${esc(e.lab)}</text></g>`).join('');
+  const nodes = Object.values(N).map(n => { const x0 = n.x - n.w / 2, y0 = n.y - n.h / 2, hh = n.head ? 30 : 0;
+    return `<g class="dg-n ${n.hub ? 'hub' : ''}" data-p="${n.id}" tabindex="0" role="button" aria-label="${esc(n.t.replace(/\n/g, ' '))}"><g filter="url(#dgSh)"><rect class="card" x="${x0.toFixed(1)}" y="${y0.toFixed(1)}" width="${n.w.toFixed(1)}" height="${n.h}" rx="14" fill="${n.hub ? dgTint(n.c, .78) : 'url(#dgCard)'}" stroke="${dgTint(n.c, .45)}"/></g>
+      ${n.head ? `<path d="M${x0},${y0 + 14} a14,14 0 0 1 14,-14 h${(n.w - 28).toFixed(1)} a14,14 0 0 1 14,14 v${hh - 14} h-${n.w.toFixed(1)}z" fill="${n.c}"/><text x="${n.x}" y="${(y0 + 20).toFixed(1)}" class="hd">${esc(n.head)}</text>` : `<rect x="${x0.toFixed(1)}" y="${(y0 + n.h - 5).toFixed(1)}" width="${n.w.toFixed(1)}" height="5" rx="2.5" fill="${n.c}"/>`}
+      ${n.body.map((l, i) => `<text x="${n.x}" y="${(y0 + hh + 24 + i * 20).toFixed(1)}" fill="${n.hub ? n.c : '#13294b'}">${esc(l)}</text>`).join('')}</g>`; }).join('');
+  return `<svg viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}" class="dg-svg dg-map" role="img" aria-label="${esc(d.title)}"><defs>${DG_DEFS}${markers}</defs>${lines}${nodes}${labels}</svg>`;
 }
 /* text for a part / node, including (for maps) what it builds on and leads to */
 function dgInfo(d, id) {
-  if (d.kind === 'map') { const n = d.nodes.find(x => x.id === id); if (!n) return '';
+  if (d.kind === 'map') { const n = d.nodes.find(x => x.id === id); if (!n) return ''; const ci = d.nodes.indexOf(n), col = n.c || DG_PAL[ci % DG_PAL.length];
     const ins = d.edges.filter(e => e[1] === id), outs = d.edges.filter(e => e[0] === id), nm = k => esc(d.nodes.find(x => x.id === k).t.replace(/\n/g, ' '));
-    return `<h4>${esc(n.t.replace(/\n/g, ' '))}</h4><p>${F(n.text || '')}</p>${ins.length ? `<p class="dg-rel"><b>Builds on</b>${ins.map(e => `<button class="dg-link" data-go="${e[0]}">← ${nm(e[0])}</button>${e[2] ? `<small>${esc(e[2])}</small>` : ''}`).join('')}</p>` : ''}${outs.length ? `<p class="dg-rel"><b>Leads to</b>${outs.map(e => `<button class="dg-link" data-go="${e[1]}">${nm(e[1])} →</button>${e[2] ? `<small>${esc(e[2])}</small>` : ''}`).join('')}</p>` : ''}`; }
+    return `<h4><span class="dg-sw" style="background:${col}"></span>${esc(n.t.replace(/\n/g, ' '))}</h4><p>${F(n.text || '')}</p><div class="dg-rels">${ins.length ? `<div class="dg-rel"><b>Builds on</b>${ins.map(e => `<button class="dg-link" data-go="${e[0]}">← ${nm(e[0])}${e[2] ? `<small>${esc(e[2])}</small>` : ''}</button>`).join('')}</div>` : ''}${outs.length ? `<div class="dg-rel"><b>Leads to</b>${outs.map(e => `<button class="dg-link" data-go="${e[1]}">${nm(e[1])} →${e[2] ? `<small>${esc(e[2])}</small>` : ''}</button>`).join('')}</div>` : ''}</div>`; }
   const p = d.parts[id]; return p ? `<h4>${esc(p.name)}</h4><p>${F(p.text)}</p>` : '';
 }
 const dgIds = d => d.kind === 'map' ? d.nodes.map(n => n.id) : Object.keys(d.parts || {});
 const dgName = (d, id) => d.kind === 'map' ? d.nodes.find(n => n.id === id).t.replace(/\n/g, ' ') : d.parts[id].name;
+const DG_KI = { parts: '<circle cx="12" cy="12" r="8"/><path d="M12 4v-2M20 12h2M12 20v2M4 12H2"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/>', steps: '<path d="M4 18h4v-4h4v-4h4V6h4"/>', map: '<circle cx="5" cy="6" r="2.5"/><circle cx="19" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M7 7l4 9M17 7l-4 9M7.5 6h9"/>' };
+const dgIc = k => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${DG_KI[k]}</svg>`;
 
 function dgHTML(deck) {
   const list = dgFor(deck.id); if (!list.length) return '<p class="empty">No diagrams for this course yet.</p>';
-  if (!list.some(x => x.id === DG.id)) { DG.id = list[0].id; DG.step = 0; DG.sel = null; DG.quiz = null; }
+  if (!list.some(x => x.id === DG.id)) { DG.id = list[0].id; DG.step = 0; DG.sel = null; DG.quiz = null; DG.z = { k: 1, x: 0, y: 0 }; }
   const d = list.find(x => x.id === DG.id), st = d.kind === 'steps' ? d.steps[Math.min(DG.step, d.steps.length - 1)] : null;
-  const svg = d.kind === 'map' ? dgMapSVG(d) : typeof d.svg === 'function' ? d.svg(DG.step) : d.svg;
+  const svg = d.kind === 'map' ? dgMapSVG(d) : (typeof d.svg === 'function' ? d.svg(DG.step) : d.svg).replace(/(<svg[^>]*>)/, `$1<defs>${DG_DEFS}</defs>`);
   const q = DG.quiz, quizable = d.kind === 'parts';
   let side;
-  if (q) side = q.i >= q.order.length ? `<h4>Quiz done: ${q.right} of ${q.order.length} on the first try</h4><p>${q.right === q.order.length ? 'Perfect. You know this diagram.' : 'Try it again to beat your score, or go back to Explore to review the parts you missed.'}</p><div class="row"><button class="btn primary" data-dgq="again">Quiz again</button><button class="btn" data-dgq="stop">Back to explore</button></div>`
-    : `<p class="eyebrow">Question ${q.i + 1} of ${q.order.length} · ${q.right} right</p><h4>Click the ${esc(dgName(d, q.order[q.i]))}</h4><p class="dg-fb ${q.fb ? q.fb[0] : ''}">${q.fb ? q.fb[1] : 'Labels are hidden. Find it on the diagram.'}</p><button class="linkbtn sm" data-dgq="stop">Stop quiz</button>`;
+  if (q) side = q.i >= q.order.length ? `<p class="eyebrow">Quiz complete</p><h4>${q.right} of ${q.order.length} on the first try</h4><p>${q.right === q.order.length ? 'Perfect. You know this diagram.' : 'Try again to beat your score, or go back to Explore to review the parts you missed.'}</p><div class="row"><button class="btn primary" data-dgq="again">Quiz again</button><button class="btn" data-dgq="stop">Back to explore</button></div>`
+    : `<p class="eyebrow">Quiz · ${q.i + 1} of ${q.order.length} · ${q.right} right</p><h4>Find the ${esc(dgName(d, q.order[q.i]))}</h4><p class="dg-fb ${q.fb ? q.fb[0] : ''}">${q.fb ? q.fb[1] : 'Labels are hidden. Click it on the diagram.'}</p><div class="dg-qbar"><i style="width:${q.i / q.order.length * 100}%"></i></div><button class="linkbtn sm" data-dgq="stop">Stop quiz</button>`;
   else if (st) side = `<p class="eyebrow">Step ${DG.step + 1} of ${d.steps.length}</p><h4>${F(esc(st.t))}</h4><p>${F(st.text)}</p>`;
-  else side = DG.sel ? dgInfo(d, DG.sel) : `<h4>${esc(d.title)}</h4><p>${F(d.blurb)}</p><p class="small muted">${d.kind === 'map' ? 'Click any box to see what it builds on and what it leads to.' : 'Click any part of the diagram to learn what it does.'}</p>`;
-  return `<div class="dg-pick" role="tablist" aria-label="Diagrams">${list.map(x => `<button role="tab" data-dg="${x.id}" aria-selected="${x.id === d.id}"><span>${esc(x.title)}</span><small>${DGK[x.kind]}</small></button>`).join('')}</div>
+  else side = DG.sel ? dgInfo(d, DG.sel) : `<p class="eyebrow">${DGK[d.kind][0]}</p><h4>${esc(d.title)}</h4><p>${F(d.blurb)}</p><p class="small muted">${d.kind === 'map' ? 'Click any box to light up what it builds on and what it leads to.' : 'Click any part of the drawing to learn what it does.'}</p>`;
+  const zp = Math.round(DG.z.k * 100);
+  return `<div class="dg-pick" role="tablist" aria-label="Diagrams">${list.map(x => `<button role="tab" data-dg="${x.id}" data-kind="${x.kind}" aria-selected="${x.id === d.id}"><span class="dg-pi">${dgIc(x.kind)}</span><span class="dg-pt"><b>${esc(x.title)}</b><small>${DGK[x.kind][0]}</small></span></button>`).join('')}</div>
     <div class="dg ${q ? 'quiz' : ''}" data-kind="${d.kind}">
-      <div class="dg-stage">${svg}
-        <div class="dg-bar">${d.kind === 'steps' ? `<button class="btn quiet" data-dgs="prev" ${DG.step === 0 ? 'disabled' : ''}>← Prev</button><span class="dg-dots">${d.steps.map((_, i) => `<button class="${i === DG.step ? 'on' : ''}" data-dgs="${i}" aria-label="Step ${i + 1}"></button>`).join('')}</span><button class="btn quiet" data-dgs="play">${DG.play ? 'Pause' : 'Play'}</button><button class="btn primary" data-dgs="next" ${DG.step >= d.steps.length - 1 ? 'disabled' : ''}>Next →</button>`
-          : `<span class="small muted">${q ? 'Quiz mode: labels hidden' : d.kind === 'map' ? 'Arrows point from a topic to what it leads to' : ''}</span>${quizable && !q ? `<button class="btn" data-dgq="start">Quiz me</button>` : ''}${DG.sel && !q ? `<button class="btn quiet" data-dgclr="1">Show all</button>` : ''}`}</div></div>
-      <aside class="dg-side" aria-live="polite">${side}</aside></div>`;
+      <aside class="dg-side" aria-live="polite">${side}</aside>
+      <div class="dg-stage">
+        <div class="dg-zoom" role="group" aria-label="Zoom"><button data-dgz="out" aria-label="Zoom out" ${DG.z.k <= 1 ? 'disabled' : ''}>−</button><button data-dgz="fit" aria-label="Reset zoom" class="pct">${zp}%</button><button data-dgz="in" aria-label="Zoom in" ${DG.z.k >= 4 ? 'disabled' : ''}>+</button><button data-dgz="full" aria-label="Full screen" class="fs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button></div>
+        <div class="dg-banner"><h3>${esc(d.title)}</h3>${d.sub ? `<p>${esc(d.sub)}</p>` : ''}</div>
+        <div class="dg-view ${DG.z.k > 1 ? 'zoomed' : ''}">${svg}</div>
+        <div class="dg-bar">${d.kind === 'steps' ? `<button class="btn quiet" data-dgs="prev" ${DG.step === 0 ? 'disabled' : ''}>← Prev</button><span class="dg-dots">${d.steps.map((_, i) => `<button class="${i === DG.step ? 'on' : i < DG.step ? 'done' : ''}" data-dgs="${i}" aria-label="Step ${i + 1}"></button>`).join('')}</span><button class="btn quiet" data-dgs="play">${DG.play ? '❚❚ Pause' : '▶ Play'}</button><button class="btn primary" data-dgs="next" ${DG.step >= d.steps.length - 1 ? 'disabled' : ''}>Next →</button>`
+          : `<span class="small muted">${q ? 'Quiz mode: labels hidden' : DG.z.k > 1 ? 'Drag to move around' : d.kind === 'map' ? 'Arrows point from a topic to what it leads to' : 'Tip: zoom in with + or pinch'}</span>${quizable && !q ? `<button class="btn" data-dgq="start">Quiz me</button>` : ''}${DG.sel && !q ? `<button class="btn quiet" data-dgclr="1">Show all</button>` : ''}`}</div></div></div>`;
 }
 function dgBind(deck, rerender) {
   const list = dgFor(deck.id), d = list.find(x => x.id === DG.id); if (!d) return;
-  const root = $('.dg'); if (!root) return; const svg = root.querySelector('svg');
+  const root = $('.dg'); if (!root) return; const svg = root.querySelector('.dg-view svg'), view = root.querySelector('.dg-view');
   const stopPlay = () => { if (DG.play) { clearInterval(DG.play); DG.play = null; } };
-  /* highlight: the selected part (or the parts lit at this step), and for maps its neighbours and arrows */
+  /* zoom: shrink the viewBox around a point; pan by moving it */
+  const vb0 = svg.getAttribute('viewBox').split(/\s+/).map(Number);
+  const applyZ = () => { const z = DG.z, w = vb0[2] / z.k, h = vb0[3] / z.k; z.x = Math.max(0, Math.min(vb0[2] - w, z.x)); z.y = Math.max(0, Math.min(vb0[3] - h, z.y)); svg.setAttribute('viewBox', `${vb0[0] + z.x} ${vb0[1] + z.y} ${w} ${h}`); };
+  const zoomAt = (k, fx = .5, fy = .5) => { const z = DG.z, k2 = Math.max(1, Math.min(4, k)), w = vb0[2] / z.k, h = vb0[3] / z.k, px = z.x + w * fx, py = z.y + h * fy; z.k = k2; z.x = px - vb0[2] / k2 * fx; z.y = py - vb0[3] / k2 * fy; if (k2 === 1) { z.x = 0; z.y = 0; } };
+  applyZ();
+  /* highlight: the selected part (or the parts lit at this step), and for maps its neighbours, arrows and labels */
   const lit = d.kind === 'steps' ? (d.steps[DG.step].on || []) : DG.sel ? [DG.sel] : [];
   if (lit.length && !DG.quiz) { svg.classList.add('has-sel');
-    let on = new Set(lit); if (d.kind === 'map') d.edges.forEach(([f, t], i) => { if (lit.includes(f) || lit.includes(t)) { on.add(f); on.add(t); const e = svg.querySelector(`[data-e="${i}"]`); if (e) e.classList.add('dg-on'); } });
+    const on = new Set(lit); if (d.kind === 'map') d.edges.forEach(([f, t], i) => { if (lit.includes(f) || lit.includes(t)) { on.add(f); on.add(t); svg.querySelectorAll(`[data-e="${i}"]`).forEach(e => e.classList.add('dg-on')); } });
     on.forEach(id => svg.querySelectorAll(`[data-p="${id}"]`).forEach(el => el.classList.add(lit.includes(id) ? 'dg-on' : 'dg-near'))); }
-  $$('[data-dg]').forEach(b => b.onclick = () => { stopPlay(); DG = { id: b.dataset.dg, step: 0, sel: null, quiz: null, play: null }; rerender(); });
-  const pick = id => {
+  $$('[data-dg]').forEach(b => b.onclick = () => { stopPlay(); DG = { ...DG, id: b.dataset.dg, step: 0, sel: null, quiz: null, play: null, z: { k: 1, x: 0, y: 0 } }; rerender(); });
+  let dragged = false;
+  const pick = id => { if (dragged) return;
     if (DG.quiz) { const q = DG.quiz; if (q.i >= q.order.length) return; const want = q.order[q.i];
       if (id === want) { if (!q.miss) q.right++; q.fb = ['ok', `✓ Yes, that’s the ${esc(dgName(d, want))}.`]; q.i++; q.miss = false; }
       else { q.miss = true; q.fb = ['bad', `That’s the ${esc(dgName(d, id))}. Try again.`]; }
       rerender(); return; }
     if (d.kind === 'steps') return; DG.sel = DG.sel === id ? null : id; rerender(); };
   svg.querySelectorAll('[data-p]').forEach(el => { el.addEventListener('click', e => { e.stopPropagation(); pick(el.dataset.p); }); el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(el.dataset.p); } }); });
+  /* drag to pan (when zoomed), pinch with two fingers, Ctrl/⌘ + wheel (trackpad pinch) to zoom */
+  const pts = new Map(); let start = null;
+  view.addEventListener('pointerdown', e => { pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); dragged = false; const r = view.getBoundingClientRect();
+    start = { z: { ...DG.z }, p: [...pts.values()].map(p => ({ ...p })), r }; });
+  view.addEventListener('pointermove', e => { if (!pts.has(e.pointerId) || !start) return; pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); const P = [...pts.values()], r = start.r;
+    if (P.length >= 2 && start.p.length >= 2) { const d0 = Math.hypot(start.p[0].x - start.p[1].x, start.p[0].y - start.p[1].y), d1 = Math.hypot(P[0].x - P[1].x, P[0].y - P[1].y); DG.z = { ...start.z }; zoomAt(start.z.k * d1 / (d0 || 1), ((P[0].x + P[1].x) / 2 - r.left) / r.width, ((P[0].y + P[1].y) / 2 - r.top) / r.height); applyZ(); dragged = true; return; }
+    if (DG.z.k <= 1) return; const dx = e.clientX - start.p[0].x, dy = e.clientY - start.p[0].y; if (!dragged && Math.hypot(dx, dy) < 5) return;
+    dragged = true; view.setPointerCapture && view.setPointerCapture(e.pointerId); DG.z.x = start.z.x - dx / r.width * vb0[2] / DG.z.k; DG.z.y = start.z.y - dy / r.height * vb0[3] / DG.z.k; applyZ(); });
+  const end = e => { pts.delete(e.pointerId); if (!pts.size) { start = null; if (dragged) { const lab = root.querySelector('[data-dgz="fit"]'); if (lab) lab.textContent = Math.round(DG.z.k * 100) + '%'; setTimeout(() => { dragged = false; }, 0); } } };
+  view.addEventListener('pointerup', end); view.addEventListener('pointercancel', end);
+  view.addEventListener('wheel', e => { if (!e.ctrlKey && !e.metaKey) return; e.preventDefault(); const r = view.getBoundingClientRect(); zoomAt(DG.z.k * (e.deltaY < 0 ? 1.15 : 1 / 1.15), (e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height); rerender(); }, { passive: false });
+  $$('[data-dgz]', root).forEach(b => b.onclick = () => { const a = b.dataset.dgz;
+    if (a === 'full') { const el = root; if (document.fullscreenElement) document.exitFullscreen(); else if (el.requestFullscreen) el.requestFullscreen().catch(() => {}); return; }
+    if (a === 'fit') DG.z = { k: 1, x: 0, y: 0 }; else zoomAt(DG.z.k * (a === 'in' ? 1.4 : 1 / 1.4)); rerender(); });
   $$('[data-go]', root).forEach(b => b.onclick = () => { DG.sel = b.dataset.go; rerender(); });
   $$('[data-dgclr]', root).forEach(b => b.onclick = () => { DG.sel = null; rerender(); });
   $$('[data-dgq]', root).forEach(b => b.onclick = () => { const a = b.dataset.dgq;
     if (a === 'stop') DG.quiz = null; else { const ids = dgIds(d).slice(); for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; } DG.quiz = { order: ids, i: 0, right: 0, fb: null, miss: false }; DG.sel = null; }
     rerender(); });
   $$('[data-dgs]', root).forEach(b => b.onclick = () => { const a = b.dataset.dgs, n = d.steps.length;
-    if (a === 'play') { if (DG.play) stopPlay(); else { if (DG.step >= n - 1) DG.step = 0; DG.play = setInterval(() => { if (!$('.dg') || DG.id !== d.id) { stopPlay(); return; } if (DG.step >= n - 1) { stopPlay(); rerender(); return; } DG.step++; rerender(); }, 4200); } rerender(); return; }
+    if (a === 'play') { if (DG.play) stopPlay(); else { if (DG.step >= n - 1) DG.step = 0; DG.play = setInterval(() => { if (!$('.dg') || DG.id !== d.id) { stopPlay(); return; } if (DG.step >= n - 1) { stopPlay(); rerender(); return; } DG.step++; rerender(); }, 4500); } rerender(); return; }
     stopPlay(); DG.step = a === 'prev' ? Math.max(0, DG.step - 1) : a === 'next' ? Math.min(n - 1, DG.step + 1) : +a; rerender(); });
+}
+
+/* ── the Interactive Diagrams page ── */
+function renderDiagrams() {
+  setAccent(null); show('hub');
+  const decks = deckOrder().filter(k => dgFor(k.id).length); if (!decks.length) { $('#hub').innerHTML = nav('diagrams') + '<div class="page"><p class="empty">No diagrams yet.</p></div>'; return; }
+  if (!DG.deck || !decks.some(k => k.id === DG.deck)) DG.deck = (decks.find(k => k.id === LS.get('ap.ui.dg.deck', null)) || decks[0]).id;
+  const d = decks.find(k => k.id === DG.deck), acc = x => (BY_ID[x.tests[0]] || {}).accent || 'chem';
+  const bands = []; decks.forEach(k => { const b = (BY_ID[k.tests[0]] || {}).band || 'ap'; let g = bands.find(x => x.b === b); if (!g) bands.push(g = { b, items: [] }); g.items.push(k); });
+  const total = DIAGRAMS.length;
+  $('#hub').innerHTML = nav('diagrams') + `<div class="page dgp">
+    ${pageHead('Study', 'Interactive diagrams', `${total} diagrams to explore, click, step through and quiz yourself on.`)}
+    <div class="dgp-bar"><label class="dgp-sel"><span>Subject</span><select id="dgSubj" aria-label="Subject">${bands.map(g => `<optgroup label="${esc((BAND[g.b] || { name: g.b }).name)}">${g.items.map(k => `<option value="${k.id}" ${k.id === d.id ? 'selected' : ''}>${esc(k.title)} (${dgFor(k.id).length})</option>`).join('')}</optgroup>`).join('')}</select></label>
+      <span class="dgp-tip">Zoom with <b>+</b>, pinch, or Ctrl/⌘ + scroll · drag to move · <b>⤢</b> for full screen</span></div>
+    <section class="dgp-main acc-${acc(d)}"><div id="dgBox">${dgHTML(d)}</div></section>
+    ${foot()}</div>`;
+  $('#dgSubj').onchange = e => { if (DG.play) { clearInterval(DG.play); DG.play = null; } DG.deck = e.target.value; LS.set('ap.ui.dg.deck', DG.deck); DG.id = null; renderDiagrams(); bindNav(); };
+  const re = () => { const box = $('#dgBox'); if (!box) return; const y = window.scrollY; box.innerHTML = dgHTML(d); dgBind(d, re); window.scrollTo(0, y); };
+  dgBind(d, re);
 }
 
 /* ── shared drawing helpers for diagrams ── */
 const dgLab = (id, name, side, y, px, py) => side === 'L'
   ? `<g class="dg-lab" data-p="${id}"><line x1="118" y1="${y}" x2="${px}" y2="${py}"/><circle cx="${px}" cy="${py}" r="3"/><text x="112" y="${y + 4}" text-anchor="end">${name}</text></g>`
   : `<g class="dg-lab" data-p="${id}"><line x1="${px}" y1="${py}" x2="662" y2="${y}"/><circle cx="${px}" cy="${py}" r="3"/><text x="668" y="${y + 4}">${name}</text></g>`;
-const dgBox = (id, x, y, w, h, lines, cls = '') => `<g data-p="${id}" class="dg-bx ${cls}" tabindex="0" role="button"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="10"/>${lines.map((l, i) => `<text x="${x + w / 2}" y="${y + 24 + i * 18}" class="${i ? '' : 'b'}">${l}</text>`).join('')}</g>`;
+const dgBox = (id, x, y, w, h, lines, col = '#1d4e89') => `<g data-p="${id}" class="dg-bx" tabindex="0" role="button"><g filter="url(#dgSh)"><rect class="card" x="${x}" y="${y}" width="${w}" height="${h}" rx="14" fill="url(#dgCard)" stroke="${col}"/></g><path d="M${x},${y + 14} a14,14 0 0 1 14,-14 h${w - 28} a14,14 0 0 1 14,14 v18 h-${w}z" fill="${col}"/><text x="${x + w / 2}" y="${y + 22}" class="hd">${lines[0]}</text>${lines.slice(1).map((l, i) => `<text x="${x + w / 2}" y="${y + 54 + i * 20}">${l}</text>`).join('')}</g>`;
 
 /* ═══ The animal cell ═══ */
-DGM({ id: 'cell', kind: 'parts', title: 'The animal cell', decks: ['bio', 'hs-bio', 'ms-life'],
+DGM({ id: 'cell', sub: 'Organelles and what they do', kind: 'parts', title: 'The animal cell', decks: ['bio', 'hs-bio', 'ms-life'],
   blurb: 'A eukaryotic animal cell and its organelles. Plant cells also have a cell wall, chloroplasts and a large central vacuole, and usually no centrioles or lysosomes.',
   svg: (() => {
     const ribo = [[505, 225], [520, 255], [250, 140], [280, 120], [300, 335], [455, 360], [535, 210], [210, 205], [600, 225], [430, 410], [330, 100], [565, 395], [245, 375]];
@@ -14301,18 +14429,18 @@ DGM({ id: 'cell', kind: 'parts', title: 'The animal cell', decks: ['bio', 'hs-bi
   } });
 
 /* ═══ Cellular respiration: the big picture ═══ */
-DGM({ id: 'resp', kind: 'steps', title: 'Cellular respiration', decks: ['bio'],
+DGM({ id: 'resp', sub: 'From glucose to ATP, stage by stage', kind: 'steps', title: 'Cellular respiration', decks: ['bio'],
   blurb: 'How a cell turns glucose into ATP, stage by stage.',
   svg: `<svg viewBox="0 0 780 440" class="dg-svg" role="img" aria-label="Cellular respiration">
     <text x="30" y="40" class="dg-zone">Cytoplasm</text>
     <rect x="245" y="20" width="520" height="405" rx="70" fill="#fde7e2" stroke="#c4523f" stroke-width="4"/><rect x="265" y="40" width="300" height="365" rx="48" fill="#fff6f3" stroke="#c4523f" stroke-width="2.5"/>
     <text x="330" y="395" class="dg-zone">Matrix</text><text x="700" y="44" class="dg-zone" text-anchor="end">Mitochondrion</text>
-    ${dgBox('glyc', 20, 160, 200, 120, ['Glycolysis', 'glucose → 2 pyruvate', '+2 ATP (net)', '+2 NADH'])}
-    ${dgBox('pyox', 290, 60, 250, 100, ['Pyruvate oxidation', '2 pyruvate → 2 acetyl-CoA', '+2 NADH, 2 CO₂ released'])}
-    <g data-p="krebs" class="dg-bx" tabindex="0" role="button"><circle cx="415" cy="288" r="92"/><text x="415" y="252" class="b">Krebs cycle</text><text x="415" y="272">(citric acid cycle, ×2)</text><text x="415" y="294">+2 ATP, +6 NADH</text><text x="415" y="314">+2 FADH₂, 4 CO₂</text></g>
-    ${dgBox('etc', 585, 70, 165, 300, ['Electron transport', 'chain + ATP synthase', 'on the inner membrane', '', 'NADH, FADH₂ drop e⁻', 'H⁺ pumped out, then', 'flows back through', 'ATP synthase', '', '≈ 26–28 ATP'])}
+    ${dgBox('glyc', 14, 150, 210, 130, ['Glycolysis', 'glucose → 2 pyruvate', '+2 ATP (net)', '+2 NADH'], '#b4540a')}
+    ${dgBox('pyox', 286, 56, 262, 112, ['Pyruvate oxidation', '2 pyruvate → 2 acetyl-CoA', '+2 NADH · 2 CO₂ out'], '#0f766e')}
+    <g data-p="krebs" class="dg-bx" tabindex="0" role="button"><g filter="url(#dgSh)"><circle cx="415" cy="292" r="94" fill="url(#dgCard)" stroke="#5b2bb5" stroke-width="7"/></g><rect x="345" y="226" width="140" height="28" rx="14" fill="#5b2bb5"/><text x="415" y="245" class="hd">Krebs cycle</text><text x="415" y="276">(citric acid cycle, ×2)</text><text x="415" y="300">+2 ATP · +6 NADH</text><text x="415" y="322">+2 FADH₂ · 4 CO₂</text></g>
+    ${dgBox('etc', 582, 62, 172, 318, ['Electron transport', 'chain + ATP synthase', 'on the inner membrane', '', 'NADH, FADH₂ drop e⁻', 'H⁺ pumped out, then', 'flows back through', 'ATP synthase', '', '≈ 26–28 ATP'], '#a3174f')}
     <g data-p="a1" class="dg-ar"><path d="M220,200 C255,170 260,120 288,112" marker-end="url(#dgArr2)"/></g>
-    <g data-p="a2" class="dg-ar"><path d="M415,160 L415,192" marker-end="url(#dgArr2)"/><text x="425" y="182">acetyl-CoA</text></g>
+    <g data-p="a2" class="dg-ar"><path d="M415,160 L415,192" marker-end="url(#dgArr2)"/><text x="405" y="184" text-anchor="end">acetyl-CoA</text></g>
     <g data-p="carriers" class="dg-ar dash"><path d="M220,262 C330,440 560,430 600,350" marker-end="url(#dgArr2)"/><path d="M540,110 L583,110" marker-end="url(#dgArr2)"/><path d="M507,288 L583,288" marker-end="url(#dgArr2)"/><text x="520" y="280">NADH, FADH₂</text><text x="40" y="330" text-anchor="start">2 NADH from glycolysis</text></g>
     <g data-p="o2" class="dg-ar"><path d="M668,430 L668,372" marker-end="url(#dgArr2)"/><text x="680" y="420">O₂ in → H₂O out</text></g>
     <defs><marker id="dgArr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10z" fill="currentColor"/></marker></defs></svg>`,
@@ -14328,7 +14456,7 @@ DGM({ id: 'resp', kind: 'steps', title: 'Cellular respiration', decks: ['bio'],
   ] });
 
 /* ═══ Glycolysis, step by step ═══ */
-DGM({ id: 'glyco', kind: 'steps', title: 'Glycolysis', decks: ['bio'],
+DGM({ id: 'glyco', sub: 'Ten reactions in the cytoplasm', kind: 'steps', title: 'Glycolysis', decks: ['bio'],
   blurb: 'The ten reactions that split glucose into two pyruvate.',
   svg: s => {
     const M = [['Glucose', '6C'], ['Glucose-6-phosphate', '6C'], ['Fructose-6-phosphate', '6C'], ['Fructose-1,6-bisphosphate', '6C'], ['G3P  +  DHAP', '3C + 3C'], ['2 Glyceraldehyde-3-phosphate (G3P)', '2 × 3C'],
@@ -14337,15 +14465,15 @@ DGM({ id: 'glyco', kind: 'steps', title: 'Glycolysis', decks: ['bio'],
       ['Triose phosphate isomerase', 'DHAP → G3P', ''], ['G3P dehydrogenase', '2 NAD⁺ → 2 NADH (+ 2 Pᵢ)', 'nadh'], ['Phosphoglycerate kinase', '2 ADP → 2 ATP', 'make'], ['Phosphoglycerate mutase', 'moves the phosphate', ''], ['Enolase', 'removes 2 H₂O', ''], ['Pyruvate kinase', '2 ADP → 2 ATP', 'make']];
     const ST = [[10, []], [1, [0]], [2, [1]], [3, [2]], [5, [3, 4]], [6, [5]], [7, [6]], [9, [7, 8]], [10, [9]], [10, []]], [upto, hl] = ST[s] || ST[0];
     const done = s === 0 || s === 9 ? 10 : Math.max(...hl, -1), used = (done >= 0 ? 1 : 0) + (done >= 2 ? 1 : 0), made = (done >= 6 ? 2 : 0) + (done >= 9 ? 2 : 0), nadh = done >= 5 ? 2 : 0;
-    const y = i => 26 + i * 55, X = 70, W = 330;
-    let o = `<svg viewBox="0 0 780 640" class="dg-svg" role="img" aria-label="Glycolysis">`;
+    const y = i => 22 + i * 72, X = 70, W = 330;
+    let o = `<svg viewBox="0 0 780 780" class="dg-svg" role="img" aria-label="Glycolysis">`;
     o += `<g class="dg-phase"><rect x="8" y="${y(0) - 4}" width="8" height="${y(3) + 38 - y(0)}" fill="#c2412d"/><text transform="translate(34 ${y(1) + 30}) rotate(-90)">Investment</text><rect x="8" y="${y(3) + 40}" width="8" height="${y(5) - y(3) - 12}" fill="#8a7bd6"/><rect x="8" y="${y(5) + 32}" width="8" height="${y(10) + 34 - y(5) - 32}" fill="#1f8a4c"/><text transform="translate(34 ${y(8) + 10}) rotate(-90)">Payoff</text></g>`;
-    RX.forEach((r, i) => { const yy = y(i) + 32, on = hl.includes(i), dim = i >= upto && s !== 0 && s !== 9;
-      o += `<g class="dg-rx ${on ? 'on' : ''}" opacity="${dim ? .18 : 1}"><path d="M${X + W / 2},${yy} L${X + W / 2},${yy + 20}" marker-end="url(#dgArr3)"/><text x="${X + W / 2 + 16}" y="${yy + 15}" class="enz">${r[0]}</text>
-        <text x="${X + W + 20}" y="${yy + 15}" class="note ${r[2]}">${r[2] === 'use' ? '⊖ ' : r[2] === 'make' ? '⊕ ' : r[2] === 'nadh' ? '⊕ ' : ''}${r[1]}</text></g>`; });
+    RX.forEach((r, i) => { const yy = y(i) + 34, on = hl.includes(i), dim = i >= upto && s !== 0 && s !== 9;
+      o += `<g class="dg-rx ${on ? 'on' : ''}" opacity="${dim ? .18 : 1}"><path d="M${X + W / 2},${yy} L${X + W / 2},${yy + 34}" marker-end="url(#dgArr3)"/><text x="${X + W / 2 + 14}" y="${yy + 15}" class="enz">${r[0]}</text>
+        <text x="${X + W / 2 + 14}" y="${yy + 32}" class="note ${r[2]}">${r[2] === 'use' ? '⊖ ' : r[2] === 'make' ? '⊕ ' : r[2] === 'nadh' ? '⊕ ' : ''}${r[1]}</text></g>`; });
     M.forEach((m, i) => { const dim = i > upto, on = hl.some(h => h === i - 1 || h === i);
-      o += `<g class="dg-mol ${on ? 'on' : ''}" opacity="${dim ? .18 : 1}"><rect x="${X}" y="${y(i)}" width="${W}" height="30" rx="8"/><text x="${X + 12}" y="${y(i) + 20}">${m[0]}</text><text x="${X + W - 10}" y="${y(i) + 20}" text-anchor="end" class="c">${m[1]}</text></g>`; });
-    o += `<g class="dg-tally" transform="translate(590 520)"><rect width="180" height="112" rx="10"/><text x="12" y="24">ATP used: <tspan class="use">${used}</tspan></text><text x="12" y="46">ATP made: <tspan class="make">${made}</tspan></text><text x="12" y="68">NADH made: <tspan class="nadh">${nadh}</tspan></text><text x="12" y="96" class="b">Net ATP: ${made - used}</text></g>`;
+      o += `<g class="dg-mol ${on ? 'on' : ''}" opacity="${dim ? .18 : 1}"><rect x="${X}" y="${y(i)}" width="${W}" height="34" rx="10"/><text x="${X + 14}" y="${y(i) + 22}">${m[0]}</text><text x="${X + W - 12}" y="${y(i) + 22}" text-anchor="end" class="c">${m[1]}</text></g>`; });
+    o += `<g class="dg-tally" transform="translate(560 636)"><rect width="200" height="120" rx="14"/><text x="12" y="24">ATP used: <tspan class="use">${used}</tspan></text><text x="12" y="46">ATP made: <tspan class="make">${made}</tspan></text><text x="12" y="68">NADH made: <tspan class="nadh">${nadh}</tspan></text><text x="12" y="96" class="b">Net ATP: ${made - used}</text></g>`;
     return o + `<defs><marker id="dgArr3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10z" fill="currentColor"/></marker></defs></svg>`; },
   steps: [
     { t: 'Overview', text: 'Glycolysis happens in the <b>cytoplasm</b> and needs no oxygen. In the <b>investment phase</b> the cell spends 2 ATP; in the <b>payoff phase</b> it makes 4 ATP and 2 NADH. Everything after the split happens twice.' },
@@ -14361,31 +14489,31 @@ DGM({ id: 'glyco', kind: 'steps', title: 'Glycolysis', decks: ['bio'],
   ] });
 
 /* ═══ Signal transduction: a G-protein-coupled receptor pathway ═══ */
-DGM({ id: 'signal', kind: 'steps', title: 'Signal transduction', decks: ['bio'],
+DGM({ id: 'signal', sub: 'Reception → transduction → response', kind: 'steps', title: 'Signal transduction', decks: ['bio'],
   blurb: 'How epinephrine outside a liver cell makes it release glucose, without ever entering the cell.',
   svg: s => {
     const on = k => s >= k, A = (k, x) => on(k) ? x : '', op = k => on(k) || s === 0 ? 1 : .22;
-    let o = `<svg viewBox="0 0 780 470" class="dg-svg" role="img" aria-label="Signal transduction">
-      <text x="20" y="30" class="dg-zone">Outside the cell</text><text x="20" y="262" class="dg-zone">Cytoplasm</text>
+    let o = `<svg viewBox="0 0 780 510" class="dg-svg" role="img" aria-label="Signal transduction">
+      <text x="20" y="30" class="dg-zone">Outside the cell</text><text x="20" y="490" class="dg-zone">Cytoplasm</text>
       <rect x="0" y="110" width="780" height="44" fill="#f6e7c8"/>${Array.from({ length: 40 }, (_, i) => `<circle cx="${i * 20 + 10}" cy="114" r="4" fill="#e3c27e"/><circle cx="${i * 20 + 10}" cy="150" r="4" fill="#e3c27e"/>`).join('')}
       <text x="770" y="140" class="dg-zone" text-anchor="end">Plasma membrane</text>`;
     /* receptor */
-    o += `<g opacity="${op(1)}" class="${s === 1 ? 'dg-glow' : ''}"><path d="M120,100 ${[0, 1, 2, 3, 4, 5].map(i => `L${128 + i * 11},${i % 2 ? 100 : 165}`).join(' ')} L188,165" fill="none" stroke="#5b7fd0" stroke-width="7" stroke-linejoin="round"/><text x="155" y="190" class="lbl">G-protein-coupled receptor</text></g>`;
+    o += `<g opacity="${op(1)}" class="${s === 1 ? 'dg-glow' : ''}"><path d="M120,100 ${[0, 1, 2, 3, 4, 5].map(i => `L${128 + i * 11},${i % 2 ? 100 : 165}`).join(' ')} L188,165" fill="none" stroke="#5b7fd0" stroke-width="7" stroke-linejoin="round"/><text x="150" y="200" class="lbl">receptor (GPCR)</text></g>`;
     /* ligand */
     o += `<g class="${s === 1 ? 'dg-glow' : ''}"><rect x="${on(1) ? 146 : 60}" y="${on(1) ? 78 : 50}" width="20" height="20" transform="rotate(45 ${on(1) ? 156 : 70} ${on(1) ? 88 : 60})" fill="#d64a4a"/><text x="${on(1) ? 180 : 92}" y="${on(1) ? 80 : 64}" class="lbl" text-anchor="start">epinephrine</text></g>`;
     /* G protein */
     const gx = on(2) ? 360 : 265;
-    o += `<g opacity="${op(2)}" class="${s === 2 ? 'dg-glow' : ''}"><circle cx="${gx}" cy="178" r="20" fill="#5fb37a"/><text x="${gx}" y="183" class="w">α</text><text x="${gx}" y="214" class="lbl">${on(2) ? 'GTP' : 'GDP'}</text>${on(2) ? '' : ''}<circle cx="292" cy="172" r="13" fill="#9ccfae"/><circle cx="310" cy="184" r="10" fill="#c3e3cd"/><text x="300" y="236" class="lbl">G protein (βγ)</text></g>`;
+    o += `<g opacity="${op(2)}" class="${s === 2 ? 'dg-glow' : ''}"><circle cx="${gx}" cy="178" r="20" fill="#5fb37a"/><text x="${gx}" y="183" class="w">α</text><text x="${gx}" y="214" class="lbl">${on(2) ? 'GTP' : 'GDP'}</text>${on(2) ? '' : ''}<circle cx="292" cy="172" r="13" fill="#9ccfae"/><circle cx="310" cy="184" r="10" fill="#c3e3cd"/><text x="300" y="246" class="lbl">G protein</text></g>`;
     /* adenylyl cyclase */
     o += `<g opacity="${op(3)}" class="${s === 3 ? 'dg-glow' : ''}"><rect x="392" y="96" width="56" height="94" rx="16" fill="#8b6cc9"/><text x="420" y="88" class="lbl">adenylyl cyclase</text></g>`;
     /* cAMP */
-    if (on(3)) { o += `<text x="470" y="210" class="lbl" text-anchor="start">ATP → cAMP</text>` + [[455, 232], [478, 248], [500, 228], [520, 252], [462, 262], [540, 236], [500, 272], [530, 278]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="7" fill="#f2b33d"/>`).join('') + `<text x="590" y="250" class="lbl" text-anchor="start">cAMP: second messenger</text>`; }
+    if (on(3)) { o += `<text x="462" y="214" class="lbl" text-anchor="start">ATP → cAMP (second messenger)</text>` + [[470, 236], [494, 252], [518, 232], [540, 256], [478, 268], [562, 240], [516, 276], [550, 282]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="7.5" fill="url(#dgGold)" stroke="#b4540a"/>`).join(''); }
     /* kinases */
     const kb = (k, x, y, t) => `<g opacity="${op(k)}" class="${s === k ? 'dg-glow' : ''}"><rect x="${x}" y="${y}" width="170" height="36" rx="10" fill="${on(k) ? '#2f6fd6' : '#9fb2d6'}"/><text x="${x + 85}" y="${y + 23}" class="w">${t}</text>${on(k) && k > 4 ? `<circle cx="${x + 166}" cy="${y + 4}" r="11" fill="#f2b33d"/><text x="${x + 166}" y="${y + 9}" class="b">P</text>` : ''}</g>`;
-    o += kb(4, 420, 300, 'Protein kinase A') + kb(5, 600, 300, 'Phosphorylase kinase') + kb(5, 600, 370, 'Glycogen phosphorylase');
-    if (on(4)) o += `<path d="M590,318 L598,318" class="dg-arp" marker-end="url(#dgArr4)"/><path d="M685,336 L685,368" class="dg-arp" marker-end="url(#dgArr4)"/>`;
-    o += `<g opacity="${op(6)}" class="${s === 6 ? 'dg-glow' : ''}"><text x="400" y="440" class="lbl" text-anchor="start">Glycogen → glucose-1-phosphate → glucose leaves the cell</text>${on(6) ? `<path d="M600,400 C560,420 520,425 470,428" class="dg-arp" marker-end="url(#dgArr4)"/>` : ''}</g>`;
-    if (s === 7) o += `<g class="lbl off"><text x="20" y="300" text-anchor="start">Turning it off:</text><text x="20" y="324" text-anchor="start">• α subunit: GTP → GDP</text><text x="20" y="348" text-anchor="start">• phosphodiesterase: cAMP → AMP</text><text x="20" y="372" text-anchor="start">• phosphatases remove P</text></g>`;
+    o += kb(4, 360, 320, 'Protein kinase A') + kb(5, 580, 320, 'Phosphorylase kinase') + kb(5, 580, 400, 'Glycogen phosphorylase');
+    if (on(5)) o += `<path d="M532,338 L576,338" class="dg-arp" marker-end="url(#dgArr4)"/><path d="M665,358 L665,396" class="dg-arp" marker-end="url(#dgArr4)"/>`;
+    o += `<g opacity="${op(6)}" class="${s === 6 ? 'dg-glow' : ''}"><text x="560" y="470" class="lbl" text-anchor="end">Glycogen → glucose → released into the blood</text>${on(6) ? `<path d="M600,436 C590,452 580,456 566,462" class="dg-arp" marker-end="url(#dgArr4)"/>` : ''}</g>`;
+    if (s === 7) o += `<g class="lbl off"><text x="20" y="300" text-anchor="start" class="lbl">Turning it off:</text><text x="20" y="326" text-anchor="start" class="lbl">• α subunit: GTP → GDP</text><text x="20" y="352" text-anchor="start" class="lbl">• phosphodiesterase: cAMP → AMP</text><text x="20" y="378" text-anchor="start" class="lbl">• phosphatases remove P</text></g>`;
     return o + `<defs><marker id="dgArr4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10z" fill="currentColor"/></marker></defs></svg>`; },
   steps: [
     { t: 'Overview', text: 'A signal molecule outside the cell causes a response inside it without entering. Three stages: <b>reception, transduction, response</b>. Example: epinephrine (adrenaline) tells a liver cell to release glucose.' },
@@ -14399,7 +14527,7 @@ DGM({ id: 'signal', kind: 'steps', title: 'Signal transduction', decks: ['bio'],
   ] });
 
 /* ═══ AP Biology: how the units connect ═══ */
-DGM({ id: 'bio-map', kind: 'map', title: 'AP Biology roadmap', decks: ['bio'], w: 900, h: 520,
+DGM({ id: 'bio-map', sub: 'How the eight units connect', kind: 'map', title: 'AP Biology roadmap', decks: ['bio'], w: 900, h: 520,
   blurb: 'All eight units and how each one builds on the others.',
   nodes: [
     { id: 'u1', x: 140, y: 80, t: 'Unit 1\nChemistry of Life', text: 'Water’s properties, carbon, and the four macromolecules (carbohydrates, lipids, proteins, nucleic acids). Structure determines function, everywhere in biology.' },
@@ -14415,7 +14543,7 @@ DGM({ id: 'bio-map', kind: 'map', title: 'AP Biology roadmap', decks: ['bio'], w
     ['u1', 'u6', 'DNA & RNA structure', -20], ['u5', 'u6', 'genes → proteins', 30], ['u4', 'u6', 'signals turn genes on'], ['u6', 'u7', 'mutations = new variation'], ['u5', 'u7', 'inherited variation'], ['u3', 'u8', 'energy flow', 30], ['u7', 'u8', 'populations & communities']] });
 
 /* ═══ Physics: the big picture ═══ */
-DGM({ id: 'phys-big', kind: 'map', title: 'Physics: the big picture', decks: ['phys1', 'phys2', 'physcm', 'physce', 'hs-phys'], w: 980, h: 640,
+DGM({ id: 'phys-big', sub: 'Motion, energy, waves and fields on one page', kind: 'map', title: 'Physics: the big picture', decks: ['phys1', 'phys2', 'physcm', 'physce', 'hs-phys'], w: 980, h: 640,
   blurb: 'All of introductory physics on one page: how motion, forces, energy, waves and fields connect, and why the conservation laws sit in the middle.',
   nodes: [
     { id: 'kin', x: 110, y: 70, t: 'Kinematics\n(describing motion)', text: 'Position, velocity and acceleration, and how they change: v = Δx/Δt, a = Δv/Δt, and the constant-acceleration equations. It describes motion but doesn’t say why it happens.' },
@@ -14451,14 +14579,14 @@ const P1 = {
   u6: { x: 600, y: 440, t: 'Unit 6\nEnergy & Momentum of\nRotating Systems', text: 'Rotational kinetic energy, rolling, angular momentum and its conservation (the spinning skater).' },
   u7: { x: 140, y: 260, t: 'Unit 7\nOscillations', text: 'Simple harmonic motion: springs and pendulums, period, and energy in oscillating systems.' },
   u8: { x: 230, y: 440, t: 'Unit 8\nFluids', text: 'Density, pressure, buoyancy, and fluid flow (continuity and Bernoulli’s equation).' } };
-const roadmap = (id, title, decks, keys, edges, blurb) => DGM({ id, kind: 'map', title, decks, w: 900, h: 520, blurb, nodes: keys.map(k => ({ id: k, ...P1[k] })), edges });
+const roadmap = (id, title, decks, keys, edges, blurb) => DGM({ id, kind: 'map', title, sub: 'How the units connect', decks, w: 900, h: 520, blurb, nodes: keys.map(k => ({ id: k, ...P1[k] })), edges });
 roadmap('p1-map', 'AP Physics 1 roadmap', ['phys1'], ['u1', 'u2', 'u3', 'u4', 'u5', 'u6', 'u7', 'u8'],
   [['u1', 'u2', 'F = ma explains a'], ['u2', 'u3', 'W = Fd'], ['u2', 'u4', 'FΔt = Δp', 24], ['u2', 'u5', 'τ = rF sin θ'], ['u3', 'u6', '½Iω²'], ['u4', 'u6', 'L = Iω'], ['u5', 'u6', ''], ['u2', 'u7', 'F = −kx', -20], ['u3', 'u7', '½kx² ↔ ½mv²'], ['u2', 'u8', 'P = F/A, buoyancy', 24], ['u3', 'u8', 'Bernoulli = energy']],
   'The eight units of AP Physics 1. Units 1–4 build the toolkit (motion, forces, energy, momentum); Units 5–8 apply it to rotation, oscillation and fluids.');
 roadmap('pcm-map', 'AP Physics C: Mechanics roadmap', ['physcm'], ['u1', 'u2', 'u3', 'u4', 'u5', 'u6', 'u7'],
   [['u1', 'u2', 'F = m dv/dt'], ['u2', 'u3', 'W = ∫F·dr'], ['u2', 'u4', 'J = ∫F dt', 24], ['u2', 'u5', 'τ = r × F'], ['u3', 'u6', 'K = ½Iω²'], ['u4', 'u6', 'L = Iω'], ['u5', 'u6', ''], ['u2', 'u7', 'x″ = −(k/m)x', -20], ['u3', 'u7', 'F = −dU/dx']],
   'The seven units of AP Physics C: Mechanics. Same ideas as Physics 1, written with calculus: derivatives for rates, integrals for work and impulse.');
-DGM({ id: 'p2-map', kind: 'map', title: 'AP Physics 2 roadmap', decks: ['phys2'], w: 900, h: 520,
+DGM({ id: 'p2-map', sub: 'How the seven units connect', kind: 'map', title: 'AP Physics 2 roadmap', decks: ['phys2'], w: 900, h: 520,
   blurb: 'The seven units of AP Physics 2 (Units 9–15) and how they connect.',
   nodes: [
     { id: 'u9', x: 140, y: 80, t: 'Unit 9\nThermodynamics', text: 'Temperature, heat, the ideal gas law, kinetic theory, the laws of thermodynamics and heat engines.' },
@@ -14469,7 +14597,7 @@ DGM({ id: 'p2-map', kind: 'map', title: 'AP Physics 2 roadmap', decks: ['phys2']
     { id: 'u13', x: 140, y: 260, t: 'Unit 13\nGeometric Optics', text: 'Light as rays: reflection, refraction (Snell’s law), mirrors, lenses and image formation.' },
     { id: 'u15', x: 450, y: 440, t: 'Unit 15\nModern Physics', text: 'Photons, the photoelectric effect, atomic energy levels, matter waves, nuclear physics and E = mc².' } ],
   edges: [['u10', 'u11', 'ΔV drives current'], ['u11', 'u12', 'currents make B fields'], ['u10', 'u12', 'moving charges feel forces', 24], ['u12', 'u14', 'changing E & B = light'], ['u14', 'u13', 'light as rays'], ['u14', 'u15', 'photons & matter waves'], ['u9', 'u15', 'energy at the atomic scale', -40], ['u9', 'u10', 'particles in motion', 0]] });
-DGM({ id: 'pce-map', kind: 'map', title: 'AP Physics C: E&M roadmap', decks: ['physce'], w: 900, h: 520,
+DGM({ id: 'pce-map', sub: 'From fields to induction', kind: 'map', title: 'AP Physics C: E&M roadmap', decks: ['physce'], w: 900, h: 520,
   blurb: 'The six units of AP Physics C: Electricity and Magnetism (Units 8–13), from fields to induction.',
   nodes: [
     { id: 'u8', x: 140, y: 80, t: 'Unit 8\nCharges, Fields\n& Gauss’s Law', text: 'Coulomb’s law, electric fields of charge distributions (with integrals), and Gauss’s law: ∮E·dA = Q_enc/ε₀.' },
@@ -14481,7 +14609,7 @@ DGM({ id: 'pce-map', kind: 'map', title: 'AP Physics C: E&M roadmap', decks: ['p
   edges: [['u8', 'u9', 'V = −∫E·dr'], ['u9', 'u10', 'C = Q/V'], ['u10', 'u11', 'RC circuits'], ['u9', 'u11', 'emf drives current', 26], ['u11', 'u12', 'currents make B'], ['u12', 'u13', 'changing flux → emf'], ['u13', 'u11', 'LR circuits', -60], ['u8', 'u12', 'Gauss ↔ Ampère', 0]] });
 
 /* ═══ Free-body diagram on an incline ═══ */
-DGM({ id: 'fbd', kind: 'parts', title: 'Forces on an incline', decks: ['phys1', 'physcm', 'hs-phys'],
+DGM({ id: 'fbd', sub: 'Every force on a box sliding down a ramp', kind: 'parts', title: 'Forces on an incline', decks: ['phys1', 'physcm', 'hs-phys'],
   blurb: 'A box sliding down a ramp with friction. Click each force or component to see how it’s found.',
   svg: (() => {
     const C = [387, 208], d = [.866, .5], n = [.5, -.866], arr = (id, v, len, col, lab, lx, ly, dash) => `<g data-p="${id}" class="dg-f" tabindex="0" role="button"><line x1="${C[0]}" y1="${C[1]}" x2="${(C[0] + v[0] * len).toFixed(1)}" y2="${(C[1] + v[1] * len).toFixed(1)}" stroke="${col}" stroke-width="${dash ? 3 : 5}" ${dash ? 'stroke-dasharray="7 5"' : ''} marker-end="url(#fa-${id})"/><marker id="fa-${id}" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0 L10,5 L0,10z" fill="${col}"/></marker><text x="${lx}" y="${ly}" fill="${col}" class="b">${lab}</text><line x1="${C[0]}" y1="${C[1]}" x2="${(C[0] + v[0] * len).toFixed(1)}" y2="${(C[1] + v[1] * len).toFixed(1)}" stroke="transparent" stroke-width="18"/></g>`;
@@ -14505,7 +14633,7 @@ DGM({ id: 'fbd', kind: 'parts', title: 'Forces on an incline', decks: ['phys1', 
   } });
 
 /* ═══ Chemistry: periodic trends ═══ */
-DGM({ id: 'trends', kind: 'parts', title: 'Periodic trends', decks: ['chem', 'hs-chem'],
+DGM({ id: 'trends', sub: 'Size, ionization energy, electronegativity', kind: 'parts', title: 'Periodic trends', decks: ['chem', 'hs-chem'],
   blurb: 'Where element families sit and how atomic size, ionization energy, electronegativity and metallic character change across the table.',
   svg: (() => {
     const P = ['H,,,,,,,,,,,,,,,,,He', 'Li,Be,,,,,,,,,,,B,C,N,O,F,Ne', 'Na,Mg,,,,,,,,,,,Al,Si,P,S,Cl,Ar', 'K,Ca,Sc,Ti,V,Cr,Mn,Fe,Co,Ni,Cu,Zn,Ga,Ge,As,Se,Br,Kr', 'Rb,Sr,Y,Zr,Nb,Mo,Tc,Ru,Rh,Pd,Ag,Cd,In,Sn,Sb,Te,I,Xe', 'Cs,Ba,La,Hf,Ta,W,Re,Os,Ir,Pt,Au,Hg,Tl,Pb,Bi,Po,At,Rn', 'Fr,Ra,Ac,Rf,Db,Sg,Bh,Hs,Mt,Ds,Rg,Cn,Nh,Fl,Mc,Lv,Ts,Og'].map(r => r.split(','));
@@ -14536,7 +14664,7 @@ DGM({ id: 'trends', kind: 'parts', title: 'Periodic trends', decks: ['chem', 'hs
   } });
 
 /* ═══ AP Chemistry roadmap ═══ */
-DGM({ id: 'chem-map', kind: 'map', title: 'AP Chemistry roadmap', decks: ['chem'], w: 900, h: 520,
+DGM({ id: 'chem-map', sub: 'How the nine units connect', kind: 'map', title: 'AP Chemistry roadmap', decks: ['chem'], w: 900, h: 520,
   blurb: 'The nine units of AP Chemistry: structure first, then how and why reactions happen.',
   nodes: [
     { id: 'u1', x: 140, y: 80, t: 'Unit 1\nAtomic Structure\n& Properties', text: 'Moles, mass spectra, electron configurations, photoelectron spectroscopy and periodic trends.' },
@@ -14552,7 +14680,7 @@ DGM({ id: 'chem-map', kind: 'map', title: 'AP Chemistry roadmap', decks: ['chem'
     ['u7', 'u8', 'K → Ka, Kb'], ['u6', 'u9', 'ΔH + ΔS → ΔG'], ['u7', 'u9', 'ΔG° = −RT ln K'], ['u4', 'u9', 'redox → cells', 40]] });
 
 /* ═══ States of matter ═══ */
-DGM({ id: 'states', kind: 'map', title: 'States of matter & phase changes', decks: ['hs-chem', 'ms-phys'], w: 900, h: 520,
+DGM({ id: 'states', sub: 'Six phase changes and the energy they take', kind: 'map', title: 'States of matter & phase changes', decks: ['hs-chem', 'ms-phys'], w: 900, h: 520,
   blurb: 'The three common states of matter and the six phase changes between them. Arrows going up the page absorb energy; arrows going down release it.',
   nodes: [
     { id: 'gas', x: 450, y: 80, t: 'Gas', w: 170, text: 'Particles far apart and moving fast. No fixed shape or volume: a gas fills its container and is easy to compress. Highest energy.' },
@@ -14561,7 +14689,7 @@ DGM({ id: 'states', kind: 'map', title: 'States of matter & phase changes', deck
   edges: [['sol', 'liq', 'melting (absorbs heat)', 24], ['liq', 'sol', 'freezing (releases heat)', 24], ['liq', 'gas', 'vaporization: evaporation / boiling', 24], ['gas', 'liq', 'condensation (releases heat)', 24], ['sol', 'gas', 'sublimation (dry ice)', 24], ['gas', 'sol', 'deposition (frost)', 24]] });
 
 /* ═══ Economics: supply and demand ═══ */
-DGM({ id: 'sd', kind: 'steps', title: 'Supply & demand', decks: ['ap-micro', 'ap-macro'],
+DGM({ id: 'sd', sub: 'How markets find a price', kind: 'steps', title: 'Supply & demand', decks: ['ap-micro', 'ap-macro'],
   blurb: 'How a market finds its price, and what happens when demand, supply or the government changes things.',
   svg: s => {
     const O = [90, 400], W = 560, H = 340, px = q => O[0] + q * W, py = p => O[1] - p * H;
@@ -14591,7 +14719,7 @@ DGM({ id: 'sd', kind: 'steps', title: 'Supply & demand', decks: ['ap-micro', 'ap
     { t: 'Shift vs. movement', text: 'A change in the good’s <b>own price</b> moves you <b>along</b> the curve (a change in quantity demanded). Anything else that changes buyers’ plans <b>shifts</b> the whole curve (a change in demand).' } ] });
 
 /* ═══ Economics: circular flow ═══ */
-DGM({ id: 'flow', kind: 'map', title: 'Circular flow of the economy', decks: ['ap-macro', 'ap-micro'], w: 900, h: 540,
+DGM({ id: 'flow', sub: 'Who trades what with whom', kind: 'map', title: 'Circular flow of the economy', decks: ['ap-macro', 'ap-micro'], w: 900, h: 540,
   blurb: 'How households, firms and the government trade in the product and factor markets. Goods and resources flow one way; money flows the other.',
   nodes: [
     { id: 'hh', x: 130, y: 270, t: 'Households', w: 150, text: 'Own the factors of production (land, labor, capital, entrepreneurship). They sell these in the factor market and buy goods and services in the product market.' },
@@ -14604,7 +14732,7 @@ DGM({ id: 'flow', kind: 'map', title: 'Circular flow of the economy', decks: ['a
     ['hh', 'gov', 'taxes', -20], ['gov', 'hh', 'transfers', -20], ['firm', 'gov', 'taxes', -20], ['gov', 'firm', 'purchases (G)', -20]] });
 
 /* ═══ Statistics: which inference procedure? ═══ */
-DGM({ id: 'infer', kind: 'map', title: 'Choosing an inference procedure', decks: ['ap-stats'], w: 980, h: 520,
+DGM({ id: 'infer', sub: 'Pick the right test or interval', kind: 'map', title: 'Choosing an inference procedure', decks: ['ap-stats'], w: 980, h: 520,
   blurb: 'A decision map for AP Statistics inference: what kind of data, how many samples, and which test or interval fits.',
   nodes: [
     { id: 'start', x: 490, y: 50, t: 'What kind of variable?', hub: true, text: 'Start every inference question here. Then check conditions: <b>Random</b> sample or assignment, <b>10%</b> condition when sampling without replacement, and <b>Large counts / Normal</b>.' },
@@ -14622,7 +14750,7 @@ DGM({ id: 'infer', kind: 'map', title: 'Choosing an inference procedure', decks:
     ['p1', 'conc', ''], ['p2', 'conc', ''], ['chi', 'conc', ''], ['m1', 'conc', ''], ['mp', 'conc', ''], ['m2', 'conc', '']] });
 
 /* ═══ Psychology: the neuron ═══ */
-DGM({ id: 'neuron', kind: 'parts', title: 'The neuron', decks: ['ap-psych'],
+DGM({ id: 'neuron', sub: 'Parts of a nerve cell', kind: 'parts', title: 'The neuron', decks: ['ap-psych'],
   blurb: 'The parts of a neuron and how a signal travels through it, from dendrites to the synapse.',
   svg: `<svg viewBox="0 0 780 380" class="dg-svg" role="img" aria-label="Neuron">
     <g data-p="dendrites" fill="none" stroke="#b58bd9" stroke-width="6" stroke-linecap="round"><path d="M120,170 L60,110 M85,135 L50,140 M60,110 L40,80 M60,110 L75,70"/><path d="M118,205 L55,255 M80,235 L40,230 M55,255 L35,290 M55,255 L80,300"/><path d="M150,140 L140,70 M143,95 L115,75 M140,70 L160,40"/><path d="M152,232 L150,300 M150,270 L180,300"/></g>
@@ -14649,7 +14777,7 @@ DGM({ id: 'neuron', kind: 'parts', title: 'The neuron', decks: ['ap-psych'],
   } });
 
 /* ═══ Human geography: demographic transition model ═══ */
-DGM({ id: 'dtm', kind: 'steps', title: 'Demographic transition model', decks: ['ap-hug'],
+DGM({ id: 'dtm', sub: 'Birth rates, death rates and development', kind: 'steps', title: 'Demographic transition model', decks: ['ap-hug'],
   blurb: 'How birth rates, death rates and population change as a country develops.',
   svg: s => {
     const X0 = 70, W = 650, sw = W / 5, Y = v => 380 - v * 3.1;
@@ -14672,7 +14800,7 @@ DGM({ id: 'dtm', kind: 'steps', title: 'Demographic transition model', decks: ['
     { t: 'Limits of the model', text: 'It is based on <b>European history</b>, assumes every country industrializes the same way, and ignores <b>migration</b> and government policy (China’s one-child policy, pronatalist policies).' } ] });
 
 /* ═══ Computer science: how data crosses the Internet ═══ */
-DGM({ id: 'net', kind: 'steps', title: 'How data travels on the Internet', decks: ['ap-csp'],
+DGM({ id: 'net', sub: 'DNS, packets, routers and TCP', kind: 'steps', title: 'How data travels on the Internet', decks: ['ap-csp'],
   blurb: 'What happens between typing a web address and seeing the page: DNS, packets, routing and TCP.',
   svg: s => {
     const N = { me: [70, 240, 'Your computer'], dns: [230, 60, 'DNS server'], r1: [250, 160, 'Router'], r2: [250, 330, 'Router'], r3: [450, 110, 'Router'], r4: [450, 360, 'Router'], r5: [600, 240, 'Router'], web: [720, 240, 'Web server'] };
@@ -14699,7 +14827,7 @@ DGM({ id: 'net', kind: 'steps', title: 'How data travels on the Internet', decks
     { t: '6. Reassembled', text: 'TCP puts the packets back in order and hands the complete data to the browser (<b>HTTP</b>), which draws the page. The layers: HTTP over TCP/UDP over IP.' } ] });
 
 /* ═══ Life science: photosynthesis and respiration ═══ */
-DGM({ id: 'photo', kind: 'map', title: 'Photosynthesis & respiration', decks: ['hs-bio', 'ms-life'], w: 900, h: 480,
+DGM({ id: 'photo', sub: 'Two processes, one cycle', kind: 'map', title: 'Photosynthesis & respiration', decks: ['hs-bio', 'ms-life'], w: 900, h: 480,
   blurb: 'Two processes that run in opposite directions: photosynthesis stores the sun’s energy in sugar, and respiration releases it as ATP.',
   nodes: [
     { id: 'sun', x: 120, y: 80, t: '☀ Sunlight', w: 150, text: 'The source of energy for almost every ecosystem on Earth.' },
@@ -14711,7 +14839,7 @@ DGM({ id: 'photo', kind: 'map', title: 'Photosynthesis & respiration', decks: ['
   edges: [['sun', 'ps', 'light energy'], ['raw', 'ps', 'raw materials', 20], ['ps', 'glu', 'stores energy in sugar'], ['glu', 'cr', 'fuel + oxygen'], ['cr', 'raw', 'released back', 0], ['cr', 'atp', 'energy released']] });
 
 /* ═══ Earth science: the water cycle ═══ */
-DGM({ id: 'water', kind: 'map', title: 'The water cycle', decks: ['ms-earth'], w: 900, h: 520,
+DGM({ id: 'water', sub: 'Powered by the sun and gravity', kind: 'map', title: 'The water cycle', decks: ['ms-earth'], w: 900, h: 520,
   blurb: 'How water moves between the oceans, the air, the land and underground, powered by the sun and gravity.',
   nodes: [
     { id: 'ocean', x: 130, y: 430, t: 'Oceans & lakes', w: 160, text: 'About 97% of Earth’s water is in the oceans (salt water).' },
@@ -14723,7 +14851,7 @@ DGM({ id: 'water', kind: 'map', title: 'The water cycle', decks: ['ms-earth'], w
   edges: [['ocean', 'vap', 'evaporation (sun)'], ['plant', 'vap', 'transpiration'], ['vap', 'cloud', 'condensation'], ['cloud', 'land', 'precipitation'], ['cloud', 'ocean', 'precipitation', 20], ['land', 'ocean', 'runoff', 0], ['land', 'ground', 'infiltration'], ['ground', 'ocean', 'groundwater flow'], ['ground', 'plant', 'roots take up water']] });
 
 /* ═══ Earth science: the rock cycle ═══ */
-DGM({ id: 'rock', kind: 'map', title: 'The rock cycle', decks: ['ms-earth'], w: 900, h: 520,
+DGM({ id: 'rock', sub: 'Any rock can become any other', kind: 'map', title: 'The rock cycle', decks: ['ms-earth'], w: 900, h: 520,
   blurb: 'Any rock can become any other kind of rock, given the right process and enough time.',
   nodes: [
     { id: 'magma', x: 450, y: 460, t: 'Magma / lava', w: 160, text: 'Melted rock, below the surface (magma) or erupted (lava).' },
@@ -14732,6 +14860,55 @@ DGM({ id: 'rock', kind: 'map', title: 'The rock cycle', decks: ['ms-earth'], w: 
     { id: 'sr', x: 640, y: 80, t: 'Sedimentary rock', w: 170, text: 'Layers of sediment pressed together (compaction) and glued (cementation). Sandstone, shale, limestone. Fossils are found here.' },
     { id: 'meta', x: 770, y: 300, t: 'Metamorphic rock', w: 170, text: 'Rock changed by heat and pressure without melting. Shale → slate, limestone → marble, granite → gneiss.' } ],
   edges: [['magma', 'ig', 'cooling'], ['ig', 'sed', 'weathering & erosion'], ['sed', 'sr', 'compaction & cementation'], ['sr', 'meta', 'heat & pressure'], ['meta', 'magma', 'melting'], ['ig', 'meta', 'heat & pressure', -30], ['sr', 'sed', 'weathering', 18], ['meta', 'sed', 'weathering & erosion', -20], ['sr', 'magma', 'melting', 20]] });
+
+/* ═══ Psychology: the action potential (Na⁺, K⁺ and threshold) ═══ */
+DGM({ id: 'ap', kind: 'steps', title: 'The action potential', sub: 'Na⁺ in, K⁺ out: how a neuron fires', decks: ['ap-psych'],
+  blurb: 'What happens to the voltage across a neuron’s membrane when it fires, and which ion channels cause each part of the spike.',
+  svg: s => {
+    const X = t => 78 + t * 1.05, Y = v => 66 + (40 - v) * 2.45;
+    const P = [[0, -70], [40, -70], [62, -66], [88, -55], [100, -30], [112, 0], [122, 30], [134, 18], [150, -10], [168, -48], [184, -74], [198, -80], [222, -78], [252, -72], [290, -70], [330, -70]];
+    const upto = [40, 88, 122, 184, 222, 330, 330][s] || 40, pts = P.filter(p => p[0] <= upto), last = pts[pts.length - 1];
+    const path = arr => arr.map((p, i) => `${i ? 'L' : 'M'}${X(p[0]).toFixed(1)},${Y(p[1]).toFixed(1)}`).join(' ');
+    let o = `<svg viewBox="0 0 800 470" class="dg-svg dg-ap" role="img" aria-label="Action potential">`;
+    /* graph */
+    o += `<g filter="url(#dgSh)"><rect x="20" y="20" width="400" height="430" rx="18" fill="url(#dgCard)" stroke="#cddcf2"/></g><text x="220" y="48" class="lbl">Membrane potential (mV)</text>`;
+    [40, 0, -55, -70, -90].forEach(v => { o += `<text x="68" y="${Y(v) + 4}" text-anchor="end" class="lbl">${v > 0 ? '+' + v : v}</text>`; });
+    o += `<line x1="76" y1="${Y(40)}" x2="76" y2="${Y(-92)}" stroke="#173a6b" stroke-width="2"/><line x1="76" y1="${Y(-92)}" x2="${X(330)}" y2="${Y(-92)}" stroke="#173a6b" stroke-width="2"/><text x="${X(300)}" y="${Y(-92) + 22}" class="lbl">time (ms) →</text>`;
+    o += `<line x1="76" y1="${Y(-55)}" x2="${X(330)}" y2="${Y(-55)}" class="thr"/><text x="${X(330)}" y="${Y(-55) - 6}" text-anchor="end" class="lbl" fill="#b4540a">threshold −55</text><line x1="76" y1="${Y(-70)}" x2="${X(330)}" y2="${Y(-70)}" class="rest"/><text x="${X(330)}" y="${Y(-70) + 18}" text-anchor="end" class="lbl" fill="#4f6a92">resting −70</text>`;
+    o += `<path d="${path(P)}" class="ghost"/><path d="${path(pts)}" class="trace"/><circle cx="${X(last[0])}" cy="${Y(last[1])}" r="9" class="dot"/>`;
+    const tag = (t, v, txt, dy = -14) => `<text x="${X(t)}" y="${Y(v) + dy}" class="lbl">${txt}</text>`;
+    if (s >= 2) o += tag(122, 30, '+30 peak');
+    if (s >= 4) o += tag(198, -80, 'undershoot', 26);
+    /* membrane: labels in a row above it, ions kept clear of the arrows */
+    const MX0 = 445, MX1 = 785, MT = 215, MB = 275;
+    o += `<g filter="url(#dgSh)"><rect x="${MX0 - 10}" y="20" width="${MX1 - MX0 + 20}" height="430" rx="18" fill="url(#dgCard)" stroke="#cddcf2"/></g><text x="${(MX0 + MX1) / 2}" y="48" class="lbl">Axon membrane, close up</text>`;
+    o += `<text x="${MX0 + 6}" y="114" class="dg-zone" text-anchor="start">Outside</text><text x="${MX0 + 6}" y="440" class="dg-zone" text-anchor="start">Inside the axon</text>`;
+    for (let x = MX0 + 4; x < MX1; x += 14) { if ((x > 505 && x < 555) || (x > 600 && x < 650) || (x > 690 && x < 752)) continue; o += `<circle cx="${x}" cy="${MT + 6}" r="6" fill="#f1c88b"/><circle cx="${x}" cy="${MB - 6}" r="6" fill="#f1c88b"/><line x1="${x}" y1="${MT + 12}" x2="${x}" y2="${MB - 12}" stroke="#e2b46e" stroke-width="2"/>`; }
+    const naOpen = s === 2, kOpen = s === 3 || s === 4, pump = s === 0 || s === 5;
+    const tagT = (x, a, b, col) => `<text x="${x}" y="76" class="lbl" fill="${col}">${a}</text><text x="${x}" y="94" class="lbl" fill="${b === 'open' || b === 'working' ? col : '#6f86a8'}">${b}</text><line x1="${x}" y1="100" x2="${x}" y2="${MT - 12}" stroke="${col}" stroke-width="1.2" stroke-dasharray="2 4" opacity=".6"/>`;
+    const chan = (x, open, col) => `<rect x="${x - 26}" y="${MT - 6}" width="16" height="${MB - MT + 12}" rx="6" fill="${col}"/><rect x="${x + 10}" y="${MT - 6}" width="16" height="${MB - MT + 12}" rx="6" fill="${col}"/>${open ? '' : `<rect x="${x - 10}" y="${MT + 22}" width="20" height="14" rx="4" fill="${col}"/>`}`;
+    o += tagT(530, 'Na⁺ channel', naOpen ? 'open' : 'closed', '#b4540a') + tagT(625, 'K⁺ channel', kOpen ? 'open' : 'closed', '#5b2bb5') + tagT(724, 'Na⁺/K⁺ pump', pump ? 'working' : 'always on', '#0f766e');
+    o += chan(530, naOpen, '#b4540a') + chan(625, kOpen, '#5b2bb5');
+    o += `<rect x="696" y="${MT - 10}" width="56" height="${MB - MT + 20}" rx="14" fill="${pump ? '#0f766e' : '#7fb8ad'}"/><text x="724" y="${(MT + MB) / 2 + 5}" class="w">pump</text>`;
+    const ion = (x, y, k) => `<g><circle cx="${x}" cy="${y}" r="13" fill="${k === 'na' ? '#f6b26b' : '#b9a3f2'}" stroke="${k === 'na' ? '#b4540a' : '#5b2bb5'}" stroke-width="2"/><text x="${x}" y="${y + 4.5}" class="lbl" fill="#13294b" font-size="11">${k === 'na' ? 'Na⁺' : 'K⁺'}</text></g>`;
+    const naOut = [[478, 148], [500, 186], [568, 132], [590, 180], [662, 140], [688, 184], [762, 136], [772, 182]], kIn = [[478, 340], [505, 388], [570, 345], [592, 405], [668, 348], [700, 402], [764, 352], [474, 412]];
+    naOut.slice(0, s === 2 ? 5 : 8).forEach(([x, y]) => { o += ion(x, y, 'na'); }); kIn.slice(0, kOpen ? 5 : 8).forEach(([x, y]) => { o += ion(x, y, 'k'); });
+    const arrow = (x, y1, y2, col) => `<path d="M${x},${y1} L${x},${y2}" stroke="${col}" stroke-width="5" marker-end="url(#apA${col.slice(1)})"/>`;
+    if (naOpen) o += arrow(530, 118, 318, '#b4540a') + ion(556, 304, 'na') + ion(504, 304, 'na');
+    if (kOpen) o += arrow(625, 420, 128, '#5b2bb5') + ion(648, 172, 'k') + ion(602, 186, 'k');
+    if (pump) o += `<path d="M710,300 C702,262 702,190 710,150" stroke="#b4540a" stroke-width="3.5" fill="none" marker-end="url(#apAb4540a)"/><path d="M740,150 C748,200 748,262 740,300" stroke="#5b2bb5" stroke-width="3.5" fill="none" marker-end="url(#apA5b2bb5)"/><text x="724" y="${MB + 34}" class="lbl" fill="#0f766e">3 Na⁺ out · 2 K⁺ in</text>`;
+    const inside = s === 2 ? '+' : '−', outside = s === 2 ? '−' : '+';
+    o += `<text x="${MX0 + 2}" y="${MT - 14}" text-anchor="start" class="b" font-size="18" fill="#173a6b">${outside} ${outside} ${outside}</text><text x="${MX0 + 2}" y="${MB + 26}" text-anchor="start" class="b" font-size="18" fill="#173a6b">${inside} ${inside} ${inside}</text>`;
+    o += ['b4540a', '5b2bb5'].map(c => `<marker id="apA${c}" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path d="M0,0 L10,5 L0,10z" fill="#${c}"/></marker>`).join('');
+    return o + '</svg>'; },
+  steps: [
+    { t: 'Resting potential: −70 mV', text: 'At rest the inside of the axon is <b>negative</b> compared with the outside (about <b>−70 mV</b>). <b>Na⁺</b> is concentrated outside and <b>K⁺</b> inside. The <b>sodium-potassium pump</b> keeps it that way, using ATP to move 3 Na⁺ out for every 2 K⁺ in.' },
+    { t: 'Reaching threshold: −55 mV', text: 'Messages from other neurons nudge the voltage up (excitatory) or down (inhibitory). If the total at the axon hillock reaches the <b>threshold</b> of about <b>−55 mV</b>, the neuron fires. If it doesn’t, nothing happens.' },
+    { t: 'Depolarization: Na⁺ rushes in', text: '<b>Voltage-gated Na⁺ channels open</b>. Positive sodium ions rush <b>into</b> the axon, pulled by both the concentration difference and the negative inside. The inside swings positive, to about <b>+30 mV</b>.' },
+    { t: 'Repolarization: K⁺ flows out', text: 'The Na⁺ channels close, and <b>voltage-gated K⁺ channels open</b>. Positive potassium ions flow <b>out</b>, so the inside becomes negative again.' },
+    { t: 'Hyperpolarization (undershoot)', text: 'The K⁺ channels close slowly, so a little too much K⁺ leaves and the voltage dips <b>below −70 mV</b> (about −80). During this <b>refractory period</b> the neuron can’t fire again right away, which keeps the signal moving <b>one way</b> down the axon.' },
+    { t: 'Back to rest', text: 'The K⁺ channels close and the <b>Na⁺/K⁺ pump</b> restores the resting potential of −70 mV. The neuron is ready to fire again.' },
+    { t: 'All-or-none', text: 'Every action potential is the <b>same size</b>: a neuron fires completely or not at all (the <b>all-or-none principle</b>). A stronger stimulus makes it fire <b>more often</b>, not harder. Myelin makes the spike jump from node to node, which is much faster.' } ] });
 
 /* ═══════════ QUICK REVIEW ═══════════ */
 let RV = { openSheets: new Set(), deck: null, tab: 'cards', topic: 'all', order: [], i: 0, flip: false, known: new Set() };
@@ -14747,8 +14924,8 @@ function rvBuild(shuffle) {
 }
 function renderReview() {
   setAccent(null); show('hub');
-  /* two pages share this screen: Flashcards (cards only) and Formulas & Reference (reference sheets + interactive diagrams) */
-  const isF = RV.via === 'formulas'; if (isF && RV.tab === 'cards') RV.tab = 'sheets'; if (!isF) RV.tab = 'cards';
+  /* two pages share this screen: Flashcards (cards only) and Formulas & Reference (reference sheets only) */
+  const isF = RV.via === 'formulas'; RV.tab = isF ? 'sheets' : 'cards';
   if (!RV.deck || !DECKS.some(k => k.id === RV.deck)) { RV.deck = LS.get('ap.ui.rv.deck', null) || (deckOrder()[0] || {}).id; rvBuild(false); }
   const d = rvDeck(); if (!d) { $('#hub').innerHTML = nav('review') + '<div class="page"><p class="empty">No review decks yet.</p></div>'; return; }
   rvLoadKnown(); if (!RV.order.length && d.cards.length) rvBuild(false);
@@ -14758,13 +14935,13 @@ function renderReview() {
   const ci = RV.order[RV.i], card = d.cards[ci];
   const firstTest = BY_ID[d.tests[0]];
   $('#hub').innerHTML = nav('review') + `<div class="page">
-    ${pageHead('Study', isF ? 'Formulas & reference' : 'Flashcards', isF ? 'Reference sheets and interactive diagrams for each course. Click any part to explore it, step through processes, or quiz yourself.' : 'Key ideas for each course. Set aside cards you know and keep reviewing the rest.')}
+    ${pageHead('Study', isF ? 'Formulas & reference sheets' : 'Flashcards', isF ? 'Key equations, constants and tables for each course. For drawings and processes, see <a href="#diagrams">Interactive Diagrams</a>.' : 'Key ideas for each course. Set aside cards you know and keep reviewing the rest.')}
     <div class="qr">
-      <nav aria-label="Subjects"><ul class="decklist">${deckOrder().map((k, i, all) => { const b = (BY_ID[k.tests[0]] || {}).band, pb = i ? (BY_ID[all[i - 1].tests[0]] || {}).band : null; return (b && b !== pb ? `<li class="dl-h">${esc(BAND[b].name)}</li>` : '') + `<li><button data-deck="${k.id}" aria-current="${k.id === d.id}">${esc(k.title)}<small>${isF ? (k.sheets || []).length + dgFor(k.id).length : k.cards.length}</small></button></li>`; }).join('')}</ul></nav>
+      <nav aria-label="Subjects"><ul class="decklist">${deckOrder().map((k, i, all) => { const b = (BY_ID[k.tests[0]] || {}).band, pb = i ? (BY_ID[all[i - 1].tests[0]] || {}).band : null; return (b && b !== pb ? `<li class="dl-h">${esc(BAND[b].name)}</li>` : '') + `<li><button data-deck="${k.id}" aria-current="${k.id === d.id}">${esc(k.title)}<small>${isF ? (k.sheets || []).length : k.cards.length}</small></button></li>`; }).join('')}</ul></nav>
       <div class="${firstTest ? 'acc-' + firstTest.accent : ''}" style="min-width:0">
         <h2 class="title">${esc(d.title)}</h2>
         <p class="small muted" style="margin:0 0 14px">For ${d.tests.map(t => BY_ID[t] ? esc(BY_ID[t].subject) : t).join(', ')}</p>
-        ${isF ? `<div class="qr-tabs" role="tablist"><button role="tab" data-rvtab="sheets" aria-selected="${RV.tab === 'sheets'}">Reference sheets · ${(d.sheets || []).length}</button><button role="tab" data-rvtab="diagrams" aria-selected="${RV.tab === 'diagrams'}">Interactive diagrams · ${dgFor(d.id).length}</button></div>` : ''}
+        
         ${RV.tab === 'cards' ? `
           <div class="card-tools"><select id="rvTopic" aria-label="Topic"><option value="all">All topics</option>${topics.map(t => `<option ${t === RV.topic ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>
             <button class="btn quiet" id="rvShuf">Shuffle</button><span class="small muted">${deckGot ? `${deckGot} of ${d.cards.length} set aside as "got it"` : 'Click the card or press Space to flip. Arrow keys move.'}</span>${deckGot ? `<button class="btn quiet" id="rvReset">Reset pile</button>` : ''}</div>
@@ -14772,7 +14949,7 @@ function renderReview() {
             <div class="fface front"><span class="kind">Prompt</span>${card[2] ? `<span class="topic">${esc(card[2])}</span>` : ''}<div class="txt">${F(card[0])}</div></div>
             <div class="fface back"><span class="kind">Answer</span>${card[2] ? `<span class="topic">${esc(card[2])}</span>` : ''}<div class="txt">${F(card[1])}</div></div></div></div>
           <div class="card-nav"><span class="count">${RV.i + 1} / ${RV.order.length}${gotN ? ` <small class="muted">· ${gotN} got it</small>` : ''}</span><button class="btn quiet" id="rvPrev" ${RV.i === 0 ? 'disabled' : ''}>← Previous</button><button class="btn quiet" id="rvAgain">Review again</button><button class="btn" id="rvGot">Got it</button><button class="btn primary" id="rvNext">${RV.i === RV.order.length - 1 ? 'Start over' : 'Next →'}</button></div>` : gotN ? `<div class="empty fc-done"><p><b>Nice work: you've set aside all ${gotN} card${gotN > 1 ? 's' : ''} ${RV.topic === 'all' ? 'in this deck' : 'in this topic'}.</b></p><p>Reset the pile to study them again.</p><button class="btn primary" id="rvReset2">Reset pile</button></div>` : '<p class="empty">No cards in this topic.</p>'}`
-        : RV.tab === 'diagrams' ? `<div id="dgBox">${dgHTML(d)}</div>` : !(d.sheets || []).length ? `<p class="empty">No reference sheets for this course yet. Try the <button class="linkbtn" data-rvtab="diagrams">interactive diagrams</button>.</p>` : `<div class="sheet-tools"><span class="small muted">Open a sheet to study it.</span><button class="linkbtn sm" id="shOpen">Open all</button><button class="linkbtn sm" id="shClose">Close all</button></div>
+        : !(d.sheets || []).length ? `<p class="empty">No reference sheets for this course yet. Try its <a href="#diagrams">interactive diagrams</a>.</p>` : `<div class="sheet-tools"><span class="small muted">Open a sheet to study it.</span><button class="linkbtn sm" id="shOpen">Open all</button><button class="linkbtn sm" id="shClose">Close all</button></div>
           <div class="sheets">${(d.sheets || []).map((sh, si) => `<details class="sheet" data-sh="${d.id}:${si}" ${RV.openSheets.has(d.id + ':' + si) ? 'open' : ''}><summary><span class="sh-t">${esc(sh.title)}</span><small>${sh.rows.length} rows</small></summary><div class="sh-body">${sh.note ? `<p class="sn">${F(esc(sh.note))}</p>` : ''}<div class="tablewrap"><table><thead><tr>${sh.cols.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${sh.rows.map(r => `<tr>${r.map(cell => `<td>${F(cell)}</td>`).join('')}</tr>`).join('')}</tbody></table></div></div></details>`).join('')}</div>`}
       </div>
     </div>
@@ -14785,7 +14962,6 @@ function renderReview() {
   if ($('#shClose')) $('#shClose').onclick = () => $$('details.sheet').forEach(dt => { dt.open = false; });
   const reset = () => { [...RV.known].filter(k => k.startsWith(d.id + ':')).forEach(k => RV.known.delete(k)); rvSaveKnown(); rvBuild(false); renderReview(); bindNav(); };
   if ($('#rvReset')) $('#rvReset').onclick = reset; if ($('#rvReset2')) $('#rvReset2').onclick = reset;
-  if (RV.tab === 'diagrams') { const re = () => { const b = $('#dgBox'); if (!b) return; b.innerHTML = dgHTML(d); dgBind(d, re); }; dgBind(d, re); }
   if (RV.tab !== 'cards' || !card) { if ($('#rvTopic')) { $('#rvTopic').onchange = () => { RV.topic = $('#rvTopic').value; rvBuild(false); renderReview(); bindNav(); }; } return; }
   const flip = () => { RV.flip = !RV.flip; $('#fcard').classList.toggle('flip', RV.flip); };
   const move = dlt => { const n = RV.i + dlt; if (n >= RV.order.length) { rvBuild(false); } else if (n >= 0) { RV.i = n; RV.flip = false; } renderReview(); bindNav(); };
