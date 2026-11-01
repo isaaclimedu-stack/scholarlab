@@ -13211,6 +13211,10 @@ function bindCaseTabs() { $$('[data-ct]').forEach(b => b.onclick = () => { const
 let T = null, X = null, tick = null, hideTime = false, lastSave = 0, inExam = false;
 const save = () => { if (T && X) LS.set(T.unit ? `ap.${PID}.ut.current.v1` : KEY(X).cur, T); };
 const loadCur = x => { const c = LS.get(KEY(x).cur, null); if (c && c.v === 1) { c.testId = c.testId || x.id; return c; } return null; };
+/* remember where every inner scrolling box (like the free-response list) was scrolled, so a redraw doesn't jump it back to the top */
+function keepBoxes(root) { root = root || document.getElementById('hub'); const key = el => { const c = (el.className && typeof el.className === 'string') ? el.className.trim().split(/\s+/).sort().join('.') : ''; return el.tagName + '.' + c + '#' + (el.id || ''); };
+  const saved = []; root.querySelectorAll('*').forEach(el => { if (el.scrollTop > 0 && el.scrollHeight > el.clientHeight) { const k = key(el), i = [...root.querySelectorAll(el.tagName)].filter(x => key(x) === k).indexOf(el); saved.push([k, el.tagName, i, el.scrollTop]); } });
+  return () => saved.forEach(([k, tag, i, top]) => { const el = [...root.querySelectorAll(tag)].filter(x => key(x) === k)[i]; if (el) el.scrollTop = top; }); }
 function show(view) { ['hub', 'exam', 'results'].forEach(v => { $('#' + v).hidden = v !== view; }); window.scrollTo(0, 0); }
 function leaveExam() { ttsStop(); spStop(); lkStop(); document.body.classList.remove('acc-big'); if (typeof pzOff === 'function') pzOff(); if (inExam) { save(); clearInterval(tick); inExam = false; } }
 const lkExitFull = () => { try { if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {}); } catch (e) {} };
@@ -13714,6 +13718,7 @@ function renderAnalytics() {
 const FAQ = [
   ['Is this free?', `<p>Yes. There are no ads and nothing to buy. Every test, flashcard, and feature is free for students in the class.</p>`],
   ['Which courses are here?', `<p>Three groups, each in its own dropdown in the menu:</p><ul><li><b>AP Courses:</b> AP Biology, AP Chemistry, AP Physics 1, 2, C: Mechanics, and C: E&amp;M, AP Microeconomics, AP Macroeconomics, AP Statistics, AP Psychology, AP Human Geography, and AP Computer Science Principles.</li><li><b>High School Science:</b> Biology, Chemistry, and Physics.</li><li><b>Middle School Science:</b> Life Science, Physical Science, and Earth &amp; Space Science.</li></ul><p>The high school and middle school courses follow the Next Generation Science Standards (NGSS). Each unit lists the performance expectations it covers.</p>`],
+  ['Which standards do you follow?', `<p><b>AP classes</b> follow the College Board’s AP standards: the public AP Course and Exam Description for each course (its units, learning objectives, science or skill practices, and exam format).</p><p><b>All other classes</b> follow the <b>Next Generation Science Standards (NGSS)</b> for science and the <b>Common Core State Standards</b> for math and for reading and writing in science. Each lab or unit lists the standards it covers.</p>`],
   ['Are these real AP exam questions?', `<p>No. Every question, free-response prompt, scoring guide, definition, and flashcard was written from scratch for ${BRAND}. Nothing is copied from College Board exams, review books, or other sites.</p><p>Each AP practice test follows the <b>public</b> AP Course and Exam Description: the units and their weightings, the number of questions, the section times, and the free-response question types. ${BRAND} isn't affiliated with or endorsed by the College Board.</p>`],
   ['Can I take a test without an account?', `<p>Yes, if your teacher allows it. Go to <b>Take a test</b> (on the sign-in page, or ${esc(SITE_URL.replace(/^https?:\/\//, ''))}/#take), type the test code your teacher gave you, and enter your name and your teacher’s email. When you finish, the results page walks you through emailing your results to your teacher.</p>`],
   ['What is a locked test?', `<p>Some teachers turn on lockdown. The test opens in full screen, and copying, pasting, right-click, and printing are turned off. If you leave the test (switch tabs or apps, or open another window or an assistant panel), the questions hide and it’s recorded in the results your teacher sees. Some locked tests submit themselves after 3 exits, and some must be taken in Safe Exam Browser.</p>`],
@@ -14363,7 +14368,7 @@ function renderResults(rec, fresh) {
     const t = crTotals(rec), srTxt = rec.n ? `${rec.correct} of ${rec.n} correct` : 'Free-response practice';
     const msg = t && !t.done && !rec.assign ? `Score your ${t.n - t.scored} remaining free-response answer${t.n - t.scored === 1 ? '' : 's'} below.` : rec.pct >= 75 ? 'Strong result. Keep rotating through new sets to stay sharp.' : rec.pct >= 60 ? 'Solid base. Drill your weakest category, then retest.' : 'Plenty of room to grow. Review the explanations below, then drill your weakest category.';
     return `${ring(rec.pct, t && !t.done && !rec.n ? '—' : '')}
-      <div><div class="eyebrow">${esc(rec.title)} · ${fmtDate(rec.date)}${rec.auto ? ' · time expired' : ''}</div><h1>${rec.n && t ? 'Multiple choice: ' : ''}${srTxt}</h1>
+      <div><div class="eyebrow">${esc(rec.title)} · ${fmtDate(rec.date)}${rec.auto === 'closed' ? ' · closed by the teacher' : rec.auto ? ' · time expired' : ''}</div><h1>${rec.n && t ? 'Multiple choice: ' : ''}${srTxt}</h1>
         ${t && rec.assign ? `<p style="margin:0 0 6px"><b>Free response:</b> your teacher scores your ${t.n} answer${t.n > 1 ? 's' : ''} with the scoring guide.</p>` : t ? `<p style="margin:0 0 6px"><b>Free response:</b> ${t.scored ? `${t.pts} of ${t.done ? t.max : 'the scored'} points` : 'not scored yet'}${t.scored && !t.done ? ` (${t.scored} of ${t.n} scored)` : ''} · self-scored with the scoring guides</p>${t.done ? `<p style="margin:0 0 6px"><b>Weighted score: ${rec.pct}%</b> <span class="muted small">(${Math.round((1 - rec.cr.w) * 100)}% multiple choice, ${Math.round(rec.cr.w * 100)}% free response)</span></p>` : ''}` : ''}
         ${rec.ap ? `<div class="apline">${apBadge(rec.ap.score, 'lg')}<div><b>Estimated AP score: ${rec.ap.score}</b><span class="small muted">${AP_WORD[rec.ap.score]} · composite ${rec.ap.comp}% · a rough estimate, not an official score</span></div></div>` : rec.mode === 'full' && !rec.practice && !rec.assign && t && !t.done ? '<p class="small notice" style="margin:0 0 10px">Score your free-response answers below to see your estimated AP score (1–5).</p>' : ''}
         <p class="muted" style="margin:0 0 14px">${rec.practice ? 'Practice mode · ' : ''}Time ${rec.practice ? 'spent' : 'used'}: <span class="mono">${fmtDur(rec.used)}</span>. ${msg}</p>
@@ -14831,7 +14836,7 @@ function admBody() {
     : '<div class="empty">No members yet. Add people in the Access tab, share the site, and they will appear here after they sign in.</div>');
 }
 function admBind() {
-  const redo = () => { const y = window.scrollY; renderAdmin(); bindNav(); window.scrollTo(0, y); };
+  const redo = () => { const y = window.scrollY, back = keepBoxes(); renderAdmin(); bindNav(); window.scrollTo(0, y); back(); };
   const guard = async (fn, ok) => { let good = true; try { await fn(); ADM.err = ''; } catch (e) { good = false; ADM.err = 'Could not save. Check your connection and try again.'; } redo(); if (good) admFlash(ok); };
   $$('[data-mo]').forEach(b => b.onclick = () => { ADM.open[b.dataset.mo] = !ADM.open[b.dataset.mo]; redo(); });
   if (ADM.tab === 'teachers') teachersBind(redo, guard);
@@ -15431,6 +15436,11 @@ async function testCheck(uts) {
     const r = await fetch(`${cfg.endpoint}?a=tests&site=scholarlab&ids=${uts.map(tidOf).join(',')}`, { signal: ac.signal }); clearTimeout(tm);
     const d = await r.json(); return d && d.ok ? d : null; } catch (e) { return null; }
 }
+/* closing a test also ends it for students who are taking it: checked every minute and whenever the tab comes back. Their answers so far are submitted. */
+const examUt = () => T ? (T.unit ? T.unit.ut : T.assign ? T.assign.ut : null) : null;
+async function testWatch() { if (!T || !inExam || document.hidden) return; const ut = examUt(); if (!ut) return; const res = await testCheck([ut]); const t = res && res.tests && res.tests[tidOf(ut)];
+  if (t && t.closed && T && inExam && examUt() === ut) { clearInterval(tick); finish('closed'); } }
+setInterval(testWatch, 60000); document.addEventListener('visibilitychange', () => { if (!document.hidden) testWatch(); });
 async function testSet(ut, pw, extra) {
   const cfg = await signupReady(); if (!cfg || !cfg.endpoint) return { ok: false, msg: 'Opening and closing tests works on the website (scholarlab.net).' };
   try { const tid = tidOf(ut), ck = await closeKey(pw, tid);
@@ -15448,7 +15458,7 @@ function openBoxHTML(d) {
     <div class="uo-ctl"><label class="small">Close at<input type="datetime-local" id="utClAt" value="${esc(dtLocal(o && o.closeAt))}"></label><button class="btn sm" type="button" id="utClSet">Save close time</button>
       ${o && o.closed ? '<button class="btn sm primary" type="button" id="utReopen">Reopen now</button>' : '<button class="btn sm" type="button" id="utCloseNow" style="color:var(--bad)">Close now</button>'}</div>
     ${d.owPw ? `<div class="uo-pw"><label class="small">This test was made with a different teacher password. Enter it to continue.<input id="utOpenPw" autocomplete="off" spellcheck="false"></label></div>` : ''}
-    <p class="small muted" id="utOpenMsg" role="status" style="margin:0">${esc(d.osMsg || 'Students who already started can still finish and send their results.')}</p></div>`;
+    <p class="small muted" id="utOpenMsg" role="status" style="margin:0">${esc(d.osMsg || 'Students taking it when it closes are stopped within a minute, and their answers so far are submitted.')}</p></div>`;
 }
 function bindOpenBox(d, pwFn) {
   const box = document.getElementById('utOpen'); if (!box) return;
@@ -15556,7 +15566,7 @@ function renderUtNew() {
     ${foot()}</div>`;
   const upd = () => { st.t = $('#utT').value; if ($('#utN')) st.n = Math.max(0, +$('#utN').value || 0); st.mix = $('#utMix').value; st.m = $('#utM').value === '' ? null : Math.max(0, +$('#utM').value); st.title = $('#utTitle').value.trim(); st.e = $('#utE').value.trim(); st.a = $('#utA').value; st.open = $('#utO').checked; st.lk = $('#utL').value; st.pw = $('#utPw').value.trim(); if ($('#utCl')) st.cl = $('#utCl').value; };
   /* every change re-draws the page but keeps the reader exactly where they were */
-  const redo = () => { const y = window.scrollY; renderUtNew(); bindNav(); window.scrollTo(0, y); };
+  const redo = () => { const y = window.scrollY, back = keepBoxes(); renderUtNew(); bindNav(); window.scrollTo(0, y); back(); };
   if ($('#utSee')) $('#utSee').onclick = () => { const el = $('#utDraft'); if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 86, behavior: 'smooth' }); };
   st.justMade = false;
   $('#utT').onchange = () => { upd(); const nx = BY_ID[st.t]; st.u = [srCatsOf(nx)[0].k]; st.title = ''; st.m = null; st.fsel = []; st.fall = false; st.dsel = []; st.bq = []; st.cust = []; st.bunit = ''; redo(); };
@@ -15819,7 +15829,7 @@ Test: ${r.ut.n}
 Course: ${x.subject} (${utUnits(r.ut).join('; ')})
 Student: ${r.name}${r.email ? ' <' + r.email + '>' : ''}
 Submitted: ${fmtDate(r.date)}${r.attempt > 1 ? ` (attempt ${r.attempt} on this device)` : ''}
-Time used: ${fmtDur(r.used)}${r.ut.m ? ` of ${r.ut.m} min` : ''}${r.auto ? ' (time ran out)' : ''}
+Time used: ${fmtDur(r.used)}${r.ut.m ? ` of ${r.ut.m} min` : ''}${r.auto === 'closed' ? ' (the teacher closed the test)' : r.auto ? ' (time ran out)' : ''}
 
 Multiple choice: ${r.correct} / ${r.n} correct (${r.pct}%)${r.lk ? `\nTest security (lockdown): ${lkSummary(r.lk).text}` : ''}${r.acc ? `\nAccommodations (set by the teacher): ${r.acc.join('; ')}` : ''}${r.pz && r.pz[0] ? `\nPauses: ${r.pz[0]} (${fmtDur(r.pz[1] || 0)} total)` : ''}
 Answers chosen: ${ansLine}
@@ -15862,7 +15872,7 @@ async function renderUtResult(idx, fresh) {
   const draw = () => {
     $('#results').innerHTML = nav('unit-tests') + `<div class="page">
     <div class="crumb"><a href="#unit-tests">Unit Tests</a> / ${esc(r.ut.n)}</div>
-    <section class="panel score">${ring(r.pct)}<div><div class="eyebrow">${esc(r.ut.n)} · ${fmtDate(r.date)}${r.auto ? ' · time ran out' : ''}</div><h1>Multiple choice: ${r.correct} of ${r.n} correct</h1>
+    <section class="panel score">${ring(r.pct)}<div><div class="eyebrow">${esc(r.ut.n)} · ${fmtDate(r.date)}${r.auto === 'closed' ? ' · closed by your teacher' : r.auto ? ' · time ran out' : ''}</div><h1>Multiple choice: ${r.correct} of ${r.n} correct</h1>
       <p class="muted" style="margin:0 0 10px">${fr ? `Your ${fr} free-response answer${fr > 1 ? 's are' : ' is'} scored by your teacher. ` : ''}Time used: <span class="mono">${fmtDur(r.used)}</span>.</p>
       ${isTeacher() ? `<div class="row">${pdfBtn('utScPdf', 'Download score card (PDF)')}${paperSel()}</div>` : ''}</div></section>
     <section class="card sendbox ${r.sent ? 'done' : ''}" id="sendBox" style="margin-top:18px">${sendBoxHTML({ to: m.to, editable: !r.ut.e, mail: m, sent: r.sent, auto: r.autoSt, site: r.site, relay: r.ut.r, unlock: r.ut.a === 'send' ? 'Your answers and explanations unlock after you confirm.' : '' })}</section>
@@ -16039,7 +16049,7 @@ function renderUtCheck() {
     <div style="margin-top:18px;display:grid;gap:14px">${(out || []).map(card).join('')}</div>
     <p class="small muted" style="margin-top:14px">The check code catches results that were changed by hand. It isn't unbreakable, so treat a valid code as strong evidence, not proof. Your free-response scores are saved in this browser.</p>
     ${foot()}</div>`;
-  const redo = () => { const y = window.scrollY; renderUtCheck(); bindNav(); window.scrollTo(0, y); };
+  const redo = () => { const y = window.scrollY, back = keepBoxes(); renderUtCheck(); bindNav(); window.scrollTo(0, y); back(); };
   $('#utcGo').onclick = async () => { UTC.text = $('#utcIn').value; UTC.out = await utCheck(UTC.text); redo(); };
   $('#utcClr').onclick = () => { UTC = { text: '', out: null }; redo(); };
   if ($('#gbImpGo')) $('#gbImpGo').onclick = () => { const r = gbImport(good, $('#gbImpC').value, $('#gbImpNew').checked); if (!r) return; $('#gbImpMsg').innerHTML = `Added ${r.added} result${r.added === 1 ? '' : 's'} to <b>${esc(r.name)}</b>${r.newStu ? ` (${r.newStu} new student${r.newStu === 1 ? '' : 's'})` : ''}${r.skipped ? `. Skipped ${r.skipped} (no matching student, or the test couldn’t be rebuilt)` : ''}. <a href="#grades">Open the gradebook</a>`; };
@@ -16092,7 +16102,7 @@ function renderClass() {
         <td><div class="row" style="gap:6px"><button class="btn" data-clm="${esc(s.email)}">✉ Email</button><button class="btn danger" data-clr="${esc(s.email)}">Remove</button></div></td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">No students yet. Add their emails above.</div>'}
       <p class="small muted">${DB && !GUEST ? 'Students on your list can sign in on this Claude page and on your website.' : 'Students on your list sign in on your website with their email and code.'} Removing a student takes them off your list; their code keeps working until the end of the month.</p></section>
     ${foot()}</div>`;
-  const redo = () => { const y = window.scrollY; renderClass(); bindNav(); window.scrollTo(0, y); };
+  const redo = () => { const y = window.scrollY, back = keepBoxes(); renderClass(); bindNav(); window.scrollTo(0, y); back(); };
   $('#clAdd').onclick = async () => { const raw = $('#clIn').value.split(/[\s,;]+/).map(normEmail).filter(Boolean); const good = raw.filter(isEmail), bad = raw.filter(e => !isEmail(e));
     if (!good.length) { $('#clMsg').style.color = 'var(--bad)'; $('#clMsg').textContent = bad.length ? 'Those don’t look like email addresses.' : 'Paste at least one email.'; return; }
     const l = classList(); let n = 0; good.forEach(e => { if (!l.some(s => s.email === e)) { l.push({ email: e, added: new Date().toISOString() }); n++; } }); LS.set(classKey(), l);
@@ -16130,6 +16140,8 @@ How to take it:
 
 ${from}` };
 }
+/* where a saved unit test's results go: what you typed for it here, else the email it was made with, else your usual email */
+const asUtTo = () => { const typed = AS.utTo && AS.utTo[AS.code]; if (typed != null) return typed; return (utParse(AS.code) || { ut: {} }).ut.e || AS.to || teacherDefaultEmail(); };
 function renderAssign() {
   if (!isTeacher()) return renderHome();
   if (MODE === 'owner' && !ADM.loaded) { admLoad().then(() => { if (ROUTE === 'assign') { renderAssign(); bindNav(); } }); }
@@ -16150,7 +16162,7 @@ function renderAssign() {
         <label>Test security<select id="asLk">${LK_MODES.map(([k, l]) => `<option value="${k}" ${AS.lk === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
         <p class="small muted" style="margin:0">Your teacher password (<b>${esc(teacherPw())}</b>, set in Create Unit Test) unlocks locked tests and opens accommodations. Don’t show it to students.</p>` : ''}
       </fieldset>
-      <div class="row2"><label>Due date (optional)<input type="date" id="asDue" value="${esc(AS.due)}"></label>${AS.kind === 'exam' ? `<label>Send results to (your school email)<input type="email" id="asTo" value="${esc(AS.to)}"></label>` : `<label>Results go to<input readonly value="${esc((utParse(AS.code) || { ut: {} }).ut.e || '')}" title="Set when the unit test was created"></label>`}</div>
+      <div class="row2"><label>Due date (optional)<input type="date" id="asDue" value="${esc(AS.due)}"></label>${AS.kind === 'exam' ? `<label>Send results to (your school email)<input type="email" id="asTo" value="${esc(AS.to)}"></label>` : `<label>Results go to (your school email)<input type="email" id="asTo" placeholder="you@school.org" value="${esc(asUtTo())}"></label>`}</div>
       <label>Message to students (optional)<textarea id="asMsg" maxlength="400" style="min-height:70px">${esc(AS.msg)}</textarea></label>
       <fieldset><legend>Students ${roster.length ? `<span class="muted">(${nSel} of ${roster.length} selected)</span>` : ''}</legend>
         ${roster.length ? `<label class="chk"><input type="checkbox" id="asAll" ${nSel === roster.length ? 'checked' : ''}> Select all</label><div class="ucks as-roster">${roster.map(e => `<label class="chk"><input type="checkbox" data-ass="${esc(e)}" ${AS.sel.has(e) ? 'checked' : ''}> ${esc(e)}</label>`).join('')}</div>` : `<p class="small muted" style="margin:0">No students yet. ${MODE === 'owner' ? 'Add them in <a href="#admin">Manage Students</a>.' : 'Add them in <a href="#class">My Students</a>.'} You can still create the assignment and share the link yourself.</p>`}
@@ -16167,15 +16179,15 @@ function renderAssign() {
       <div class="row"><a class="btn primary" target="_blank" rel="noopener" href="${esc(gmailHref(o.from, o.mail, o.bcc))}">Open in Gmail</a><a class="btn" target="_blank" rel="noopener" href="${esc(mailtoHref(o.from, o.mail, o.bcc))}">Open in email app</a><button class="btn quiet" id="asCopyMail">Copy message</button>${o.ut.k === 'exam' ? '' : pdfBtn('asPdf', 'PDF: test + key')}</div>
       <details style="margin-top:10px"><summary class="small">Preview message</summary><pre class="cm-body">${esc('BCC: ' + (o.bcc.join(', ') || '(none)') + '\nSubject: ' + o.mail.subject + '\n\n' + o.mail.body)}</pre></details></section>` : ''}
     ${foot()}</div>`;
-  const redo = () => { const y = window.scrollY; renderAssign(); bindNav(); window.scrollTo(0, y); };
-  const upd = () => { if ($('#asUt')) AS.code = $('#asUt').value; if ($('#asT')) AS.t = $('#asT').value; if ($('#asLv')) AS.lv = $('#asLv').value; if ($('#asLk')) AS.lk = $('#asLk').value; AS.due = $('#asDue').value; AS.msg = $('#asMsg').value.trim(); if ($('#asTo')) AS.to = $('#asTo').value.trim(); };
+  const redo = () => { const y = window.scrollY, back = keepBoxes(); renderAssign(); bindNav(); window.scrollTo(0, y); back(); };
+  const upd = () => { if ($('#asTo') && AS.kind === 'ut') { AS.utTo = AS.utTo || {}; AS.utTo[AS.code] = $('#asTo').value.trim(); } if ($('#asUt')) AS.code = $('#asUt').value; if ($('#asT')) AS.t = $('#asT').value; if ($('#asLv')) AS.lv = $('#asLv').value; if ($('#asLk')) AS.lk = $('#asLk').value; AS.due = $('#asDue').value; AS.msg = $('#asMsg').value.trim(); if ($('#asTo') && AS.kind !== 'ut') AS.to = $('#asTo').value.trim(); };
   $$('[name="asK"]').forEach(r => r.onchange = () => { upd(); AS.kind = r.value; AS.out = null; redo(); });
   ['#asUt', '#asT', '#asLv', '#asLk', '#asDue', '#asMsg', '#asTo'].forEach(s => { if ($(s)) $(s).onchange = () => { upd(); if (s === '#asT' || s === '#asUt') { AS.out = null; redo(); } }; });
   if ($('#asAll')) $('#asAll').onchange = () => { upd(); roster.forEach(e => $('#asAll').checked ? AS.sel.add(e) : AS.sel.delete(e)); redo(); };
   $$('[data-ass]').forEach(c => c.onchange = () => { upd(); c.checked ? AS.sel.add(c.dataset.ass) : AS.sel.delete(c.dataset.ass); redo(); });
   $('#asGo').onclick = async () => { upd(); const err = m => { $('#asErr').textContent = m; }; const asS = Math.floor(Math.random() * 2 ** 31);
     let ut;
-    if (AS.kind === 'ut') { const p = utParse(AS.code); if (!p) return err('Choose a saved unit test, or create one first.'); ut = { ...p.ut }; }
+    if (AS.kind === 'ut') { const p = utParse(AS.code); if (!p) return err('Choose a saved unit test, or create one first.'); ut = { ...p.ut }; const to = normEmail(asUtTo()); if (!isEmail(to)) return err('Enter the email address where results should go.'); ut.e = to; LS.set('ap.ut.email', to); }
     else { if (!isEmail(AS.to)) return err('Enter the email address where results should go.'); const xx = BY_ID[AS.t]; LS.set('ap.ut.email', normEmail(AS.to));
       ut = { v: 1, k: 'exam', n: `${xx.subject} · Full exam simulation`, t: xx.id, u: [], q: [], f: [], m: xx.minutes, e: normEmail(AS.to), a: 'send', lv: AS.lv, ...(lkModeOf(AS.lk) ? { lk: lkModeOf(AS.lk) } : {}), s: asS, kh: await keyHash(teacherPw(), String(asS)), d: new Date().toISOString().slice(0, 10) }; }
     if (AS.due) ut.due = AS.due; else delete ut.due;
