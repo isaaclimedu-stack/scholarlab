@@ -13900,7 +13900,8 @@ const FAQ = [
   ['How do unit tests and assignments work?', `<p>Your teacher sends a link or a code. Open it, enter your name, and take the test. On a unit test you won't see answers or feedback until you finish. When you submit, an email to your teacher opens with your results filled in; press Send. Depending on your teacher's setting, the answers and explanations unlock after your results are sent. You can also download a score card as a PDF.</p>`],
   ['What is Calculation Practice?', `<p>Numeric problems from each course (stoichiometry, kinematics, gas laws, circuits, and more) where you type the number instead of picking an answer. You can turn the calculator off to practice working by hand, and every problem comes with a worked solution. You can also download a printable worksheet with an answer key.</p>`],
   ['What information do you have about me?', `<p>Only the email address you sign in with, because your access code is made for that email. The site doesn't ask for your name, phone number, birthday, or anything else.</p>`],
-  ['Why do I need an access code?', `<p>Codes keep the site for our class. Most codes change on the 1st of each month, and your teacher sends the new one. Last month's code keeps working through the 3rd.</p>`],
+  ['Why do I need an access code?', `<p>Codes keep the site for our class. Most codes change on the 1st of each month, and your teacher sends the new one. Last month's code keeps working through the 3rd. Some members have a lifetime code that never changes.</p>`],
+  ['How do I get a lifetime code?', `<p>Lifetime codes are for dedicated members of the Comma community on Reddit, <a href="https://www.reddit.com/r/CommaClassroom/" target="_blank" rel="noopener">r/CommaClassroom</a>. Join and take part: share feedback, help others, and contribute to moving education forward in a positive way. Lifetime access is given at our discretion to active, contributing members. If the community rules or this site's terms are broken, lifetime access can be revoked.</p>`],
   ['I forgot my access code. What do I do?', `<p>On the sign-in page, choose <b>Forgot your code?</b>, or email ${OWNER_EMAIL}. You'll get a new code, and the old one stops working. Tip: if your browser saved your code, click the code box to see it.</p>`],
   ['Why don\'t my scores show up on another device?', `<p>Because they're stored only in the browser you used. Use the same device and browser to keep your history together.</p>`],
   ['How close are the practice exams to the real AP exam?', `<p>Each exam simulation uses the same number of multiple-choice questions, the same section times, the same unit weightings, and the same free-response question types as the current AP exam. The <b>Standard</b> setting matches the real exam's mix of recall, application, and multi-step data questions. <b>Challenge</b> is harder on purpose.</p><p>The AP score shown after a simulation is a rough estimate from past score distributions, not a prediction of your official score.</p>`],
@@ -15568,7 +15569,7 @@ const mailSent = mk => LS.get('ap.admin.mailsent.' + mk, {});
 const monthEn = mk => new Date(Date.UTC(+mk.slice(0, 4), +mk.slice(5) - 1, 15)).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 function codeMail(email, code, mk, site, life) {
   const m = monthEn(mk), from = MODE === 'member' && MEMBER && MEMBER.role === 'teacher' ? MEMBER.email : OWNER_EMAIL;
-  return { subject: life ? `Your ${BRAND} access code` : `Your ${BRAND} access code for ${m}`,
+  return { subject: life ? `Your ${BRAND} lifetime access code` : `Your ${BRAND} access code for ${m}`,
     body: `Hi,
 
 Here is your access code for ${BRAND}, our class practice site (AP courses plus high school and middle school science). It has practice questions by unit with instant feedback, full timed exams, definitions practice, free-response practice with scoring guides, flashcards, and equation sheets.
@@ -15578,7 +15579,7 @@ How to sign in:
     Email:        ${email}
     Access code:  ${code}${life ? ' (does not expire)' : ` (for ${m})`}
 
-Open the website, enter your email and the access code, and you're in. ${life ? "This code doesn't expire, and your browser can save it for you." : "Codes change on the 1st of each month, and I'll send you the new one each time."}
+Open the website, enter your email and the access code, and you're in. ${life ? "This code doesn't expire, and your browser can save it for you. Lifetime access is for active, contributing members of the Comma community on Reddit (r/CommaClassroom) and can be revoked if the community rules or site terms are broken." : "Codes change on the 1st of each month, and I'll send you the new one each time."}
 
 Your practice scores stay in your own browser. When I assign a unit test or an exam simulation, the results page shows you how to send your results to me${from !== OWNER_EMAIL ? ` at ${from}` : ''}.
 
