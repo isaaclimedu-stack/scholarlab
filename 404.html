@@ -411,9 +411,16 @@ details.rv-psg .psg { position: static; max-height: 360px; margin-top: 8px; }
 /* the diagram always gets the full width; the explanation sits above it */
 .dg .dg-stage { width: 100%; }
 .dg-view svg { display: block; width: 100%; height: auto; max-height: calc(100vh - 150px); min-height: 420px; margin: 0 auto; }
-#dgBox:fullscreen { background: #eaf1fb; padding: 14px; overflow: auto; align-content: start; }
-#dgBox:fullscreen .dg-side { padding-top: 10px; padding-bottom: 8px; min-height: 0; }
-#dgBox:fullscreen .dg-view svg { max-height: calc(100vh - 330px); }
+/* full screen: everything fits on one screen, nothing scrolls, so no click can move you */
+#dgBox:fullscreen { background: #eaf1fb; padding: 14px; height: 100vh; box-sizing: border-box; overflow: hidden; display: flex; flex-direction: column; }
+#dgBox:fullscreen .dg-pick { display: flex; flex: none; overflow-x: auto; margin: 0 0 10px; padding-bottom: 2px; }
+#dgBox:fullscreen .dg-pick button { flex: none; padding: 7px 12px; }
+#dgBox:fullscreen .dg-pick small { display: none; }
+#dgBox:fullscreen .dg { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
+#dgBox:fullscreen .dg-side { flex: none; width: 100%; max-width: none; height: clamp(130px, 22vh, 210px); box-sizing: border-box; overflow: auto; padding-top: 10px; padding-bottom: 8px; min-height: 0; }
+#dgBox:fullscreen .dg-stage { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+#dgBox:fullscreen .dg-view { flex: 1; min-height: 0; }
+#dgBox:fullscreen .dg-view svg { height: 100%; max-height: none; min-height: 0; }
 @media (max-width: 700px) { .dg-view svg { min-height: 0; } }
 .dg-side { position: relative; border-radius: 16px; background: linear-gradient(180deg, #ffffff, #eef4fd); border: 1.5px solid #cddcf2; padding: 16px 18px 14px 22px; color: #13294b; min-height: 110px; box-shadow: 0 4px 14px rgba(23, 58, 107, .08); }
 .dg-side::before { content: ""; position: absolute; left: 0; top: 14px; bottom: 14px; width: 6px; border-radius: 0 6px 6px 0; background: linear-gradient(180deg, #ffd23f, #f2a900); }
@@ -14380,7 +14387,16 @@ function renderDiagrams() {
     <section class="dgp-main acc-${acc(d)}"><div id="dgBox">${dgHTML(d)}</div></section>
     ${foot()}</div>`;
   $('#dgSubj').onchange = e => { if (DG.play) { clearInterval(DG.play); DG.play = null; } DG.deck = e.target.value; LS.set('ap.ui.dg.deck', DG.deck); DG.id = null; renderDiagrams(); bindNav(); };
-  const re = () => { const box = $('#dgBox'); if (!box) return; const y = window.scrollY; box.innerHTML = dgHTML(d); dgBind(d, re); window.scrollTo(0, y); };
+  const re = () => { const box = $('#dgBox'); if (!box) return;
+    /* keep every scroll position (the page, and the box itself in full screen) and the focused button exactly where they were */
+    const y = window.scrollY, x = window.scrollX, by = box.scrollTop, h = box.offsetHeight, f = document.activeElement, fk = f && box.contains(f) ? ['data-dgs', 'data-dgz', 'data-dgq', 'data-dg', 'data-dgclr', 'data-go'].map(k => f.hasAttribute(k) ? `[${k}="${f.getAttribute(k)}"]` : '').find(Boolean) : '';
+    const st0 = box.querySelector('.dg-stage'), t0 = st0 ? st0.getBoundingClientRect().top : null;
+    box.style.minHeight = h + 'px'; box.innerHTML = dgHTML(d); dgBind(d, re);
+    box.scrollTop = by; window.scrollTo(x, y);
+    /* if the explanation above got longer or shorter, nudge the page so the diagram itself does not move */
+    const st1 = box.querySelector('.dg-stage'); if (st1 && t0 !== null && !document.fullscreenElement) { const dy = st1.getBoundingClientRect().top - t0; if (Math.abs(dy) > 1 && t0 < innerHeight && t0 > -st1.offsetHeight) window.scrollTo(x, window.scrollY + dy); }
+    const keepY = window.scrollY; requestAnimationFrame(() => { box.style.minHeight = ''; box.scrollTop = by; window.scrollTo(x, keepY); });
+    if (fk) { const n = box.querySelector(fk); if (n && !n.disabled) n.focus({ preventScroll: true }); } };
   dgBind(d, re);
 }
 
