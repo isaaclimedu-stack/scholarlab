@@ -408,10 +408,13 @@ details.rv-psg .psg { position: static; max-height: 360px; margin-top: 8px; }
 /* layout: the explanation card sits above the drawing so the drawing gets the full width; side by side on very wide screens */
 .dg { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; align-items: start; }
 .dg .dg-side { order: -1; }
-@media (min-width: 1500px) { .dg { grid-template-columns: minmax(0, 2.3fr) minmax(270px, 1fr); } .dg .dg-side { order: 0; position: sticky; top: 76px; } }
-.dg:fullscreen { background: #eaf1fb; padding: 18px; overflow: auto; grid-template-columns: minmax(0, 2.6fr) minmax(280px, 1fr); }
-.dg:fullscreen .dg-side { order: 0; }
-.dg:fullscreen .dg-view svg { max-height: calc(100vh - 190px); }
+/* the diagram always gets the full width; the explanation sits above it */
+.dg .dg-stage { width: 100%; }
+.dg-view svg { display: block; width: 100%; height: auto; max-height: calc(100vh - 150px); min-height: 420px; margin: 0 auto; }
+.dg:fullscreen { background: #eaf1fb; padding: 14px; overflow: auto; align-content: start; }
+.dg:fullscreen .dg-side { padding-top: 10px; padding-bottom: 8px; min-height: 0; }
+.dg:fullscreen .dg-view svg { max-height: calc(100vh - 330px); }
+@media (max-width: 700px) { .dg-view svg { min-height: 0; } }
 .dg-side { position: relative; border-radius: 16px; background: linear-gradient(180deg, #ffffff, #eef4fd); border: 1.5px solid #cddcf2; padding: 16px 18px 14px 22px; color: #13294b; min-height: 110px; box-shadow: 0 4px 14px rgba(23, 58, 107, .08); }
 .dg-side::before { content: ""; position: absolute; left: 0; top: 14px; bottom: 14px; width: 6px; border-radius: 0 6px 6px 0; background: linear-gradient(180deg, #ffd23f, #f2a900); }
 .dg-side .eyebrow { margin: 0 0 3px; color: #b4540a; }
