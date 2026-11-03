@@ -16638,8 +16638,58 @@ setInterval(testWatch, 60000); document.addEventListener('visibilitychange', () 
 async function testSet(ut, pw, extra) {
   const cfg = await signupReady(); if (!cfg || !cfg.endpoint) return { ok: false, msg: 'Opening and closing tests works on the website (scholarlab.net).' };
   try { const tid = tidOf(ut), ck = await closeKey(pw, tid);
-    const r = await fetch(cfg.endpoint, { method: 'POST', body: JSON.stringify({ a: 'test', site: 'scholarlab', id: tid, ck, name: ut.n, course: (BY_ID[ut.t] || {}).subject || '', teacher: ut.e || '', ...extra }) });
-    return await r.json(); } catch (e) { return { ok: false, msg: 'Couldn’t reach the test service. Check your connection and try again.' }; }
+    const r = await fetch(cfg.endpoint, { method: 'POST', body: JSON.stringify({ a: 'test', site: 'scholarlab', id: tid, ck, name: ut.n, course: (BY_ID[ut.t] || {}).subject || '', teacher: ut.e || '', by: (myTk() || {}).e || '', code: (() => { const c = utCode(ut); return c.length <= 45000 ? c : ''; })(), ...extra }) });
+    const j = await r.json(); if (j && j.ok) UT_ONLINE = null; return j; } catch (e) { return { ok: false, msg: 'Couldn’t reach the test service. Check your connection and try again.' }; }
+}
+/* a signed-in teacher's own online tests, from the sign-up script's "Teacher tests" tab (any computer), and closing or reopening them */
+const myTk = () => MODE === 'member' && MEMBER && MEMBER.role === 'teacher' && MEMBER.ck ? { e: normEmail(MEMBER.email), tk: MEMBER.ck } : null;
+let UT_ONLINE = null; /* { at, d } — reused for a minute so redrawing the form doesn't ask again */
+async function myTestsLoad(force) {
+  const me = myTk(); if (!me) return null; if (!force && UT_ONLINE && UT_ONLINE.e === me.e && Date.now() - UT_ONLINE.at < 60000) return UT_ONLINE.d;
+  const cfg = await signupReady(); if (!cfg || !cfg.endpoint) return null;
+  let d; try { const ac = new AbortController(), tm = setTimeout(() => ac.abort(), 9000);
+    const r = await fetch(`${cfg.endpoint}?a=mytests&e=${encodeURIComponent(me.e)}&tk=${me.tk}`, { signal: ac.signal }); clearTimeout(tm); d = await r.json(); }
+  catch (e) { d = { ok: false, msg: 'Couldn’t reach the test service right now.' }; }
+  if (d && !d.ok && !d.auth && !d.msg) d.msg = 'Couldn’t load your online tests.';
+  UT_ONLINE = { e: me.e, at: Date.now(), d }; return d;
+}
+async function myTestSet(id, extra) {
+  const me = myTk(), cfg = await signupReady(); if (!me || !cfg || !cfg.endpoint) return { ok: false, msg: 'Sign in as a teacher on scholarlab.net to do this.' };
+  try { const r = await fetch(cfg.endpoint, { method: 'POST', body: JSON.stringify({ a: 'test', op: 'tset', site: 'scholarlab', id, email: me.e, tk: me.tk, ...extra }) }); return await r.json(); }
+  catch (e) { return { ok: false, msg: 'Couldn’t reach the test service. Check your connection and try again.' }; }
+}
+/* "Your unit tests": Open/Closed on every test; a signed-in teacher also gets the tests they opened on other computers, with Close / Reopen */
+function utMineSync(mine, redo) {
+  const wrap = $('#utMineWrap'); if (!wrap) return; const S = {}, local = new Set($$('.utmine li[data-tid]').map(li => li.dataset.tid));
+  const chip = t => t.closed ? '<span class="uo-chip closed">Closed</span>' : '<span class="uo-chip open">Open</span>';
+  const act = t => t.closed ? `<button class="linkbtn sm" data-ureo="${t.id}">Reopen</button>` : `<button class="linkbtn sm" data-uclose="${t.id}" style="color:var(--bad)">Close</button>`;
+  let online = [], note = '';
+  const paint = () => {
+    $$('.utmine li[data-tid]').forEach(li => { const t = S[li.dataset.tid]; const st = li.querySelector('.uo-st'), ac = li.querySelector('.uo-act'); if (st) st.innerHTML = t ? ' ' + chip(t) : ''; if (ac) ac.innerHTML = t && t.own ? act(t) : ''; });
+    let ul = wrap.querySelector('.utmine'); const extra = online.filter(t => !local.has(t.id)).reverse();
+    if (extra.length && !ul) { wrap.innerHTML = '<ul class="utmine"></ul>'; ul = wrap.querySelector('.utmine'); }
+    if (ul) { ul.querySelectorAll('li.uo-remote').forEach(li => li.remove());
+      ul.insertAdjacentHTML('beforeend', extra.map(t => `<li class="uo-remote" data-rid="${t.id}"><div><b>${esc(t.name || 'Unit test')}<span class="uo-st"> ${chip(S[t.id] || t)}</span></b><small>${esc(t.course)}${t.created ? ' · opened ' + fmtDate(t.created).split(',')[0] : ''} · not saved in this browser</small></div><div class="row">${t.code ? `<button class="linkbtn sm" data-uopen="${t.id}">Open</button>` : ''}<span class="uo-act">${act(S[t.id] || t)}</span></div></li>`).join('')); }
+    let n = wrap.querySelector('.uo-note'); if (!n) { wrap.insertAdjacentHTML('beforeend', '<p class="small muted uo-note" role="status" style="margin:8px 0 0"></p>'); n = wrap.querySelector('.uo-note'); } n.textContent = note;
+    bind(); };
+  const set = async (id, extra, b) => { b.disabled = true; b.textContent = 'Saving…'; const r = await myTestSet(id, extra);
+    if (r && r.ok) { S[id] = { ...S[id], ...r, own: true }; const o = online.find(t => t.id === id); if (o) Object.assign(o, r); if (UT_ONLINE && UT_ONLINE.d && UT_ONLINE.d.tests) { const u = UT_ONLINE.d.tests.find(t => t.id === id); if (u) Object.assign(u, r); }
+      note = r.closed ? 'Closed. Students can’t start this test, and anyone taking it is stopped within a minute with their answers submitted.' : 'Reopened. Students can start the test again.'; }
+    else note = (r && r.msg) || 'Couldn’t save. Try again.';
+    paint(); };
+  const bind = () => {
+    $$('#utMineWrap [data-uclose]').forEach(b => b.onclick = () => confirmBox('Close this test?', 'Students won’t be able to start it. Anyone taking it now is stopped within a minute, and their answers so far are submitted. You can reopen it any time.', 'Close test', () => set(b.dataset.uclose, { status: 'Closed' }, b)));
+    $$('#utMineWrap [data-ureo]').forEach(b => b.onclick = () => { const t = S[b.dataset.ureo] || {}; set(b.dataset.ureo, { status: 'Open', ...(t.closeAt && new Date(t.closeAt) <= new Date() ? { closeAt: '' } : {}) }, b); });
+    $$('#utMineWrap [data-uopen]').forEach(b => b.onclick = () => { const t = online.find(o => o.id === b.dataset.uopen), p = t && utParse(t.code); if (!p) { note = 'This test couldn’t be opened here.'; return paint(); }
+      utSaveMine(p.ut); redo(); const i = LS.get(UT_MINE, []).findIndex(m => (utParse(m.code) || {}).ut && tidOf(utParse(m.code).ut) === t.id); const o = i >= 0 && document.querySelector(`[data-open="${i}"]`); if (o) o.click(); });
+  };
+  const uts = mine.map(m => (utParse(m.code) || {}).ut).filter(Boolean);
+  Promise.all([uts.length ? testCheck(uts.slice(-40)) : null, myTestsLoad()]).then(([res, my]) => {
+    if (!document.body.contains(wrap)) return;
+    if (res) Object.entries(res.tests || {}).forEach(([id, t]) => { S[id] = { id, ...t }; });
+    if (my && my.ok) { online = my.tests || []; online.forEach(t => { S[t.id] = { ...t, own: true }; }); }
+    else if (my && my.msg) note = my.msg;
+    paint(); });
 }
 const fmtWhen = iso => { const d = new Date(iso); return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) + ', ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }); };
 const dtLocal = iso => { if (!iso) return ''; const d = new Date(iso), p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; };
@@ -16753,7 +16803,7 @@ function renderUtNew() {
       <div class="ut-go"><button class="btn primary big" id="utGen">${d ? 'Generate a new version' : 'Generate test'}</button><div class="err" id="utErr" role="alert"></div>${st.justMade && d ? `<p class="ut-ready" role="status">${SVG(IC.check)} <span><b>Your test is ready.</b> It’s just below this form, with the download options.</span><button class="btn sm" type="button" id="utSee">View the test ↓</button></p>` : ''}</div>
     </section>
     <section class="card"><div class="card-h sm"><h3>Your unit tests</h3><a class="more" href="#ut-check">Check results ${SVG(IC.arrow)}</a></div>
-      ${mine.length ? `<ul class="utmine">${mine.slice().reverse().map((m, i) => { const ut = (utParse(m.code) || {}).ut; return ut ? `<li data-tid="${tidOf(ut)}"><div><b>${esc(ut.n)}</b><small>${esc(BY_ID[ut.t].subject)} · ${ut.q.length} MC${ut.f.length ? ' + ' + ut.f.length + ' FRQ' : ''} · saved ${fmtDate(m.date).split(',')[0]}</small></div><div class="row"><button class="linkbtn sm" data-open="${mine.length - 1 - i}">Open</button><button class="linkbtn sm" data-del="${mine.length - 1 - i}" style="color:var(--bad)">Delete</button></div></li>` : ''; }).join('')}</ul>` : '<p class="empty">Tests you save appear here, in this browser.</p>'}
+      <div id="utMineWrap">${mine.length ? `<ul class="utmine">${mine.slice().reverse().map((m, i) => { const ut = (utParse(m.code) || {}).ut; return ut ? `<li data-tid="${tidOf(ut)}"><div><b>${esc(ut.n)}<span class="uo-st"></span></b><small>${esc(BY_ID[ut.t].subject)} · ${ut.q.length} MC${ut.f.length ? ' + ' + ut.f.length + ' FRQ' : ''} · saved ${fmtDate(m.date).split(',')[0]}</small></div><div class="row"><button class="linkbtn sm" data-open="${mine.length - 1 - i}">Open</button><span class="uo-act"></span><button class="linkbtn sm" data-del="${mine.length - 1 - i}" style="color:var(--bad)">Delete</button></div></li>` : ''; }).join('')}</ul>` : `<p class="empty">${myTk() ? 'Tests you make appear here. Online tests you opened on other computers appear here too.' : 'Tests you save appear here, in this browser.'}</p>`}</div>
     </section></div>
     ${build ? buildPanelHTML(x, st) : ''}
     ${draftHTML}
@@ -16808,9 +16858,7 @@ function renderUtNew() {
     st.draft.reg = { pw, cl: st.cl || '' }; st.justMade = true; redo(); };
   if (d) bindUtDraft(d, () => redo(true));
   /* show Open / Closed next to each saved test */
-  { const uts = mine.map(m => (utParse(m.code) || {}).ut).filter(Boolean); if (uts.length) testCheck(uts.slice(-40)).then(res => { if (!res) return;
-    $$('.utmine li[data-tid]').forEach(li => { const t = res.tests[li.dataset.tid]; const b = li.querySelector('b'); if (!b || li.querySelector('.uo-chip')) return;
-      b.insertAdjacentHTML('afterend', t && t.closed ? ' <span class="uo-chip closed">Closed</span>' : t ? ' <span class="uo-chip open">Open</span>' : ''); }); }); }
+  utMineSync(mine, redo);
   $$('[data-open]').forEach(b => b.onclick = () => { const m = LS.get(UT_MINE, [])[+b.dataset.open]; const p = utParse(m.code); if (!p) return; st.t = p.ut.t; st.u = p.ut.u; st.kind = p.ut.ex || (p.ut.c || p.ut.z == null ? 'build' : 'unit'); st.fsel = p.ut.f.slice(); st.cust = (p.ut.c || []).slice(); st.bq = st.kind === 'build' ? p.ut.q.slice() : st.bq; st.dm = p.ut.dp ? 'pick' : 'auto'; st.dsel = (p.ut.dp || []).slice(); st.dn = p.ut.dn || 0; st.dw = p.ut.dw || ''; st.draft = { ut: p.ut, saved: true }; redo(); const el = $('#utDraft'); if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 86, behavior: 'smooth' }); });
   $$('[data-del]').forEach(b => b.onclick = () => confirmBox('Delete this saved test?', 'It is removed from your list. Students who already have the link or code can still take it.', 'Delete', () => { const l = LS.get(UT_MINE, []); l.splice(+b.dataset.del, 1); LS.set(UT_MINE, l); redo(true); }));
 }
