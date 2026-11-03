@@ -1622,6 +1622,32 @@ body.acc-big #exam .qtext, body.acc-big #exam .opt, body.acc-big #exam .stem { f
 .gate-new .gn-ic { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--accent); }
 .gate-new .gn-ic svg { width: 22px; height: 22px; }
 .gate-new .btn { min-width: 112px; }
+/* ── landing / sign-in ── */
+.page.gate.gate-land { max-width: 1080px; padding-top: clamp(20px, 8vh, 80px); display: grid; grid-template-columns: minmax(0, 1fr) minmax(340px, 440px); column-gap: clamp(24px, 4vw, 56px); align-items: stretch; }
+.gl-form { align-self: start; }
+.gl-form > .gate-take, .gl-form > .take-cta { margin-bottom: 0; }
+.gl-intro { position: relative; overflow: hidden; color: #e9eef8; padding: 44px 44px 40px; border-radius: 26px; display: flex; flex-direction: column; background: linear-gradient(165deg, #1c4479 0%, #173a6b 55%, #112a52 100%); }
+.gl-intro::after { content: ""; position: absolute; right: -70px; top: -70px; width: 260px; height: 260px; border-radius: 50%; background: radial-gradient(circle, rgba(255, 210, 63, .22), rgba(255, 210, 63, 0) 70%); pointer-events: none; }
+.gl-brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 19px; color: #fff; }
+.gl-brand svg { width: 34px; height: 34px; color: #ffd23f; }
+.gl-h { margin: 34px 0 0; font-family: var(--font-display); font-weight: 800; font-size: clamp(30px, 3.4vw, 46px); line-height: 1.08; letter-spacing: -.02em; color: #fff; }
+.gl-h em { font-style: normal; color: #ffd23f; }
+.gl-lead { margin: 16px 0 0; font-size: 17px; line-height: 1.55; color: #c9d6ec; }
+.gl-art { flex: 1; display: grid; place-items: center; padding: 26px 0; min-height: 0; }
+.gl-map { width: 100%; max-width: 440px; height: auto; font-family: var(--font-display); overflow: visible; }
+.gl-pills { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.gl-pills li { display: flex; align-items: center; gap: 7px; padding: 7px 13px; border-radius: 999px; background: rgba(255, 255, 255, .09); font-size: 13.5px; font-weight: 600; color: #e6edf8; }
+.gl-pills svg { width: 15px; height: 15px; color: #ffd23f; }
+.gl-fh { margin: 0; font-family: var(--font-display); font-size: 30px; font-weight: 800; letter-spacing: -.01em; }
+.gl-form > .lead { margin: 6px 0 16px; }
+@media (max-width: 900px) {
+  .page.gate.gate-land { grid-template-columns: minmax(0, 1fr); max-width: 560px; row-gap: 20px; }
+  .gl-intro { padding: 24px 22px; border-radius: 22px; }
+  .gl-form { align-self: auto; }
+  .gl-h { margin-top: 22px; }
+  .gl-art { display: none; }
+  .gl-pills { margin-top: 18px; }
+}
 @media (max-width: 460px) { .gate-new { grid-template-columns: auto minmax(0, 1fr); } .gate-new .btn { grid-column: 1 / -1; width: 100%; } }
 .gate-help { line-height: 1.65; margin: 14px 2px 0; }
 .nowrap { white-space: nowrap; }
@@ -15798,8 +15824,32 @@ function openForgot(email0) {
 }
 function renderGate(err) {
   setAccent(null); show('hub');
-  $('#hub').innerHTML = `<div class="page gate"><div class="gate-brand">${SVG(IC.cap)}<span>${BRAND}</span></div><h1 class="display">Sign in</h1>
-    <p class="lead">Sign in with your email and access code.</p>
+  $('#hub').innerHTML = `<div class="page gate gate-land">
+    <section class="gl-intro" aria-labelledby="glH">
+      <div class="gl-brand">${SVG(IC.cap)}<span>${BRAND}</span></div>
+      <h1 class="gl-h" id="glH">Practice that shows you <em>what to study next.</em></h1>
+      <p class="gl-lead">Free practice for AP, high school, and middle school courses.</p>
+      <div class="gl-art" aria-hidden="true"><svg viewBox="0 0 460 230" class="gl-map">
+        <defs><filter id="glGlow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="7"/></filter>
+          <marker id="glAr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10z" fill="#8fa6cc"/></marker></defs>
+        <g fill="none" stroke-width="2.5" stroke-linecap="round">
+          <path d="M128,56 L160,56" stroke="#8fa6cc" marker-end="url(#glAr)"/>
+          <path d="M296,56 C340,56 378,84 386,128" stroke="#8fa6cc" marker-end="url(#glAr)"/>
+          <path d="M62,84 C62,140 96,174 136,174" stroke="#8fa6cc" marker-end="url(#glAr)"/>
+          <path d="M282,174 L312,174" stroke="#ffd23f" stroke-dasharray="5 6" marker-end="url(#glAr)"/>
+        </g>
+        ${[[0, 28, 'Unit 1', 'Mastered', 92, '#7ed3a7'], [166, 28, 'Unit 2', 'Mastered', 85, '#7ed3a7'], [140, 146, 'Unit 3', 'Almost there', 64, '#8fb8f2']].map(([x, y, t, s, p, c]) => `<g transform="translate(${x} ${y})"><rect width="${x === 140 ? 138 : 128}" height="56" rx="15" fill="rgba(255,255,255,.08)" stroke="rgba(255,255,255,.18)"/>
+          <circle cx="26" cy="28" r="13" fill="none" stroke="rgba(255,255,255,.15)" stroke-width="4"/><circle cx="26" cy="28" r="13" fill="none" stroke="${c}" stroke-width="4" stroke-linecap="round" stroke-dasharray="${(p / 100 * 81.7).toFixed(1)} 82" transform="rotate(-90 26 28)"/>
+          <text x="50" y="25" fill="#fff" font-size="14" font-weight="800">${t}</text><text x="50" y="42" fill="#b4c3dd" font-size="11.5" font-weight="600">${s}</text></g>`).join('')}
+        <g transform="translate(318 140)"><rect x="-4" y="-4" width="146" height="76" rx="18" fill="#ffd23f" opacity=".35" filter="url(#glGlow)"/>
+          <rect width="138" height="68" rx="17" fill="#ffd23f"/><text x="18" y="27" fill="#13284a" font-size="10.5" font-weight="800" letter-spacing="1.2">STUDY NEXT</text>
+          <text x="18" y="50" fill="#13284a" font-size="18" font-weight="800">Unit 4 →</text></g>
+      </svg></div>
+      <ul class="gl-pills"><li>${SVG(IC.file)}Practice tests</li><li>${SVG(IC.pen)}Free response</li><li>${SVG(IC.cards)}Flashcards</li><li>${SVG(IC.atom)}Diagrams</li></ul>
+    </section>
+    <div class="gl-form">
+    <h2 class="gl-fh">Sign in</h2>
+    <p class="lead">Use your email and access code.</p>
     ${GATE_MSG ? `<p class="notice">${esc(GATE_MSG)}</p>` : ''}
     <section class="panel"><form id="gForm" autocomplete="on" method="post" action="#">
       ${!GUEST && ACCT_EMAIL ? `<p class="small" style="margin:0">Signed in to Claude as <b>${esc(ACCT_EMAIL)}</b>. Access codes work only with the email they were issued to.</p>` : ''}
@@ -15810,7 +15860,7 @@ function renderGate(err) {
       <div class="err" id="gErr" role="alert">${err ? esc(err) : ''}</div></form></section>
     <section class="panel gate-new" data-su-box ${window.SIGNUP ? '' : 'hidden'}><span class="gn-ic" aria-hidden="true">${SVG(IC.users)}</span><div><b>New here?</b><span class="small muted">Students and teachers: sign up and we’ll email your access code.</span></div><button type="button" class="btn primary" id="suOpen" data-native="1">Sign up</button></section>
     <p class="small muted gate-help"><button class="linkbtn sm" id="gForgot">Forgot your code?</button><br>Don't have a code? <span data-su-show ${window.SIGNUP ? '' : 'hidden'}>Sign up above, or email</span><span data-su-hide ${window.SIGNUP ? 'hidden' : ''}>Ask the site owner:</span> <span class="nowrap">${OWNER_EMAIL}</span>.</p>
-    <section class="panel take-cta"><div><b>Taking a test from your teacher?</b><span class="small muted">You don’t need an account. Enter the test code.</span></div><a class="btn" href="#take">Enter a test code ${SVG(IC.arrow)}</a></section></div>`;
+    <section class="panel take-cta"><div><b>Taking a test from your teacher?</b><span class="small muted">You don’t need an account. Enter the test code.</span></div><a class="btn" href="#take">Enter a test code ${SVG(IC.arrow)}</a></section></div></div>`;
   $('#gForm').onsubmit = async e => {
     e.preventDefault(); const email = !GUEST && ACCT_EMAIL ? ACCT_EMAIL : normEmail($('#gName').value), code = $('#gCode').value;
     const fail = m => { $('#gErr').textContent = m; $('#gGo').disabled = false; };
