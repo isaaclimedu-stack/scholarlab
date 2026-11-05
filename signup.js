@@ -1,4 +1,4 @@
-/* Sign up for an access code: shared by comma-ltd.com (Comma, teachers) and scholarlab.net (Scholar Hub, students).
+/* Sign up for an access code: shared by comma-ltd.com (Comma, teachers) and scholarlab.net (Scholar Lab, students).
    Adds a "Sign up" button to the sign-in page. Requests go to the "Comma sign-ups" Google Apps Script.
    ▼ After you deploy the Apps Script, paste its Web app URL between the quotes on the next line. ▼ */
 const SIGNUP_ENDPOINT = 'https://script.google.com/macros/s/AKfycby1jWaTEgqIqPZGIKKeDXFbhmuzOPlP304fAmFJJJLSNPPYTHNWHqNY5bdJhckTxm62/exec';
@@ -12,9 +12,9 @@ const SIGNUP_ENDPOINT = 'https://script.google.com/macros/s/AKfycby1jWaTEgqIqPZG
   const T = {
     comma: { contact: 'admin@comma-ltd.com', title: 'Get your Comma access code', lead: 'Comma is free practice for teacher certification exams. Tell us who you are and we’ll email your access code.',
       extra: ['School or organization (optional)', 'suOrg', 'e.g. Lincoln High School'], opt: 'Email me about new Comma products, practice tests, and updates. Optional. You can unsubscribe anytime.' },
-    scholarlab: { contact: 'admin@scholarlab.net', title: 'Sign up for Scholar Hub', lead: 'Free practice for AP, high school, and middle school courses. Tell us who you are and we’ll email your access code.',
+    scholarlab: { contact: 'admin@scholarlab.net', title: 'Sign up for Scholar Lab', lead: 'Free practice for AP, high school, and middle school courses. Tell us who you are and we’ll email your access code.',
       extra: ['Class code (if your teacher gave you one)', 'suJoin', 'e.g. BIO-P2'], extra2: ['Your teacher’s email (optional)', 'suTeacher', 'teacher@school.org'],
-      opt: 'Email me news about new products from Comma, the team behind Scholar Hub. Optional. If you’re under 14, ask a parent first. You can unsubscribe anytime.' },
+      opt: 'Email me news about new products from Comma, the team behind Scholar Lab. Optional. If you’re under 14, ask a parent first. You can unsubscribe anytime.' },
   }[SITE];
   const css = `.su-cta{display:flex;flex-wrap:wrap;align-items:center;gap:10px 12px;margin:16px 0 14px;padding:13px 14px;border:1px dashed var(--line,#ccc);border-radius:10px;font-size:13.5px;line-height:1.45;color:var(--ink,#111)}
 .su-cta .su-t{flex:1 1 200px;min-width:0}.su-cta .su-t b{font-weight:700}
@@ -83,7 +83,7 @@ const SIGNUP_ENDPOINT = 'https://script.google.com/macros/s/AKfycby1jWaTEgqIqPZG
   }
   /* put the Sign up button on the sign-in page whenever it appears */
   const place = () => {
-    /* a site that has its own New here? card (Scholar Hub): just switch it on and connect its button */
+    /* a site that has its own New here? card (Scholar Lab): just switch it on and connect its button */
     const nat = document.querySelector('#suOpen[data-native]');
     if (nat) { window.SIGNUP = { endpoint: SIGNUP_ENDPOINT, site: SITE }; if (!nat.dataset.bound) { nat.dataset.bound = '1'; const b = nat.closest('[data-su-box]'); if (b) b.hidden = false;
       document.querySelectorAll('[data-su-show]').forEach(e => { e.hidden = false; }); document.querySelectorAll('[data-su-hide]').forEach(e => { e.hidden = true; }); } return; }

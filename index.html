@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="description" content="Free AP Biology, Chemistry, and Physics practice: unit practice with instant feedback, full timed exams, free-response scoring guides, and unit tests."><title>Scholar Hub</title>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="description" content="Free AP Biology, Chemistry, and Physics practice: unit practice with instant feedback, full timed exams, free-response scoring guides, and unit tests."><title>Scholar Lab</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%2313284a'/%3E%3Cpath d='M3.5 10l8.5-4.2 8.5 4.2-8.5 4.2z' fill='%23fff'/%3E%3Cpath d='M7 11.8v3.6c2.8 2.2 7.2 2.2 10 0v-3.6' fill='none' stroke='%23fff' stroke-width='1.6'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -656,7 +656,7 @@ details.rv-psg .psg { position: static; max-height: 360px; margin-top: 8px; }
 /* multiple-select questions: the instruction stands out in the question */
 .pick-n { display: inline-block; margin-left: 6px; padding: 1px 9px; border-radius: 7px; background: var(--accent-soft); color: var(--ink); border: 1.5px solid var(--accent); font-weight: 800; font-size: .92em; white-space: nowrap; }
 
-/* Scholar Hub: a calm study dashboard. Navy sidebar, white cards on a cool gray-blue page,
+/* Scholar Lab: a calm study dashboard. Navy sidebar, white cards on a cool gray-blue page,
    one color per subject (Biology green, Chemistry indigo, Physics orange), navy for primary actions. */
 :root {
   --paper: #f3f6fb; --surface: #ffffff; --sunk: #edf1f7; --line: #e2e8f1; --rule: #cdd6e3; --ink: #14213d; --muted: #5d6a84;
@@ -1757,7 +1757,7 @@ body.acc-big #exam .qtext, body.acc-big #exam .opt, body.acc-big #exam .stem { f
 </style>
 </head><body>
 <div id="app">
-  <div id="hub"><div class="page"><p class="muted">Loading Scholar Hub…</p></div></div>
+  <div id="hub"><div class="page"><p class="muted">Loading Scholar Lab…</p></div></div>
   <div id="exam" hidden></div>
   <div id="results" hidden></div>
   <div id="modal-root"></div>
@@ -13457,7 +13457,7 @@ const courseChips = (attr, cur, filt) => BANDS.map(b => { const xs = TESTS.filte
 const courseOpts = (cur, filt) => BANDS.map(b => { const xs = TESTS.filter(t => t.band === b.k && (!filt || filt(t))); return xs.length ? `<optgroup label="${esc(b.name)}">${xs.map(t => `<option value="${t.id}" ${t.id === cur ? 'selected' : ''}>${esc(t.subject)}</option>`).join('')}</optgroup>` : ''; }).join('');
 /* Signed-out visitors can't reach the site's saved data, so their access is checked in the page itself:
    each person's code is made from their email, SITE_KEY and the current month (Korea time), so codes change on the 1st of every month. */
-const SITE_KEY = 'ap-cd21e4f1047665995d53daddf87f58c7', BRAND = 'Scholar Hub';
+const SITE_KEY = 'ap-cd21e4f1047665995d53daddf87f58c7', BRAND = 'Scholar Lab';
 const EMBED_REVOKED = [];
 /* standalone (no-backend) copy: per-person code version / lifetime flags, keyed by email hash. Updated when the site files are rebuilt. */
 const EMBED_ACCESS = /*ACCESS_SNAPSHOT*/{"lv":{},"off":[]}/*END_ACCESS_SNAPSHOT*/;
@@ -13904,7 +13904,7 @@ function testSummary(x) {
 }
 const DISCLAIMER = 'AP® is a trademark registered by the College Board, and NGSS is a registered trademark of WestEd; neither is affiliated with, or endorses, this site. Every question here is original.';
 function foot() {
-  return `<footer class="foot"><div><p class="foot-brand">Scholar Hub</p><p>${esc(DISCLAIMER)}</p><p>Scores and AP score estimates are practice estimates, not official scores. © ${new Date().getFullYear()} ${BRAND}.</p></div>
+  return `<footer class="foot"><div><p class="foot-brand">Scholar Lab</p><p>${esc(DISCLAIMER)}</p><p>Scores and AP score estimates are practice estimates, not official scores. © ${new Date().getFullYear()} ${BRAND}.</p></div>
     <nav aria-label="Footer"><a href="#about">About</a><a href="#faq">FAQ</a><a href="#formulas">Formulas &amp; Reference</a><a href="#device" class="foot-ta">${SVG(IC.lock)}Teacher access</a></nav></footer>`;
 }
 /* The sidebar is rebuilt on every page change. Keep its scroll position, so clicking a link low in the menu
@@ -15796,7 +15796,7 @@ async function syncProgress() {
   catch (e) { if (isRejected(e)) { WRITE_OK = false; if (!inExam && $('#hub') && !$('#hub').hidden) route(); } }
 }
 
-function renderLoading() { setAccent(null); show('hub'); $('#hub').innerHTML = `<div class="page"><p class="muted">Loading Scholar Hub…</p></div>`; }
+function renderLoading() { setAccent(null); show('hub'); $('#hub').innerHTML = `<div class="page"><p class="muted">Loading Scholar Lab…</p></div>`; }
 function renderBlocked() {
   setAccent(null); show('hub');
   const M = {
@@ -15813,7 +15813,7 @@ function renderBlocked() {
 function saveCred(email, code) { try { if (window.PasswordCredential && navigator.credentials) navigator.credentials.store(new PasswordCredential({ id: email, password: code, name: email })).catch(() => {}); } catch (e) {} }
 function openForgot(email0) {
   const email = normEmail(email0 || '');
-  const body = `Hello, I forgot my Scholar Hub access code. Could you please reset it and send me a new one?\n\nEmail I use to sign in: ${email || '(your email)'}\n`;
+  const body = `Hello, I forgot my Scholar Lab access code. Could you please reset it and send me a new one?\n\nEmail I use to sign in: ${email || '(your email)'}\n`;
   $('#modal-root').innerHTML = `<div class="scrim" id="scrim"><div class="modal sm" role="dialog" aria-modal="true" aria-labelledby="fgT"><div class="mhead"><h3 id="fgT">Forgot your code?</h3><button class="btn" id="fgClose">Close</button></div>
     <div class="mbody rep-form"><p style="margin:0">Codes are made for each person, so the site owner resets it for you: your old code stops working and you get a new one by email.</p>
       <div class="row" style="align-items:center"><span class="linkline" style="flex:1">${OWNER_EMAIL}</span><button class="btn" id="fgCopy">Copy email</button></div>
@@ -16849,7 +16849,7 @@ function renderUtNew() {
           <p class="small">${SVG(IC.lock)} <b>Don’t show this password to students.</b> If a student sees it, change it here; tests you make after that use the new password. The default is <b>ad31</b>.</p></div>
         <label>Test security (online)<select id="utL">${LK_MODES.map(([k, l]) => `<option value="${k}" ${st.lk === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
         <p class="small muted" style="margin:-4px 0 0">Lockdown hides the questions and records it every time a student leaves the test, and blocks copy/paste. A web page can’t block a phone or a second device, so supervise the room too. Safe Exam Browser is the strongest option on Windows, Mac, and iPad; on school Chromebooks, IT can turn off Gemini in the Google Admin console.</p>
-        <label class="chk"><input type="checkbox" id="utO" ${st.open ? 'checked' : ''}> <span>Students can take this test without a Scholar Hub account (with the short test code or link)</span></label></section>`; })()}
+        <label class="chk"><input type="checkbox" id="utO" ${st.open ? 'checked' : ''}> <span>Students can take this test without a Scholar Lab account (with the short test code or link)</span></label></section>`; })()}
       <div class="ut-go"><button class="btn primary big" id="utGen">${d ? 'Generate a new version' : 'Generate test'}</button><div class="err" id="utErr" role="alert"></div>${st.justMade && d ? `<p class="ut-ready" role="status">${SVG(IC.check)} <span><b>Your test is ready.</b> It’s just below this form, with the download options.</span><button class="btn sm" type="button" id="utSee">View the test ↓</button></p>` : ''}</div>
     </section>
     <section class="card"><div class="card-h sm"><h3>Your unit tests</h3><a class="more" href="#ut-check">Check results ${SVG(IC.arrow)}</a></div>
@@ -17801,7 +17801,7 @@ function dfListHTML(x, units) {
   return `<div class="pp">${dfHead(x, units, 'Definitions study list', false)}${units.map(k => `<p class="df-unit">Unit ${esc(k)}: ${esc(x.CAT[k].name)}</p><table class="df-st"><tbody>${((DEF_DB[x.id] || {})[k] || []).map(([t, d]) => `<tr><td>${esc(t)}</td><td>${esc(d)}</td></tr>`).join('')}</tbody></table>`).join('')}</div>`;
 }
 
-/* ── test-only entry: students take a teacher's test with a short code or link, without a Scholar Hub account ── */
+/* ── test-only entry: students take a teacher's test with a short code or link, without a Scholar Lab account ── */
 let TK_PREFILL = '';
 function renderTake(err, val) {
   setAccent(null); show('hub'); if (!val && TK_PREFILL) { val = TK_PREFILL; TK_PREFILL = ''; }
@@ -17815,7 +17815,7 @@ function renderTake(err, val) {
       <label>Test code<input id="tkIn" class="tk-in" maxlength="40000" autocomplete="off" value="${esc(val || '')}" placeholder="XXXX-XXXX-XXXX-XXX" spellcheck="false" autocapitalize="characters"></label>
       <button class="btn primary big" type="submit">Open test</button><div class="err" id="tkErr" role="alert">${err ? esc(err) : ''}</div></form></section>
     ${res.length ? `<p class="small"><a href="#unit-tests">Your submitted tests on this device (${res.length})</a></p>` : ''}
-    ${MODE === 'gate' ? `<p class="small muted">Have a Scholar Hub account? <a href="#home">Sign in</a> to practice, see your history, and more.</p>` : ''}
+    ${MODE === 'gate' ? `<p class="small muted">Have a Scholar Lab account? <a href="#home">Sign in</a> to practice, see your history, and more.</p>` : ''}
     <p class="small muted take-ta"><a href="#device">Teacher access</a></p></div>`;
   $('#tkF').onsubmit = e => { e.preventDefault(); const v = $('#tkIn').value.trim(), nm = $('#tkName').value.trim().replace(/\s+/g, ' '), em = normEmail($('#tkMail').value);
     const bad = (m, el) => { $('#tkErr').textContent = m; $(el).focus(); };
@@ -17826,7 +17826,7 @@ function renderTake(err, val) {
     LS.set(`ap.${PID}.ut.name`, nm); LS.set('ap.testonly.email', em); LS.set(`ap.${PID}.teacher`, { e: to, r: '' });
     const sc = utShortParse(v); if (sc && sc.stale) return renderTake('This code is from an older version of the question bank. Ask your teacher for the test link instead.', v);
     const p = utParse(v); if (!p) return renderTake('That code doesn’t look right. Check each letter and number and try again.', v);
-    if (MODE === 'gate' && !p.ut.o) return renderTake('This test needs you to sign in first. Sign in with your Scholar Hub account, or ask your teacher for a code that works without one.', v);
+    if (MODE === 'gate' && !p.ut.o) return renderTake('This test needs you to sign in first. Sign in with your Scholar Lab account, or ask your teacher for a code that works without one.', v);
     go('ut-' + p.code); };
   formFix('#tkF'); (!$('#tkName').value ? $('#tkName') : !$('#tkMail').value ? $('#tkMail') : !$('#tkTo').value ? $('#tkTo') : $('#tkIn')).focus();
   if ($('#tkRes')) $('#tkRes').onclick = () => { T = cur; X = BY_ID[T.testId]; enterExam(); };
@@ -17836,7 +17836,7 @@ function renderTestOnly(h) {
   if (h === 'device') return renderDevice();
   if (/^take-/.test(h)) { const v = h.slice(5), sc = utShortParse(v); if (sc && sc.ut) { ROUTE = 'ut-' + sc.code; return renderUtIntro(sc.code); } return renderTake(sc && sc.stale ? 'This code is from an older version of the question bank. Ask your teacher for the test link instead.' : 'That test code doesn’t look right. Check it and try again.', v); }
   if (/^ut-/.test(h)) { const p = utParse(h.slice(3)); if (!p) return renderTake('This test link is incomplete or damaged. Ask your teacher to send it again.');
-    if (MODE === 'gate' && !p.ut.o) return renderTake('This test needs you to sign in first. Sign in with your Scholar Hub account, or ask your teacher for a code that works without one.');
+    if (MODE === 'gate' && !p.ut.o) return renderTake('This test needs you to sign in first. Sign in with your Scholar Lab account, or ask your teacher for a code that works without one.');
     return renderUtIntro(h.slice(3)); }
   return renderUnitTests();
 }
@@ -17909,7 +17909,7 @@ async function renderDevice(err) {
    signup.js (loaded only on scholarlab.net) connects the sign-up service and sets window.SIGNUP = { endpoint, site }.
    The form itself is drawn here, in the site's own design. Students and teachers both sign up here; teacher
    requests always wait for the owner's approval in the sign-up script. */
-const SU_OPT = { student: 'Email me news about new products from Comma, the team behind Scholar Hub. Optional. If you’re under 14, ask a parent first. You can unsubscribe anytime.',
+const SU_OPT = { student: 'Email me news about new products from Comma, the team behind Scholar Lab. Optional. If you’re under 14, ask a parent first. You can unsubscribe anytime.',
   teacher: 'Email me about new Comma products, teaching resources, and updates. Optional. You can unsubscribe anytime.' };
 let SU = { role: 'student' };
 function openSignup() {
@@ -18542,13 +18542,13 @@ function gbBind(db, c) {
       const k = { id: gbId(), name, course: $('#gbNCourse').value, created: new Date().toISOString(), students: gbParseStudents($('#gbNStu').value), asg: [], g: {}, zero: true };
       LS.set('ap.gb.lastcourse', k.course); db.classes.push(k); db.cur = k.id; save(); GBU.tab = k.students.length ? 'asg' : 'students'; GBU.msg = `Created ${name}.`; gbRedo(false); };
     if ($('#gbNCancel')) $('#gbNCancel').onclick = () => { GBU.tab = 'grades'; gbRedo(false); }; }
-  const backup = (cls, nm) => saveFile(fileSafe('scholar-hub-' + nm + '-' + new Date().toISOString().slice(0, 10)) + '.json', JSON.stringify({ kind: 'educator-hub-gradebook', v: 1, saved: new Date().toISOString(), classes: cls }, null, 1), 'application/json');
+  const backup = (cls, nm) => saveFile(fileSafe('scholar-lab-' + nm + '-' + new Date().toISOString().slice(0, 10)) + '.json', JSON.stringify({ kind: 'educator-hub-gradebook', v: 1, saved: new Date().toISOString(), classes: cls }, null, 1), 'application/json');
   if ($('#gbBackup')) $('#gbBackup').onclick = () => backup([c], c.name);
   if ($('#gbBackAll')) $('#gbBackAll').onclick = () => backup(db.classes, 'gradebook');
   if ($('#gbCsv')) $('#gbCsv').onclick = () => saveFile(fileSafe(c.name + ' grades') + '.csv', gbCsv(c), 'text/csv');
   if ($('#gbRestore')) $('#gbRestore').onchange = e => { const f = e.target.files[0]; if (!f) return; const rd = new FileReader(); rd.onload = () => { try { const d = JSON.parse(rd.result); if (!d || d.kind !== 'educator-hub-gradebook' || !Array.isArray(d.classes)) throw 0;
       confirmBox('Restore this backup?', `It has ${d.classes.length} class${d.classes.length === 1 ? '' : 'es'}. Classes with the same name and ID are replaced; others are added.`, 'Restore', () => { d.classes.forEach(k => { const i = db.classes.findIndex(o => o.id === k.id); if (i >= 0) db.classes[i] = k; else db.classes.push(k); }); db.cur = d.classes[0] && d.classes[0].id; save(); GBU.msg = 'Backup restored.'; gbRedo(false); }); }
-    catch (err) { GBU.msg = 'That file isn’t a Scholar Hub gradebook backup.'; gbRedo(); } }; rd.readAsText(f); };
+    catch (err) { GBU.msg = 'That file isn’t a Scholar Lab gradebook backup.'; gbRedo(); } }; rd.readAsText(f); };
   if ($('#gbEndYear')) $('#gbEndYear').onclick = () => confirmBox('Delete all classes?', 'This removes every class, student, and grade from this browser. Download a backup first if you might need them. This can’t be undone.', 'Delete everything', () => { db.classes = []; db.cur = null; save(); GBU = { ...GBU, tab: 'grades', sid: null, aid: null }; gbRedo(false); });
   if (!c) return;
   $$('[data-gbenter]').forEach(b => b.onclick = () => { GBU.tab = 'enter'; GBU.aid = b.dataset.gbenter; gbRedo(false); });
