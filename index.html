@@ -18083,7 +18083,7 @@ async function devScan(pw) {
     if (e.kind === 'ut' && r.ut) out.push({ kind: 'ut', key: null, r, ut: r.ut, name: r.name, title: r.ut.n, date: r.date, score: `${r.correct}/${r.n} MC`, sent: r.sent, gone: 1 });
     else if (e.kind === 'ex' && r.assign && BY_ID[e.xid]) out.push({ kind: 'ex', key: null, r, x: BY_ID[e.xid], ut: r.assign.ut, name: r.studentName, title: r.assign.ut.n, date: r.date, score: `${r.correct}/${r.n} MC`, sent: r.sent, gone: 1 }); }
   const mine = []; for (const o of out) if (await keyOK(o.ut, pw)) mine.push(o);
-  let ok = mine.length > 0 || String(pw).trim().toLowerCase() === LK_DEFAULT;
+  let ok = mine.length > 0 || [String(pw), koKeys(pw)].some(p => p.trim().toLowerCase() === LK_DEFAULT);
   if (!ok) for (const u of LS.get('ap.dev.keys', [])) if (await keyOK(u, pw)) { ok = true; break; }
   return { list: mine.sort((a, b) => (a.date || '') < (b.date || '') ? 1 : -1), resets: ok ? LS.get(VAULT, []).filter(e => e.kind === 'reset').reverse() : [] };
 }
@@ -18107,7 +18107,7 @@ async function renderDevice(err) {
         <div class="dev-tw"><div class="dev-tw"><table class="dev-t"><thead><tr><th>Course</th><th>Cleared</th><th>Recent results</th></tr></thead><tbody>${e.rows.map(r => `<tr><td>${esc((BY_ID[r.t] || {}).subject || r.t)}</td><td>${r.n} (${r.ex} test${r.ex === 1 ? '' : 's'}, ${r.p} practice)</td><td>${r.last.slice().reverse().map(h => `<span class="dev-pill" title="${esc(h.ti)}">${h.d ? esc(fmtDate(h.d)) + ': ' : ''}${h.pct}%${h.a ? ' (assigned)' : h.pr ? ' (practice)' : ''}</span>`).join(' ')}</td></tr>`).join('')}</tbody></table></div></section>`).join('')}</div>` : ''}
     <p class="small" id="devMsg" role="status"></p>
     <p class="small muted">Paste the email (or the copied results) into Check Results to verify the score, score written answers, and add it to your gradebook.</p></div>`;
-  const mail = async o => { const to = normEmail($('#devTo').value); LS.set('ap.dev.to', to); return o.kind === 'ut' ? { ...(await utMail({ ...o.r, to })), to } : { ...(await examMail(o.r, o.x, to)), to }; };
+  const mail = async o => { const to = normEmail($('#devTo').value); LS.set('ap.dev.to', to); const m = o.kind === 'ut' ? await utMail({ ...o.r, to }) : await examMail(o.r, o.x, to); return { ...m, body: m.tbody || m.body, to }; };
   $('#devLock').onclick = () => { DEV = { pw: null, list: null }; renderDevice(); bindNav(); };
   const need = () => { if (!isEmail(normEmail($('#devTo').value))) { $('#devMsg').textContent = 'Enter the email address to send results to.'; $('#devTo').focus(); return false; } return true; };
   $$('[data-devgm]').forEach(b => b.onclick = async () => { if (!need()) return; const m = await mail(DEV.list[+b.dataset.devgm]); window.open(gmailHref(m.to, m), '_blank', 'noopener'); });
@@ -18313,18 +18313,55 @@ const lkModeOf = v => +v === 4 ? { m: 1, k: 1 } : +v ? { m: +v } : null;
 const lkModeVal = lk => lk ? (lk.k ? '4' : String(lk.m || 0)) : '0';
 /* teacher password (unlock + accommodations + saved results): only a slow hash of it travels in the test code */
 const LK_DEFAULT = 'ad31';
+/* PBKDF2-HMAC-SHA256 in plain JavaScript, for pages opened without https (the browser's crypto.subtle only exists on
+   https pages, so before this the teacher password could never match there). Gives the same result as crypto.subtle. */
+const PB_K = new Uint32Array([0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2]);
+const PB_IV = [0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+function pbBlock(H, W) { for (let t = 16; t < 64; t++) { const a = W[t - 15], b = W[t - 2]; W[t] = (((a >>> 7 | a << 25) ^ (a >>> 18 | a << 14) ^ (a >>> 3)) + W[t - 16] + ((b >>> 17 | b << 15) ^ (b >>> 19 | b << 13) ^ (b >>> 10)) + W[t - 7]) | 0; }
+  let a = H[0], b = H[1], c = H[2], d = H[3], e = H[4], f = H[5], g = H[6], h = H[7];
+  for (let t = 0; t < 64; t++) { const t1 = (h + ((e >>> 6 | e << 26) ^ (e >>> 11 | e << 21) ^ (e >>> 25 | e << 7)) + ((e & f) ^ (~e & g)) + PB_K[t] + W[t]) | 0, t2 = (((a >>> 2 | a << 30) ^ (a >>> 13 | a << 19) ^ (a >>> 22 | a << 10)) + ((a & b) ^ (a & c) ^ (b & c))) | 0;
+    h = g; g = f; f = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0; }
+  H[0] = (H[0] + a) | 0; H[1] = (H[1] + b) | 0; H[2] = (H[2] + c) | 0; H[3] = (H[3] + d) | 0; H[4] = (H[4] + e) | 0; H[5] = (H[5] + f) | 0; H[6] = (H[6] + g) | 0; H[7] = (H[7] + h) | 0; }
+/* hash `msg` continuing from state H, where `pre` bytes were already hashed */
+function pbHash(H0, msg, pre) { const H = Int32Array.from(H0), n = msg.length, tot = pre + n, L = Math.ceil((n + 9) / 64) * 64, B = new Uint8Array(L); B.set(msg); B[n] = 0x80;
+  const bits = tot * 8; B[L - 4] = bits >>> 24; B[L - 3] = bits >>> 16; B[L - 2] = bits >>> 8; B[L - 1] = bits; B[L - 5] = Math.floor(bits / 2 ** 32);
+  const W = new Int32Array(64); for (let o = 0; o < L; o += 64) { for (let i = 0; i < 16; i++) W[i] = B[o + i * 4] << 24 | B[o + i * 4 + 1] << 16 | B[o + i * 4 + 2] << 8 | B[o + i * 4 + 3]; pbBlock(H, W); } return H; }
+function pbkdf2js(pass, salt, iter, nBytes) {
+  let key = pass; if (key.length > 64) { const h = pbHash(PB_IV, key, 0); key = new Uint8Array(32); h.forEach((v, i) => { key[i * 4] = v >>> 24; key[i * 4 + 1] = v >>> 16; key[i * 4 + 2] = v >>> 8; key[i * 4 + 3] = v; }); }
+  const ip = new Uint8Array(64).fill(0x36), op = new Uint8Array(64).fill(0x5c); key.forEach((b, i) => { ip[i] ^= b; op[i] ^= b; });
+  const toW = u => { const W = new Int32Array(64); for (let i = 0; i < 16; i++) W[i] = u[i * 4] << 24 | u[i * 4 + 1] << 16 | u[i * 4 + 2] << 8 | u[i * 4 + 3]; return W; };
+  const HI = Int32Array.from(PB_IV), HO = Int32Array.from(PB_IV); pbBlock(HI, toW(ip)); pbBlock(HO, toW(op));
+  const s1 = new Uint8Array(salt.length + 4); s1.set(salt); s1[salt.length + 3] = 1;
+  let u = pbHash(HO, (() => { const h = pbHash(HI, s1, 64), b = new Uint8Array(32); h.forEach((v, i) => { b[i * 4] = v >>> 24; b[i * 4 + 1] = v >>> 16; b[i * 4 + 2] = v >>> 8; b[i * 4 + 3] = v; }); return b; })(), 64);
+  const out = Int32Array.from(u), W = new Int32Array(64), H = new Int32Array(8);
+  for (let j = 1; j < iter; j++) { /* one 32-byte message through HMAC = two single-block compressions */
+    H.set(HI); W.fill(0); W.set(u); W[8] = 0x80000000; W[15] = 768; pbBlock(H, W);
+    const v = Int32Array.from(H); H.set(HO); W.fill(0); W.set(v); W[8] = 0x80000000; W[15] = 768; pbBlock(H, W);
+    u = Int32Array.from(H); for (let i = 0; i < 8; i++) out[i] ^= u[i]; }
+  const res = new Uint8Array(32); out.forEach((v, i) => { res[i * 4] = v >>> 24; res[i * 4 + 1] = v >>> 16; res[i * 4 + 2] = v >>> 8; res[i * 4 + 3] = v; }); return res.slice(0, nBytes);
+}
+async function pbkdf2(pw, salt, iter, nBits) {
+  const enc = new TextEncoder(), P = enc.encode(String(pw).trim().toLowerCase()), S = enc.encode(salt);
+  try { if (window.crypto && crypto.subtle) { const key = await crypto.subtle.importKey('raw', P, 'PBKDF2', false, ['deriveBits']); return new Uint8Array(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: S, iterations: iter }, key, nBits)); } } catch (e) {}
+  return pbkdf2js(P, S, iter, nBits / 8);
+}
 async function keyHash(pw, salt) {
-  const enc = new TextEncoder(), key = await crypto.subtle.importKey('raw', enc.encode(String(pw).trim().toLowerCase()), 'PBKDF2', false, ['deriveBits']);
-  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: enc.encode('eh-key|' + salt), iterations: 120000 }, key, 32);
-  return [...new Uint8Array(bits)].slice(0, 3).map(b => b.toString(16).padStart(2, '0')).join('');
+  const bits = await pbkdf2(pw, 'eh-key|' + salt, 120000, 32);
+  return [...bits].slice(0, 3).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 /* a second slow hash of the teacher password, used only to close or reopen a test online (its fingerprint is kept by the sign-up script) */
 async function closeKey(pw, tid) {
-  const enc = new TextEncoder(), key = await crypto.subtle.importKey('raw', enc.encode(String(pw).trim().toLowerCase()), 'PBKDF2', false, ['deriveBits']);
-  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: enc.encode('eh-close|' + tid), iterations: 120000 }, key, 256);
-  return [...new Uint8Array(bits)].map(b => b.toString(16).padStart(2, '0')).join('');
+  const bits = await pbkdf2(pw, 'eh-close|' + tid, 120000, 256);
+  return [...bits].map(b => b.toString(16).padStart(2, '0')).join('');
 }
-async function keyOK(ut, pw) { if (!ut) return false; if (!ut.kh) return String(pw).trim().toLowerCase() === LK_DEFAULT; try { return (await keyHash(pw, String(ut.s))) === ut.kh; } catch (e) { return false; } }
+/* a password typed while the keyboard is in Korean mode (ㅁㅇ31 for ad31): turn it back into the English keys pressed */
+const KO_L = 'r R s e E f a q Q t T d w W c z x v g'.split(' '), KO_V = 'k o i O j p u P h hk ho hl y n nj np nl b m ml l'.split(' '),
+  KO_T = ' r R rt s sw sg e f fr fa fq ft fx fv fg a q qt t T d w c z x v g'.split(' '), KO_C = 'r R rt s sw sg e E f fr fa fq ft fx fv fg a q Q qt t T d w W c z x v g'.split(' ');
+const koKeys = str => [...String(str)].map(ch => { const c = ch.charCodeAt(0);
+  if (c >= 0xAC00 && c <= 0xD7A3) { const n = c - 0xAC00; return KO_L[Math.floor(n / 588)] + KO_V[Math.floor(n % 588 / 28)] + (n % 28 ? KO_T[n % 28] : ''); }
+  if (c >= 0x3131 && c <= 0x314E) return KO_C[c - 0x3131]; if (c >= 0x314F && c <= 0x3163) return KO_V[c - 0x314F]; return ch; }).join('');
+async function keyOK(ut, pw) { if (!ut) return false; const tries = [...new Set([String(pw), koKeys(pw)])];
+  for (const p of tries) { if (!ut.kh) { if (p.trim().toLowerCase() === LK_DEFAULT) return true; continue; } try { if ((await keyHash(p, String(ut.s))) === ut.kh) return true; } catch (e) {} } return false; }
 const teacherPw = () => LS.get('ap.lk.pw', LK_DEFAULT) || LK_DEFAULT;
 const isSEB = () => /\bSEB\b/i.test(navigator.userAgent || '');
 /* tablets and phones (iPadOS reports itself as a Mac, so check for touch too): full screen is unreliable there (the on-screen
@@ -18352,6 +18389,7 @@ function lkStart() {
   const note = (type, msg) => { L.ev.push({ t: T.spent || 0, type }); if (L.ev.length > 40) L.ev.shift(); save(); if (msg) lkToast(msg); };
   const violate = (type, label) => {
     if (L.off || L.locked) return;
+    if (Date.now() < (L.calm || 0)) return; /* the teacher just unlocked or closed accommodations: the screen returning to full screen or a browser pop-up isn't the student leaving */
     const now = Date.now(); if (now - lastV < 1500) return; lastV = now;
     L.log.n++; if (type === 'away') L.log.away++; if (type === 'fs') L.log.fsx++; if (type === 'rs') L.log.rs++;
     note(type);
@@ -18420,7 +18458,7 @@ function lkKeyOverlay(msg) {
   const f = ov.querySelector('#lkKeyF'), inp = noSave(ov.querySelector('#lkKey')), err = ov.querySelector('#lkErr'); setTimeout(() => inp.focus(), 50);
   f.onsubmit = async e => { e.preventDefault(); if (L.wait && Date.now() < L.wait) { err.textContent = `Too many tries. Wait ${Math.ceil((L.wait - Date.now()) / 1000)} seconds.`; return; }
     err.textContent = 'Checking…'; const ok = await keyOK(testUt(), pwOf(inp));
-    if (!ok) { L.log.bad++; L.tries = (L.tries || 0) + 1; if (L.tries >= 5) { L.wait = Date.now() + 30000; L.tries = 0; } save(); err.textContent = 'That password is not right. Ask your teacher.'; pwClear(inp); inp.focus(); return; }
+    if (!ok) { L.log.bad++; L.tries = (L.tries || 0) + 1; if (L.tries >= 5) { L.wait = Date.now() + 30000; L.tries = 0; } save(); err.textContent = 'That password doesn’t match this test. Use the teacher password that was set when this test was made (capital letters don’t matter).'; pwClear(inp); inp.focus(); return; }
     L.locked = false; L.log.unl++; L.tries = 0; L.calm = Date.now() + 4000; pwClear(inp); save(); lkHideOverlay(); if (L.fs) lkFull(); lkToast('Unlocked by your teacher. The test continues.'); };
   formFix(f);
 }
