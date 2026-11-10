@@ -14619,7 +14619,7 @@ const DG_DEFS = `<linearGradient id="dgCard" x1="0" y1="0" x2="0" y2="1"><stop o
 function dgMapSVG(d) {
   const S = d.spread || 1.3, W = (d.w || 900) * S, H = (d.h || 560) * S;
   /* a node is a card: a coloured header strip (the first line, e.g. "Unit 3") over a light body (the rest) */
-  const box = (n, i) => { const lines = n.t.split('\n'), isU = lines.length > 1 && /^Unit\b/.test(lines[0]), head = isU ? lines[0] : '', body = isU ? lines.slice(1) : lines, w = n.w || Math.max(140, Math.max(...lines.map(l => l.length)) * 8.8 + 34), h = (head ? 30 : 0) + 18 + body.length * 20, c = n.c || DG_PAL[i % DG_PAL.length]; return { ...n, x: n.x * S, y: n.y * S, lines, head, body, w, h, c }; };
+  const box = (n, i) => { const lines = n.t.split('\n'), isU = lines.length > 1 && (d.eq || /^Unit\b/.test(lines[0])), head = isU ? lines[0] : '', body = isU ? lines.slice(1) : lines, w = n.w || Math.max(140, Math.max(...body.map(l => l.length)) * 8.8 + 34, head.length * 9.6 + 34), h = (head ? 30 : 0) + 18 + body.length * 20, c = n.c || DG_PAL[i % DG_PAL.length]; return { ...n, x: n.x * S, y: n.y * S, lines, head, body, w, h, c }; };
   const N = {}; d.nodes.forEach((n, i) => { N[n.id] = box(n, i); });
   const edgePt = (a, b) => { const dx = b.x - a.x, dy = b.y - a.y, sx = (a.w / 2 + 4) / Math.abs(dx || 1e-6), sy = (a.h / 2 + 4) / Math.abs(dy || 1e-6), s = Math.min(sx, sy); return { x: a.x + dx * s, y: a.y + dy * s }; };
   /* place each label at its edge's middle, then slide it along the edge's normal until it overlaps no box and no other label */
@@ -14980,6 +14980,158 @@ DGM({ id: 'pce-map', sub: 'From fields to induction', kind: 'map', title: 'AP Ph
     { id: 'u12', x: 450, y: 260, t: 'Unit 12\nMagnetic Fields &\nElectromagnetism', text: 'Magnetic forces, Biot–Savart law and Ampère’s law: ∮B·dl = μ₀I.' },
     { id: 'u13', x: 140, y: 260, t: 'Unit 13\nElectromagnetic\nInduction', text: 'Faraday’s and Lenz’s laws, inductance, LR and LC circuits.' } ],
   edges: [['u8', 'u9', 'V = −∫E·dr'], ['u9', 'u10', 'C = Q/V'], ['u10', 'u11', 'RC circuits'], ['u9', 'u11', 'emf drives current', 26], ['u11', 'u12', 'currents make B'], ['u12', 'u13', 'changing flux → emf'], ['u13', 'u11', 'LR circuits', -60], ['u8', 'u12', 'Gauss ↔ Ampère', 0]] });
+
+/* ═══ Equation webs: every box is an equation, every arrow is the step that turns one into the next ═══ */
+const EQ = o => DGM({ kind: 'map', eq: true, sub: 'Equations, and the steps that connect them', ...o });
+const EQ_BLURB = ' Each box is an equation; each arrow’s label is the step that gets you from one to the next. Click a box to see where it comes from and what it leads to.';
+EQ({ id: 'mech-eq', title: 'Mechanics equations, connected', decks: ['phys1', 'physcm', 'hs-phys'], w: 1100, h: 610,
+  blurb: 'How the main mechanics equations come out of each other, starting from Newton’s second law.' + EQ_BLURB,
+  nodes: [
+    { id: 'n2', x: 420, y: 70, t: 'Newton’s 2nd law\nΣF = ma', hub: true, text: 'The net force on an object equals its mass times its acceleration. It is the hub of mechanics: rearrange it for a, multiply it by time for momentum, or by distance for work.' },
+    { id: 'acc', x: 130, y: 70, t: 'Acceleration\na = Δv/Δt', text: 'Acceleration is how fast velocity changes. Newton’s second law says what it is: a = ΣF/m. The kinematics equations below all assume this a stays constant.' },
+    { id: 'imp', x: 710, y: 70, t: 'Impulse\nJ = ΣFΔt = Δp', text: 'Put a = Δv/Δt into ΣF = ma and multiply both sides by Δt: ΣFΔt = mΔv = Δp. A force acting over a time changes momentum (p = mv).' },
+    { id: 'momc', x: 990, y: 70, t: 'Momentum conservation\nm₁v₁ + m₂v₂ = m₁v₁′ + m₂v₂′', text: 'If no outside force acts on the system, ΣF_ext = 0, so the impulse is zero and the total momentum can’t change. Use it for collisions and explosions.' },
+    { id: 'vel', x: 130, y: 220, t: 'Velocity\nv = v₀ + at', text: 'With constant acceleration, velocity grows by a every second. It is a = Δv/Δt solved for the final velocity.' },
+    { id: 'circ', x: 420, y: 220, t: 'Circular motion\na_c = v²/r', text: 'An object moving in a circle at constant speed accelerates toward the center with a_c = v²/r. Put it into Newton’s law: the net force toward the center is mv²/r.' },
+    { id: 'grav', x: 710, y: 220, t: 'Gravitation\nF_g = Gm₁m₂/r²', text: 'Newton’s law of gravitation. Near Earth’s surface GM/R² works out to g = 9.8 m/s², so the force becomes F_g = mg.' },
+    { id: 'orb', x: 990, y: 220, t: 'Orbital speed\nv = √(GM/r)', text: 'For a circular orbit, gravity is the centripetal force: GMm/r² = mv²/r. The satellite’s mass cancels, so v = √(GM/r) for anything orbiting at that radius.' },
+    { id: 'pos', x: 130, y: 370, t: 'Position\nΔx = v₀t + ½at²', text: 'Displacement is the area under the velocity–time graph: a rectangle (v₀t) plus a triangle (½ · t · at = ½at²).' },
+    { id: 'work', x: 420, y: 370, t: 'Work\nW = FΔx cos θ', text: 'Work is force times the distance moved along the force (θ is the angle between them). Power is how fast work is done: P = W/Δt = Fv.' },
+    { id: 'pe', x: 710, y: 370, t: 'Potential energy\nU_g = mgh · U_s = ½kx²', text: 'Lifting against gravity takes force mg over height h, stored as U_g = mgh. Stretching a spring takes an average force ½kx over distance x, stored as U_s = ½kx².' },
+    { id: 'v2', x: 130, y: 530, t: 'Timeless equation\nv² = v₀² + 2aΔx', text: 'Solve v = v₀ + at for t and substitute it into Δx = v₀t + ½at². Time drops out, which is handy when a problem doesn’t give it.' },
+    { id: 'wke', x: 420, y: 530, t: 'Work–energy theorem\nW_net = ΔK', text: 'Multiply v² = v₀² + 2aΔx by ½m and use ma = ΣF: ½mv² − ½mv₀² = ΣF·Δx. The net work done on an object equals its change in kinetic energy.' },
+    { id: 'ke', x: 710, y: 530, t: 'Kinetic energy\nK = ½mv²', text: 'The energy of motion. It falls straight out of the work–energy theorem as the quantity that net work changes.' },
+    { id: 'cons', x: 990, y: 530, t: 'Energy conservation\nK₀ + U₀ = K + U', text: 'When only gravity and springs do work, work just moves energy between K and U, so K + U stays constant. With friction, subtract the energy it removes: K₀ + U₀ − f·d = K + U.' } ],
+  edges: [['n2', 'acc', 'a = ΣF/m'], ['acc', 'vel', 'constant a'], ['vel', 'pos', 'area under v–t'], ['pos', 'v2', 'eliminate t'], ['n2', 'imp', '× Δt'], ['imp', 'momc', 'ΣF_ext = 0'],
+    ['n2', 'circ', 'ΣF = mv²/r'], ['grav', 'n2', 'near Earth: mg'], ['grav', 'orb', 'F_g = mv²/r'], ['n2', 'work', '× Δx', 70], ['work', 'pe', 'against mg or kx'], ['work', 'wke', 'add all forces'],
+    ['v2', 'wke', '× ½m'], ['wke', 'ke', '½mv² − ½mv₀²'], ['ke', 'cons', ''], ['pe', 'cons', 'no friction']] });
+
+EQ({ id: 'rot-eq', title: 'Linear ↔ rotational equations', sub: 'Every linear equation has a rotational twin', decks: ['phys1', 'physcm'], w: 900, h: 850,
+  blurb: 'Rotation uses the same equations as straight-line motion with each quantity swapped for its angular partner. The arrow labels are the bridge formulas that convert one into the other.' + EQ_BLURB,
+  nodes: [
+    { id: 'x', x: 230, y: 50, t: 'Position\nΔx', text: 'How far something moves along a line, in meters.' },
+    { id: 'th', x: 670, y: 50, t: 'Angle\nΔθ (radians)', text: 'How far something turns. Measured in radians, the arc length is s = rθ, which is what links the two columns.' },
+    { id: 'v', x: 230, y: 140, t: 'Velocity\nv = Δx/Δt', text: 'Rate of change of position.' },
+    { id: 'w', x: 670, y: 140, t: 'Angular velocity\nω = Δθ/Δt', text: 'Rate of change of angle. Divide s = rθ by time to get the tangential speed of a point at radius r: v = rω.' },
+    { id: 'a', x: 230, y: 230, t: 'Acceleration\na = Δv/Δt', text: 'Rate of change of velocity.' },
+    { id: 'al', x: 670, y: 230, t: 'Angular acceleration\nα = Δω/Δt', text: 'Rate of change of angular velocity. Divide v = rω by time: a_t = rα.' },
+    { id: 'kin', x: 230, y: 320, t: 'Kinematics\nv = v₀ + at', text: 'The constant-acceleration equations: v = v₀ + at, Δx = v₀t + ½at², v² = v₀² + 2aΔx.' },
+    { id: 'rkin', x: 670, y: 320, t: 'Rotational kinematics\nω = ω₀ + αt', text: 'Exactly the same equations with x → θ, v → ω, a → α: ω = ω₀ + αt, Δθ = ω₀t + ½αt², ω² = ω₀² + 2αΔθ.' },
+    { id: 'm', x: 230, y: 410, t: 'Mass\nm', text: 'Resistance to changes in straight-line motion.' },
+    { id: 'I', x: 670, y: 410, t: 'Rotational inertia\nI = Σmr²', text: 'Resistance to changes in rotation. Each bit of mass counts more the farther it is from the axis (r²). Solid disk ½MR², hoop MR².' },
+    { id: 'F', x: 230, y: 500, t: 'Newton’s 2nd law\nΣF = ma', text: 'Net force causes linear acceleration.' },
+    { id: 'tau', x: 670, y: 500, t: 'Rotational 2nd law\nΣτ = Iα', text: 'Net torque causes angular acceleration. Torque is the turning effect of a force: τ = rF sin θ.' },
+    { id: 'p', x: 230, y: 590, t: 'Momentum\np = mv', text: 'Conserved when no net outside force acts.' },
+    { id: 'L', x: 670, y: 590, t: 'Angular momentum\nL = Iω', text: 'Conserved when no net outside torque acts. That’s why a skater spins faster when she pulls her arms in: I drops, so ω rises.' },
+    { id: 'K', x: 230, y: 680, t: 'Kinetic energy\nK = ½mv²', text: 'Energy of straight-line motion.' },
+    { id: 'Kr', x: 670, y: 680, t: 'Rotational KE\nK = ½Iω²', text: 'Energy of spinning. Swap m → I and v → ω in ½mv².' },
+    { id: 'roll', x: 450, y: 790, t: 'Rolling without slipping\nK = ½mv² + ½Iω²,  v = rω', hub: true, text: 'A rolling object both moves and spins, so it has both kinds of kinetic energy, tied together by v = rω. That is why a hoop rolls down a ramp more slowly than a solid ball.' } ],
+  edges: [['x', 'th', 's = rθ'], ['v', 'w', 'v = rω'], ['a', 'al', 'a_t = rα'], ['kin', 'rkin', 'x→θ, v→ω, a→α'], ['m', 'I', 'mass × r²'], ['F', 'tau', 'τ = rF sin θ'], ['p', 'L', 'L = rmv'], ['K', 'Kr', 'm→I, v→ω'], ['K', 'roll', ''], ['Kr', 'roll', '']] });
+
+EQ({ id: 'shm-eq', title: 'Oscillation & wave equations, connected', decks: ['phys1', 'physcm', 'hs-phys'], w: 1180, h: 620,
+  blurb: 'From Hooke’s law to periods, energy and waves.' + EQ_BLURB,
+  nodes: [
+    { id: 'hooke', x: 150, y: 70, t: 'Hooke’s law\nF_s = −kx', hub: true, text: 'A spring pulls back with a force proportional to how far it is stretched, always toward equilibrium (the minus sign). Any restoring force like this gives simple harmonic motion.' },
+    { id: 'shm', x: 450, y: 70, t: 'SHM condition\na = −(k/m)x', text: 'Put F = −kx into ΣF = ma and divide by m. Acceleration is proportional to displacement and opposite to it: the definition of simple harmonic motion.' },
+    { id: 'omega', x: 760, y: 70, t: 'Angular frequency\nω = √(k/m) = 2πf', text: 'The solution of a = −ω²x oscillates with ω² = k/m. Stiffer springs (big k) oscillate faster; heavier masses (big m) slower.' },
+    { id: 'Ts', x: 1060, y: 70, t: 'Period: spring\nT = 2π√(m/k)', text: 'One full cycle is 2π radians, so T = 2π/ω = 2π√(m/k). It doesn’t depend on the amplitude.' },
+    { id: 'en', x: 150, y: 230, t: 'Energy in SHM\n½kA² = ½mv_max²', text: 'At the turning points (x = ±A) all the energy is spring energy ½kA²; passing through equilibrium it is all kinetic, ½mv_max².' },
+    { id: 'Tp', x: 450, y: 230, t: 'Period: pendulum\nT = 2π√(L/g)', text: 'For small swings the restoring acceleration is −(g/L)x, the same form with k/m replaced by g/L. The mass cancels.' },
+    { id: 'xt', x: 760, y: 230, t: 'Position vs. time\nx = A cos(2πft)', text: 'The motion traces a cosine (or sine) curve with amplitude A and frequency f = ω/2π.' },
+    { id: 'f', x: 1060, y: 230, t: 'Frequency\nf = 1/T', text: 'Cycles per second (hertz) is the reciprocal of seconds per cycle.' },
+    { id: 'vmax', x: 150, y: 390, t: 'Max speed\nv_max = A√(k/m) = Aω', text: 'Solve ½kA² = ½mv_max² for v_max. Bigger amplitude means a faster pass through the middle.' },
+    { id: 'str', x: 760, y: 390, t: 'Wave on a string\nv = √(F_T/μ)', text: 'The speed of a wave depends only on the medium: string tension F_T and mass per length μ, not on the frequency.' },
+    { id: 'wave', x: 1060, y: 390, t: 'Wave speed\nv = fλ', hub: true, text: 'A wave moves one wavelength λ every period T, so v = λ/T = fλ.' },
+    { id: 'stand', x: 1060, y: 550, t: 'Standing waves\nλ_n = 2L/n,  f_n = nv/2L', text: 'On a string fixed at both ends only whole numbers of half-wavelengths fit: L = nλ/2. Combine with v = fλ to get the allowed frequencies (harmonics).' } ],
+  edges: [['hooke', 'shm', 'ΣF = ma, ÷ m'], ['shm', 'omega', 'ω² = k/m'], ['omega', 'Ts', 'T = 2π/ω'], ['hooke', 'en', 'U_s = ½kx²'], ['en', 'vmax', 'solve for v_max'], ['shm', 'Tp', 'k/m → g/L'],
+    ['omega', 'xt', 'ω = 2πf'], ['Ts', 'f', 'f = 1/T'], ['f', 'wave', 'one λ per T'], ['str', 'wave', 'medium sets v'], ['wave', 'stand', 'fixed ends: L = nλ/2']] });
+
+EQ({ id: 'circ-eq', title: 'Electricity & circuit equations, connected', decks: ['phys2', 'physce', 'hs-phys'], w: 1140, h: 640,
+  blurb: 'From the force between two charges to fields, potential, current, power and capacitors.' + EQ_BLURB,
+  nodes: [
+    { id: 'coul', x: 130, y: 70, t: 'Coulomb’s law\nF = k|q₁q₂|/r²', text: 'The electric force between two point charges. Same inverse-square shape as gravity, but it can repel as well as attract. k = 8.99 × 10⁹ N·m²/C².' },
+    { id: 'ef', x: 430, y: 70, t: 'Electric field\nE = F/q = kq/r²', hub: true, text: 'Divide Coulomb’s force by the small test charge q that feels it. What’s left is the field made by the source charge: force per unit charge (N/C).' },
+    { id: 'ep', x: 750, y: 70, t: 'Electric potential\nV = kq/r', text: 'Potential is potential energy per unit charge (J/C = volts). Adding up E over distance from infinity gives kq/r: one power of r less than the field.' },
+    { id: 'uni', x: 430, y: 220, t: 'Uniform field\nΔV = Ed', text: 'Between parallel plates E is constant, so the potential difference is just field × distance. It also gives the units V/m for E.' },
+    { id: 'pe', x: 750, y: 220, t: 'Potential energy\nΔU = qΔV', text: 'Multiply potential by charge to get energy. A charge falling through ΔV gains kinetic energy |q|ΔV.' },
+    { id: 'cur', x: 130, y: 370, t: 'Current\nI = ΔQ/Δt', text: 'Charge passing a point per second (C/s = amperes).' },
+    { id: 'ohm', x: 430, y: 370, t: 'Ohm’s law\nΔV = IR', hub: true, text: 'A potential difference pushes current through a resistance. Twice the voltage, twice the current.' },
+    { id: 'pow', x: 750, y: 370, t: 'Electric power\nP = IΔV = I²R = ΔV²/R', text: 'Energy per charge (ΔV) × charge per second (I) = energy per second. Substitute ΔV = IR to get the other two forms.' },
+    { id: 'res', x: 130, y: 540, t: 'Resistance\nR = ρL/A', text: 'Longer wires resist more; thicker wires resist less. ρ (resistivity) depends on the material.' },
+    { id: 'ser', x: 430, y: 540, t: 'Series & parallel\nR_s = R₁ + R₂\n1/R_p = 1/R₁ + 1/R₂', text: 'Kirchhoff’s rules applied with Ohm’s law. Series: same current, voltages add, so resistances add. Parallel: same voltage, currents add, so reciprocals add.' },
+    { id: 'cap', x: 750, y: 540, t: 'Capacitor\nC = Q/ΔV = κε₀A/d', text: 'Charge stored per volt. For parallel plates, use ΔV = Ed with the plate field E = Q/(ε₀A): bigger plates and a smaller gap store more.' },
+    { id: 'uc', x: 1030, y: 540, t: 'Stored energy\nU_C = ½QΔV = ½C(ΔV)²', text: 'The area under the Q–ΔV line (a triangle). The ½ is there because the voltage rises from 0 as the capacitor charges.' } ],
+  edges: [['coul', 'ef', '÷ test charge q'], ['ef', 'ep', 'add up E·Δr'], ['ef', 'uni', 'constant E'], ['ep', 'pe', '× q'], ['uni', 'ohm', 'ΔV pushes charge'], ['cur', 'ohm', 'I = ΔV/R'],
+    ['ohm', 'pow', 'substitute ΔV = IR'], ['pe', 'pow', 'energy per second'], ['res', 'ohm', 'R in ΔV = IR'], ['ohm', 'ser', 'Kirchhoff’s rules'], ['uni', 'cap', 'Q = CΔV', -30], ['cap', 'uc', 'area under Q–ΔV']] });
+
+EQ({ id: 'mag-eq', title: 'Magnetism, induction & light equations', decks: ['phys2', 'physce'], w: 1180, h: 470,
+  blurb: 'From the force on a moving charge to induction, electromagnetic waves and photons.' + EQ_BLURB,
+  nodes: [
+    { id: 'qvb', x: 150, y: 70, t: 'Force on a charge\nF = qvB sin θ', hub: true, text: 'A magnetic field pushes on a charge only while it moves, at right angles to both v and B (right-hand rule). It changes the direction of motion, never the speed.' },
+    { id: 'ilb', x: 450, y: 70, t: 'Force on a wire\nF = ILB sin θ', text: 'A current is many moving charges: replace qv with IL (charge × speed = current × length).' },
+    { id: 'flux', x: 760, y: 70, t: 'Magnetic flux\nΦ_B = BA cos θ', text: 'How much magnetic field passes through a loop of area A. θ is the angle between B and the loop’s normal.' },
+    { id: 'em', x: 1060, y: 70, t: 'EM waves\nc = fλ', text: 'A changing B field makes an E field and vice versa, so the pair travels on its own as light at c = 3.00 × 10⁸ m/s.' },
+    { id: 'rad', x: 150, y: 230, t: 'Circular path\nr = mv/(qB)', text: 'The magnetic force is the centripetal force: qvB = mv²/r. Solve for r. This is how a mass spectrometer sorts ions.' },
+    { id: 'bw', x: 450, y: 230, t: 'Field of a long wire\nB = μ₀I/(2πr)', text: 'Currents make magnetic fields that circle the wire and weaken as 1/r. Two parallel wires feel each other’s field: same direction attract, opposite repel.' },
+    { id: 'far', x: 760, y: 230, t: 'Faraday’s law\nε = −N ΔΦ_B/Δt', hub: true, text: 'A changing flux induces an emf. The minus sign is Lenz’s law: the induced current opposes the change.' },
+    { id: 'ph', x: 1060, y: 230, t: 'Photon energy\nE = hf = hc/λ', text: 'Light comes in packets (photons). Substitute f = c/λ from the wave equation.' },
+    { id: 'mot', x: 450, y: 390, t: 'Motional emf\nε = BLv', text: 'A bar of length L sliding at speed v sweeps area at ΔA/Δt = Lv, so ΔΦ/Δt = BLv.' },
+    { id: 'ind', x: 760, y: 390, t: 'Induced current\nI = ε/R', text: 'The induced emf drives current around the loop just like a battery would: Ohm’s law.' },
+    { id: 'pe', x: 1060, y: 390, t: 'Photoelectric effect\nK_max = hf − φ', text: 'One photon gives its energy to one electron; the work function φ is the cost to free it, and the rest is kinetic energy.' } ],
+  edges: [['qvb', 'ilb', 'qv → IL'], ['qvb', 'rad', 'qvB = mv²/r'], ['bw', 'ilb', 'one wire on another'], ['bw', 'flux', 'B through a loop'], ['flux', 'far', 'change it in time'], ['far', 'mot', 'ΔA/Δt = Lv'],
+    ['far', 'ind', 'Ohm’s law'], ['far', 'em', 'changing B ↔ E'], ['em', 'ph', 'light in quanta'], ['ph', 'pe', '− work function']] });
+
+EQ({ id: 'thermo-eq', title: 'Thermodynamics equations, connected', decks: ['phys2'], w: 1180, h: 470,
+  blurb: 'From pressure and the ideal gas law to the first law and heat engines.' + EQ_BLURB,
+  nodes: [
+    { id: 'P', x: 150, y: 70, t: 'Pressure\nP = F/A', text: 'Force per unit area. In a gas it comes from molecules hitting the walls.' },
+    { id: 'gas', x: 450, y: 70, t: 'Ideal gas law\nPV = nRT = Nk_BT', hub: true, text: 'Pressure, volume and temperature of a gas are tied together. Temperature must be in kelvin. nR = Nk_B because R = N_A·k_B.' },
+    { id: 'kin', x: 760, y: 70, t: 'Kinetic theory\nK_avg = (3/2)k_BT', text: 'Counting molecule collisions gives PV = ⅔N·K_avg. Set that equal to Nk_BT: temperature measures the average kinetic energy per molecule.' },
+    { id: 'rms', x: 1060, y: 70, t: 'RMS speed\nv_rms = √(3k_BT/m)', text: 'Set ½mv² = (3/2)k_BT and solve for v. Lighter molecules move faster at the same temperature.' },
+    { id: 'W', x: 150, y: 230, t: 'Work on a gas\nW = −PΔV', text: 'Pushing a piston with force PA through distance Δx changes the volume by AΔx, so the work is P·ΔV. Compressing (ΔV < 0) does positive work on the gas.' },
+    { id: 'U', x: 760, y: 230, t: 'Internal energy\nU = (3/2)nRT', text: 'For a monatomic ideal gas: N molecules × (3/2)k_BT each. Internal energy depends only on temperature.' },
+    { id: 'Q', x: 150, y: 390, t: 'Heat conduction\nQ/Δt = kAΔT/L', text: 'Heat flows from hot to cold faster through a wide (A), short (L), conductive (k) material with a big temperature difference ΔT.' },
+    { id: 'first', x: 450, y: 390, t: 'First law\nΔU = Q + W', hub: true, text: 'Energy conservation for a gas: its internal energy changes by the heat added plus the work done on it.' },
+    { id: 'eff', x: 760, y: 390, t: 'Engine efficiency\ne = |W|/|Q_H|', text: 'Over a full cycle the gas returns to the same state (ΔU = 0), so the net work out equals heat in minus heat out. Efficiency is the fraction of input heat turned into work.' } ],
+  edges: [['P', 'gas', 'molecules hit walls'], ['gas', 'kin', 'PV = ⅔N·K_avg'], ['kin', 'rms', 'K = ½mv²'], ['kin', 'U', '× N molecules'], ['P', 'W', 'F·Δx = P·ΔV'], ['W', 'first', 'the W'], ['U', 'first', 'the ΔU'], ['Q', 'first', 'the Q'], ['first', 'eff', 'full cycle: ΔU = 0']] });
+
+EQ({ id: 'calc-eq', title: 'Calculus links in mechanics', sub: 'Derivatives and integrals connect the equations', decks: ['physcm'], w: 1200, h: 620,
+  blurb: 'In Physics C the equations are linked by derivatives (rates) and integrals (totals). Follow an arrow forward to differentiate or integrate.' + EQ_BLURB,
+  nodes: [
+    { id: 'x', x: 150, y: 70, t: 'Position\nx(t)', text: 'Where the object is at each moment.' },
+    { id: 'v', x: 150, y: 230, t: 'Velocity\nv = dx/dt', text: 'The slope of x(t). Going back up, displacement is the area under v(t): Δx = ∫v dt.' },
+    { id: 'a', x: 150, y: 390, t: 'Acceleration\na = dv/dt = d²x/dt²', text: 'The slope of v(t). Going back up, Δv = ∫a dt. Use this when a changes with time; the constant-a equations are its special case.' },
+    { id: 'I', x: 470, y: 70, t: 'Rotational inertia\nI = ∫r² dm', text: 'Add up r² for every bit of mass. For a uniform rod about its center this gives (1/12)ML².' },
+    { id: 'tau', x: 470, y: 230, t: 'Torque\nτ = r × F = dL/dt', text: 'The rotational version of F = dp/dt. With I constant, dL/dt = I dω/dt = Iα.' },
+    { id: 'n2', x: 470, y: 390, t: 'Newton’s 2nd law\nF = dp/dt = ma', hub: true, text: 'Force is the rate of change of momentum. With constant mass, dp/dt = m dv/dt = ma.' },
+    { id: 'J', x: 470, y: 550, t: 'Impulse\nJ = ∫F dt = Δp', text: 'Integrate F = dp/dt over time: the area under a force–time graph is the change in momentum.' },
+    { id: 'U', x: 800, y: 230, t: 'Potential energy\nF = −dU/dx', text: 'For a conservative force, ΔU = −∫F dx, so F is minus the slope of U(x). Equilibrium is where U is flat (dU/dx = 0).' },
+    { id: 'W', x: 800, y: 390, t: 'Work\nW = ∫F·dr', text: 'Integrate force over distance: the area under a force–position graph. For a spring, ∫kx dx = ½kx².' },
+    { id: 'K', x: 800, y: 550, t: 'Work–energy\nW_net = ΔK', text: 'Use F = m dv/dt and dx = v dt: ∫F dx = ∫mv dv = ½mv² − ½mv₀².' },
+    { id: 'P', x: 1090, y: 390, t: 'Power\nP = dW/dt = F·v', text: 'The rate of doing work. Since dW = F·dx, dividing by dt gives F·v.' } ],
+  edges: [['x', 'v', 'd/dt'], ['v', 'x', '∫ v dt', 34], ['v', 'a', 'd/dt'], ['a', 'v', '∫ a dt', 34], ['a', 'n2', '× m'], ['n2', 'J', '∫ dt'], ['n2', 'W', '∫ dx'], ['W', 'K', 'net force'],
+    ['W', 'U', 'ΔU = −W'], ['U', 'n2', 'slope of U(x)'], ['n2', 'tau', 'r ×'], ['I', 'tau', 'τ = Iα'], ['W', 'P', 'd/dt']] });
+
+EQ({ id: 'stats-eq', title: 'Statistics formulas, connected', decks: ['ap-stats'], w: 1190, h: 620,
+  blurb: 'How the AP Statistics formulas build on each other: summary statistics → z-scores → correlation and regression, and sampling distributions → confidence intervals and tests.' + EQ_BLURB,
+  nodes: [
+    { id: 'mean', x: 140, y: 70, t: 'Mean\nx̄ = Σx/n', text: 'The balance point of the data: add up the values and divide by how many there are.' },
+    { id: 'sd', x: 440, y: 70, t: 'Standard deviation\ns = √(Σ(x − x̄)²/(n − 1))', hub: true, text: 'The typical distance of a value from the mean. Square the deviations, average them (dividing by n − 1 for a sample), and take the square root.' },
+    { id: 'sx', x: 770, y: 70, t: 'Sampling dist. of x̄\nσ_x̄ = σ/√n', text: 'Averages vary less than single values. The spread of sample means shrinks with √n (10% condition: n ≤ 10% of the population).' },
+    { id: 'bin', x: 1060, y: 70, t: 'Binomial count\nμ = np,  σ = √(np(1 − p))', text: 'The mean and SD of the number of successes in n independent trials with success probability p.' },
+    { id: 'z', x: 140, y: 230, t: 'z-score\nz = (x − x̄)/s', text: 'How many standard deviations a value is from the mean. It puts any variable on the same scale.' },
+    { id: 'r', x: 440, y: 230, t: 'Correlation\nr = Σz_x·z_y/(n − 1)', text: 'Multiply each point’s two z-scores and average the products. Positive when big x goes with big y. Always between −1 and 1.' },
+    { id: 'ci', x: 770, y: 230, t: 'Confidence interval\nestimate ± z* or t* × SE', hub: true, text: 'Point estimate ± margin of error. The margin is a critical value (how confident) times the standard error (how much the estimate varies).' },
+    { id: 'sp', x: 1060, y: 230, t: 'Sampling dist. of p̂\nσ_p̂ = √(p(1 − p)/n)', text: 'Divide a binomial count by n to get a proportion: its mean is p and its SD is the binomial σ ÷ n.' },
+    { id: 'r2', x: 140, y: 390, t: 'R-squared\nr² = 1 − Σresid²/Σ(y − ȳ)²', text: 'The fraction of the variation in y that the regression line explains. For a line it equals the correlation squared.' },
+    { id: 'b', x: 440, y: 390, t: 'Slope of the LSRL\nb = r · s_y/s_x', text: 'Rise of ŷ for each 1-unit increase in x. Correlation sets the direction and strength; the ratio of SDs converts units.' },
+    { id: 't', x: 770, y: 390, t: 'Test statistic\n(estimate − null value)/SE', text: 'How many standard errors the sample result is from what the null hypothesis claims. Large values give small P-values.' },
+    { id: 'chi', x: 1060, y: 390, t: 'Chi-square\nχ² = Σ(O − E)²/E', text: 'The test statistic for counts in categories: compares observed counts to the counts expected under the null.' },
+    { id: 'res', x: 140, y: 550, t: 'Residual\nresidual = y − ŷ', text: 'Observed minus predicted. Points above the line have positive residuals. The LSRL makes the sum of squared residuals as small as possible.' },
+    { id: 'line', x: 440, y: 550, t: 'Regression line\nŷ = a + bx', hub: true, text: 'The least-squares regression line, built from the slope b and intercept a.' },
+    { id: 'a', x: 770, y: 550, t: 'y-intercept\na = ȳ − b · x̄', text: 'The LSRL always passes through (x̄, ȳ). Substitute that point into ŷ = a + bx and solve for a.' } ],
+  edges: [['mean', 'sd', 'spread around x̄'], ['sd', 'sx', 'means of n: ÷ √n'], ['mean', 'z', 'distance from x̄'], ['sd', 'z', '÷ s'], ['z', 'r', 'average z_x·z_y'], ['r', 'r2', 'square it'], ['r', 'b', '× s_y/s_x'],
+    ['b', 'line', 'slope b'], ['b', 'a', 'through (x̄, ȳ)'], ['a', 'line', 'intercept a'], ['line', 'res', 'y − ŷ'], ['bin', 'sp', 'count ÷ n'], ['sx', 'ci', 'SE = s/√n'], ['sp', 'ci', 'SE from p̂'], ['ci', 't', 'same SE'], ['t', 'chi', 'for counts']] });
 
 /* ═══ Free-body diagram on an incline ═══ */
 DGM({ id: 'fbd', sub: 'Every force on a box sliding down a ramp', kind: 'parts', title: 'Forces on an incline', decks: ['phys1', 'physcm', 'hs-phys'],
