@@ -66,6 +66,28 @@
 .qcount { font-family: var(--font-mono); font-size: 13.5px; font-variant-numeric: tabular-nums; }
 .qcount .score-run { color: var(--accent); margin-left: 12px; }
 .tbtns { display: flex; gap: 6px; flex-wrap: wrap; }
+.cls-in, .stu-no { font-size: 20px !important; letter-spacing: .08em; }
+.cls-in { text-transform: uppercase; }
+.cls-in::placeholder, .stu-no::placeholder { letter-spacing: .04em; text-transform: none; }
+.stu-no { max-width: 9ch; text-align: center; }
+.gl-fh2 { margin-top: 26px; }
+.cls-panel form { display: grid; gap: 12px; }
+.cls-new { display: grid; grid-template-columns: minmax(0, 1fr) 190px auto; gap: 12px; align-items: end; }
+.cls-new label { display: grid; gap: 6px; margin: 0; }
+.cls-new input { font-size: 16px; width: 100%; box-sizing: border-box; }
+.cls-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.cls-row { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; }
+.cls-row.off { opacity: .7; background: var(--sunk); }
+.cls-main { display: grid; gap: 2px; flex: 1 1 260px; min-width: 0; }
+.cls-code { font-size: 22px; font-weight: 800; letter-spacing: .1em; }
+.cls-acts { display: flex; flex-wrap: wrap; gap: 8px; }
+.cls-emails { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 4px; }
+.cls-emails li { display: flex; gap: 10px; justify-content: space-between; border-bottom: 1px solid var(--line); padding: 4px 0; }
+.gb-no { width: 5ch; text-align: center; }
+.gb-who { font-weight: 600; color: var(--muted); }
+.gb-add { font-size: 13px; font-weight: 500; }
+.dev-note { margin: 0 0 18px; max-width: 900px; line-height: 1.55; }
+@media (max-width: 700px) { .cls-new { grid-template-columns: 1fr; } }
 .xz { display: inline-flex; gap: 2px; } .xz .tb { min-width: 38px; font-weight: 700; }
 #exam .xbody { zoom: var(--xz, 1); }
 .svd { font-size: 12px; font-weight: 600; white-space: nowrap; color: #2f7a4a; margin-left: auto; margin-right: 12px; } .svd.bad { color: #b42318; }
@@ -13842,6 +13864,7 @@ function route() {
   const tonly = MODE === 'gate' && (h === 'take' || h === 'device' || /^take-/.test(h) || /^ut-/.test(h) || (h === 'unit-tests' && TEST_ONLY));
   ['hub', 'results'].forEach(v => $('#' + v).classList.toggle('solo', tonly));
   if (tonly) { TEST_ONLY = true; if (!PID) PID = 'testonly'; renderTestOnly(h); bindNav(); return; }
+  if (/^join-/.test(h)) { const c = clsFmt(h.slice(5)); if (MODE === 'gate') { CLS_PREFILL = c; ROUTE = 'home'; try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} } else if (!isTeacher()) { ROUTE = 'home'; } }
   if (MODE === 'gate') { TEST_ONLY = false; return renderGate(); }
   if (h === 'take' || /^take-/.test(h) || h === 'device') { renderTestOnly(h); bindNav(); return; }
   if ((h === 'admin' || h === 'admin-invite' || h === 'admin-teachers') && MODE === 'owner') { ADM.tab = h === 'admin-invite' ? 'invite' : h === 'admin-teachers' ? 'teachers' : 'codes'; renderAdmin(); bindNav(); return; }
@@ -13948,7 +13971,7 @@ const initials = n => { const w = String(n || '').replace(/@.*/, '').replace(/[^
 /* a member's display name comes from the email they sign in with: isaac.lim@… → Isaac Lim */
 const prettyName = n => { const s = String(n || ''); if (!s.includes('@')) return s; const w = s.replace(/@.*/, '').replace(/[0-9]+/g, ' ').split(/[._\-+\s]+/).filter(Boolean); return w.length ? w.map(p => p[0].toUpperCase() + p.slice(1)).join(' ') : s.replace(/@.*/, ''); };
 const meName = () => { const m = me(); return m ? prettyName(m.name) : ''; };
-const roleName = () => MODE === 'owner' ? (ADMIN_ROLE === 'editor' ? 'Teacher · editor' : 'Teacher') : isTeacher() ? 'Teacher' : 'Student';
+const roleName = () => MODE === 'owner' ? (ADMIN_ROLE === 'editor' ? 'Teacher · editor' : 'Teacher') : isTeacher() ? 'Teacher' : MEMBER && MEMBER.role === 'class' ? 'Class ' + clsFmt(MEMBER.cls) : 'Student';
 /* the red dot shows only for notifications the viewer hasn't opened yet */
 const noteKey = n => n.t + '|' + (n.href || '');
 const seenKey = () => `ap.${PID || 'anon'}.notes.seen`;
@@ -13957,7 +13980,6 @@ function notes() {
   const out = [];
   if (me()) TESTS.forEach(x => { const c = loadCur(x); if (c) out.push({ ic: 'resume', href: '#' + x.id, t: `${c.practice ? 'Practice set' : 'Test'} in progress`, s: x.subject + ' · ' + c.ans.filter(a => a.length).length + ' of ' + c.items.length + ' answered' }); });
   if (me()) { const u = LS.get(`ap.${PID}.ut.current.v1`, null); if (u) out.push({ ic: 'resume', href: '#unit-tests', t: 'Unit test in progress', s: u.title }); const ns = LS.get(`ap.${PID}.ut.results.v1`, []).filter(r => !r.sent).length; if (ns) out.push({ ic: 'info', href: '#unit-tests', t: `Unit test results not sent (${ns})`, s: 'Send your results to your teacher.' }); }
-  if (MODE === 'member' && isTeacher() && kstDay() >= 20) out.push({ ic: 'users', href: '#class', t: 'Next month’s student codes are ready', s: 'Send them from My Students before the 1st.' });
   if (MODE === 'member' && !isTeacher() && kstDay() >= 25) out.push({ ic: 'info', t: 'Access codes change on the 1st', s: 'Your teacher will send next month’s code. Last month’s code works through the 3rd.' });
   if (MODE === 'owner' && kstDay() >= 20) out.push({ ic: 'users', href: '#admin', t: 'Next month’s codes are ready', s: 'Send them from Manage Students before the 1st.' });
   return out;
@@ -13979,7 +14001,7 @@ function nav(active) {
     <nav class="side-nav" aria-label="Main">${SIDE.map(link).join('')}</nav>
     ${SIDE_GROUPS.map(([h, ls]) => `<div class="side-h">${h}</div><nav class="side-nav" aria-label="${h}">${ls.map(link).join('')}</nav>`).join('')}
     ${sideGroups(cur)}
-    ${isTeacher() ? `<div class="side-h">Teacher Tools</div><nav class="side-nav" aria-label="Teacher tools">${owner ? link(['admin', 'Manage Students', 'users']) + link(['admin-teachers', 'Teachers', 'teacher']) : link(['class', 'My Students', 'users'])}${link(['assign', 'Assign Tests', 'assign'])}${link(['ut-new', 'Create Unit Test', 'plus'])}${link(['ut-mine', 'My Unit Tests', 'list'])}${link(['ut-check', 'Check Results', 'check'])}${link(['grades', 'Gradebook & Classes', 'grade'])}</nav>` : ''}
+    ${isTeacher() ? `<div class="side-h">Teacher Tools</div><nav class="side-nav" aria-label="Teacher tools">${owner ? link(['admin', 'Manage Students', 'users']) + link(['admin-teachers', 'Teachers', 'teacher']) : link(['class', 'Class Codes', 'users'])}${link(['assign', 'Assign Tests', 'assign'])}${link(['ut-new', 'Create Unit Test', 'plus'])}${link(['ut-mine', 'My Unit Tests', 'list'])}${link(['ut-check', 'Check Results', 'check'])}${link(['grades', 'Gradebook & Classes', 'grade'])}</nav>` : ''}
     <div class="side-h">Help</div><nav class="side-nav" aria-label="Help">${link(['about', 'About & FAQ', 'info'])}</nav>
     <p class="side-quote">${SVG(IC.leaf)}<span>Better preparation today. Bigger opportunities tomorrow.</span></p></aside>`;
   const top = `<header class="topbar"><button class="tb-icon menu-btn" id="menuBtn" aria-label="Open menu" aria-controls="side" aria-expanded="false">${SVG(IC.menu)}</button><a class="tb-brand" href="#home">${BRAND}</a><span class="spacer"></span>
@@ -14170,7 +14192,7 @@ function homeSearchIndex() {
   TESTS.forEach(x => { out.push({ t: x.subject, s: 'Course · practice tests, question bank, exam', h: '#' + x.id, ic: SUBJ_IC[x.area] }); srCatsOf(x).forEach(c => out.push({ t: `Unit ${c.k}: ${c.name}`, s: x.subject, h: '#' + x.id, ic: 'list' })); });
   if (typeof SK_SUBJ !== 'undefined') SK_SUBJ.forEach(g => g.topics.forEach(t => out.push({ t: t.name, s: 'Skill Builder · ' + g.name, h: '#skill-' + t.id, ic: 'target' })));
   [['Practice Tests', '#tests', 'file'], ['Question Bank', '#bank', 'list'], ['Unit Tests', '#unit-tests', 'check'], ['Free Response Lab', '#lab', 'pen'], ['Calculation Practice', '#calc', 'calc'], ['Skill Builder', '#skills', 'target'], ['Flashcards', '#flashcards', 'cards'], ['Definitions', '#defs', 'vocab'], ['Formulas & reference sheets', '#formulas', 'sigma'], ['Interactive diagrams', '#diagrams', 'atom'], ['Performance', '#analytics', 'chart'], ['About & FAQ', '#about', 'info']].forEach(([t, h, ic]) => out.push({ t, s: 'Tool', h, ic }));
-  if (isTeacher()) [['Create Unit Test', '#ut-new', 'plus'], ['My Unit Tests', '#ut-mine', 'list'], ['Check Results', '#ut-check', 'check'], ['Gradebook & Classes', '#grades', 'grade'], ['Assign Tests', '#assign', 'assign'], ['My Students', '#class', 'users']].forEach(([t, h, ic]) => out.push({ t, s: 'Teacher tool', h, ic }));
+  if (isTeacher()) [['Create Unit Test', '#ut-new', 'plus'], ['My Unit Tests', '#ut-mine', 'list'], ['Check Results', '#ut-check', 'check'], ['Gradebook & Classes', '#grades', 'grade'], ['Assign Tests', '#assign', 'assign'], ['Class Codes', '#class', 'users']].forEach(([t, h, ic]) => out.push({ t, s: 'Teacher tool', h, ic }));
   TESTS.forEach(x => Object.entries(DEF_DB[x.id] || {}).forEach(([k, l]) => l.forEach(([term]) => out.push({ t: term, s: `Definition · ${x.subject} Unit ${k}`, h: '#defs', ic: 'vocab', low: 1 }))));
   return out;
 }
@@ -14184,7 +14206,7 @@ let HOME_IDX = null;
 function renderHome() {
   setAccent(null); show('hub'); $('#hub').classList.add('is-home');
   const all = allHist(), goal = nextGoal(all), inProg = TESTS.map(x => ({ x, c: loadCur(x) })).filter(o => o.c);
-  const nm = meName().trim(), ws = nm.split(/\s+/), first = /^(mr|mrs|ms|miss|mx|dr|prof)\.?$/i.test(ws[0] || '') ? nm : ws[0];
+  const nm = MEMBER && MEMBER.role === 'class' ? '' : meName().trim(), ws = nm.split(/\s+/), first = /^(mr|mrs|ms|miss|mx|dr|prof)\.?$/i.test(ws[0] || '') ? nm : ws[0];
   const tch = isTeacher(), groups = SUBJ_GROUPS.filter(g => groupTests(g).length);
   /* progress by subject (all levels) */
   const gStat = g => { const r = all.filter(h => h.n && g.areas.includes(h.x.area)).slice(0, 12); const c = r.reduce((t, h) => t + h.correct, 0), n = r.reduce((t, h) => t + h.n, 0); return { c, n, p: n ? Math.round(c / n * 100) : null }; };
@@ -14207,7 +14229,7 @@ function renderHome() {
   const card = g => `<a class="xs-card acc-${g.accent}" href="#topic-${g.k}">${subjArt(g.ic)}<span class="xs-ic">${SVG(IC[g.ic])}</span><b>${esc(g.name)}</b><span class="xs-t">${esc(g.blurb)}</span><span class="xs-go" aria-hidden="true">${SVG(IC.arrow)}</span></a>`;
   $('#hub').innerHTML = nav('home') + `<section class="hx">${heroSVG()}<div class="hx-in">
       <p class="hx-quote" aria-hidden="true">Small steps<br><span>lead to big goals.</span></p>
-      <h1>${first ? `Welcome back, ${esc(first)}!` : `Welcome to ${BRAND}!`}</h1>
+      <h1>${first ? `Welcome back, ${esc(first)}!` : MEMBER && MEMBER.role === 'class' ? 'Welcome back!' : `Welcome to ${BRAND}!`}</h1>
       <p class="hx-sub">${tch ? 'Teach, assess, and help every student grow, one step at a time.' : 'Practice, learn, and build your confidence, one step at a time.'}</p>
       <form class="hx-search" id="hxF" role="search" autocomplete="off"><span class="hx-si">${SVG(IC.search)}</span><input id="hxQ" type="search" placeholder="Search for a subject, test, topic, or resource…" aria-label="Search" aria-autocomplete="list" aria-controls="hxR"><button type="submit" class="hx-go" aria-label="Search">${SVG(IC.arrow)}</button><div class="hx-res" id="hxR" role="listbox" hidden></div></form>
     </div></section>
@@ -14240,9 +14262,9 @@ function renderHome() {
     if (!v) return er('Enter the test code first.');
     const sc = utShortParse(v); if (sc && sc.stale) return er('This code is from an older version of the question bank. Ask your teacher for a new one.');
     const p = utParse(v); if (!p) return er('That code doesn’t look right. Check each letter and number.');
-    const nm = (LS.get(`ap.${PID}.ut.name`, '') || meName() || '').trim().replace(/\s+/g, ' '), em = normEmail(myEmail() || ''), to = normEmail((LS.get(`ap.${PID}.teacher`, null) || {}).e || p.ut.e || '');
-    if (nm.split(' ').length < 2 || !isEmail(em) || !isEmail(to)) { TK_PREFILL = v; go('take'); return; }
-    LS.set(`ap.${PID}.ut.name`, nm); LS.set(`ap.${PID}.teacher`, { e: to, r: '' }); go('ut-' + p.code); };
+    const to = normEmail((LS.get(`ap.${PID}.teacher`, null) || {}).e || p.ut.e || '');
+    if (!isEmail(to)) { TK_PREFILL = v; go('take'); return; }
+    LS.set(`ap.${PID}.teacher`, { e: to, r: '' }); go('ut-' + p.code); };
   q.oninput = draw;
   q.onkeydown = e => { if (!hits.length) return; if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); sel = (sel + (e.key === 'ArrowDown' ? 1 : hits.length - 1)) % hits.length; $$('#hxR a').forEach((a, i) => { a.classList.toggle('on', i === sel); a.setAttribute('aria-selected', i === sel); }); } if (e.key === 'Escape') res.hidden = true; };
   $('#hxF').onsubmit = e => { e.preventDefault(); if (hits[sel]) location.hash = hits[sel].h.slice(1); };
@@ -15968,6 +15990,8 @@ async function initAuth() {
   MEMBER = remote || local;
   if (LS.get('ap.signedout.' + memberKey(), false)) MEMBER = null;
   if (!ACCESS.size && !MEMBER) { let v = null; try { v = USER ? await USER.me() : null; } catch (e) {} if (USER && (!v || (!v.id && !v.name))) { MODE = 'blocked'; BLOCK = 'signin'; return; } }
+  if (MEMBER && MEMBER.role === 'class') { if (await sessionOK(MEMBER)) { enterMember(); setTimeout(clsRecheck, 0); } else { MEMBER = null; MODE = 'gate'; } return; }
+  if (MEMBER && MEMBER.role !== 'teacher') { retireStudent(MEMBER); MEMBER = null; MODE = 'gate'; return; }
   if (MEMBER && ACCESS_DOC.removed.includes(memberKey())) { MEMBER = null; GATE_MSG = 'The site owner removed your access. Ask them for a new access code.'; MODE = 'gate'; return; }
   if (MEMBER) { const active = MEMBER.role === 'teacher' ? (await teacherState(MEMBER.email || '')).on : await emailActive(MEMBER.email || ''); const ok = active && await sessionOK(MEMBER);
     if (!ok) { GATE_MSG = active ? 'Access codes change every month. Enter this month\'s code from the site owner to keep practicing — your scores are still here.' : 'Your access is no longer active. Ask the site owner for a new code.'; MEMBER = null; MODE = 'gate'; return; } }
@@ -15994,6 +16018,7 @@ const SESSION_DAYS = 30;
 const ckOf = (email, code) => sha256hex('ck|' + SITE_KEY + '|' + normEmail(email) + '|' + normCode(code));
 async function ckOK(email, ck) { if (!ck) return false; for (const c of await validCodes(email)) if (ck === await ckOf(email, c)) return true; return false; }
 async function sessionOK(m) {
+  if (m && m.role === 'class') return !!m.cls && !(m.exp && Date.parse(m.exp) < Date.now()) && clsValid(m.cls);
   if (!m || !m.email) return false;
   if (m.role === 'teacher') { if (m.exp && Date.parse(m.exp) < Date.now()) return false; return teacherSessionOK(m); }
   if (m.code && !m.ck) { m.ck = await ckOf(m.email, m.code); delete m.code; }
@@ -16011,6 +16036,8 @@ async function enterGuestGate() {
   GUEST = true; DB = null; WRITE_OK = false;
   const local = LS.get('ap.member.' + memberKey(), null);
   if (LS.get('ap.signedout.' + memberKey(), false)) { MODE = 'gate'; return; }
+  if (local && local.role === 'class') { if (await sessionOK(local)) { MEMBER = local; enterMember(); setTimeout(clsRecheck, 0); return; } LS.del('ap.member.' + memberKey()); GATE_MSG = 'Enter the class code from your teacher to keep practicing. Your history on this device is kept.'; MODE = 'gate'; return; }
+  if (local && local.email && local.role !== 'teacher') { retireStudent(local); MODE = 'gate'; return; }
   if (local && local.email && !EMBED_REVOKED.includes(await sha256hex('rev|' + normEmail(local.email))) && !(EMBED_ACCESS && (EMBED_ACCESS.off || []).includes(await emHash(local.email))) && await sessionOK(local)) { MEMBER = local; enterMember(); setTimeout(liveRecheck, 0); return; }
   if (local && local.email) GATE_MSG = 'Access codes change every month. Enter this month\'s code from the site owner to keep practicing — your scores are still here.';
   MODE = 'gate';
@@ -16033,9 +16060,9 @@ function enterMember() {
   LS.del('ap.signedout.' + memberKey());
   try { if (navigator.storage && navigator.storage.persist && !/Firefox\//.test(navigator.userAgent)) navigator.storage.persisted().then(p => { if (!p) navigator.storage.persist(); }).catch(() => {}); } catch (e) {}
   if (MEMBER && MEMBER.email) sha256hex('live|' + normEmail(MEMBER.email)).then(h => { LIVE_TAG = h.slice(0, 16); livePresence(); });
-  MODE = 'member'; PID = memberPID(MEMBER.email);
+  MODE = 'member'; PID = MEMBER.role === 'class' ? (LS.get('ap.cls.pid', null) || memberPID('class')) : memberPID(MEMBER.email);
   MEMBER.exp = new Date(Date.now() + SESSION_DAYS * 864e5).toISOString(); delete MEMBER.code;
-  LS.set('ap.member.' + memberKey(), { name: MEMBER.name, email: MEMBER.email, ck: MEMBER.ck, exp: MEMBER.exp, joinedAt: MEMBER.joinedAt, ...(MEMBER.role ? { role: MEMBER.role } : {}) });
+  LS.set('ap.member.' + memberKey(), { name: MEMBER.name, email: MEMBER.email, ck: MEMBER.ck, exp: MEMBER.exp, joinedAt: MEMBER.joinedAt, ...(MEMBER.role ? { role: MEMBER.role } : {}), ...(MEMBER.cls ? { cls: MEMBER.cls } : {}) });
   syncProgress();
 }
 function memberStats() {
@@ -16048,7 +16075,7 @@ function memberStats() {
   return { stats, recent: recent.slice(0, 40) };
 }
 async function syncProgress() {
-  if (MODE !== 'member' || !MEMBER || !DB || !WRITE_OK) return;
+  if (MODE !== 'member' || !MEMBER || !DB || !WRITE_OK || MEMBER.role === 'class') return; /* class-code students have nothing to save online */
   /* only what sign-in needs; scores and attempts never leave the visitor's browser */
   const doc = { name: MEMBER.name, email: MEMBER.email || '', ck: MEMBER.ck || '', exp: MEMBER.exp || '', key: memberKey(), joinedAt: MEMBER.joinedAt, ...(MEMBER.role ? { role: MEMBER.role } : {}) };
   try { await DB.doc(memberPath()).set(doc); }
@@ -16107,39 +16134,41 @@ function renderGate(err) {
       <ul class="gl-pills"><li>${SVG(IC.file)}Practice tests</li><li>${SVG(IC.pen)}Free response</li><li>${SVG(IC.cards)}Flashcards</li><li>${SVG(IC.atom)}Diagrams</li></ul>
     </section>
     <div class="gl-form">
-    <h2 class="gl-fh">Sign in</h2>
-    <p class="lead">Use your email and access code.</p>
     ${GATE_MSG ? `<p class="notice">${esc(GATE_MSG)}</p>` : ''}
+    <h2 class="gl-fh">Students</h2>
+    <section class="panel cls-panel"><form id="cForm" autocomplete="off" novalidate>
+      <label>Class code from your teacher<input id="cCode" class="mono cls-in" type="text" maxlength="14" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" placeholder="XXXXX-XXXXX" value="${esc(CLS_PREFILL || '')}"></label>
+      <button class="btn primary" type="submit" id="cGo">Start practicing</button>
+      <div class="err" id="cErr" role="alert"></div>
+      <p class="small muted" style="margin:0">No account, name or email needed. <a href="legal.html#privacy" target="_blank" rel="noopener">Where your data goes</a></p></form></section>
+    <section class="panel take-cta"><div><b>Taking a test from your teacher?</b><span class="small muted">Enter the test code. You’ll only need your student number.</span></div><a class="btn" href="#take">Enter a test code ${SVG(IC.arrow)}</a></section>
+    <h2 class="gl-fh gl-fh2">Teachers</h2>
     <section class="panel"><form id="gForm" autocomplete="on" method="post" action="#">
       ${!GUEST && ACCT_EMAIL ? `<p class="small" style="margin:0">Signed in to Claude as <b>${esc(ACCT_EMAIL)}</b>. Access codes work only with the email they were issued to.</p>` : ''}
-      <label>Email<input id="gName" type="email" maxlength="80" ${!GUEST && ACCT_EMAIL ? `value="${esc(ACCT_EMAIL)}" readonly` : (LS.get('ap.member.' + memberKey(), null) || {}).email ? `value="${esc(LS.get('ap.member.' + memberKey(), null).email)}"` : ''} placeholder="you@example.com" name="username" autocomplete="username"></label>
-      <label>Access code<span class="pw-wrap"><input id="gCode" name="password" type="password" maxlength="40" placeholder="XXXX-XXXX" spellcheck="false" autocomplete="current-password" autocapitalize="characters"><button type="button" class="linkbtn sm" id="gShow" aria-pressed="false">Show</button></span></label>
+      <label>Email<input id="gName" type="email" maxlength="80" ${!GUEST && ACCT_EMAIL ? `value="${esc(ACCT_EMAIL)}" readonly` : (LS.get('ap.member.' + memberKey(), null) || {}).email ? `value="${esc(LS.get('ap.member.' + memberKey(), null).email)}"` : ''} placeholder="you@school.org" name="username" autocomplete="username"></label>
+      <label>Teacher code<span class="pw-wrap"><input id="gCode" name="password" type="password" maxlength="40" placeholder="XXXX-XXXX" spellcheck="false" autocomplete="current-password" autocapitalize="characters"><button type="button" class="linkbtn sm" id="gShow" aria-pressed="false">Show</button></span></label>
       <p class="small muted" style="margin:-4px 0 0">Your browser can save and fill in your code next time.</p>
-      <button class="btn primary" type="submit" id="gGo">Sign in</button>
+      <button class="btn primary" type="submit" id="gGo">Teacher sign in</button>
       <div class="err" id="gErr" role="alert">${err ? esc(err) : ''}</div></form></section>
-    <section class="panel gate-new" data-su-box ${window.SIGNUP ? '' : 'hidden'}><span class="gn-ic" aria-hidden="true">${SVG(IC.users)}</span><div><b>New here?</b><span class="small muted">Students and teachers: sign up and we’ll email your access code.</span></div><button type="button" class="btn primary" id="suOpen" data-native="1">Sign up</button></section>
-    <p class="small muted gate-help"><button class="linkbtn sm" id="gForgot">Forgot your code?</button><br>Don't have a code? <span data-su-show ${window.SIGNUP ? '' : 'hidden'}>Sign up above, or email</span><span data-su-hide ${window.SIGNUP ? 'hidden' : ''}>Ask the site owner:</span> <span class="nowrap">${OWNER_EMAIL}</span>.</p>
-    <section class="panel take-cta"><div><b>Taking a test from your teacher?</b><span class="small muted">You don’t need an account. Enter the test code.</span></div><a class="btn" href="#take">Enter a test code ${SVG(IC.arrow)}</a></section></div></div>`;
+    <section class="panel gate-new" data-su-box ${window.SIGNUP ? '' : 'hidden'}><span class="gn-ic" aria-hidden="true">${SVG(IC.users)}</span><div><b>New teacher?</b><span class="small muted">Request a teacher account. We’ll email your teacher code once it’s approved.</span></div><button type="button" class="btn" id="suOpen" data-native="1">Sign up</button></section>
+    <p class="small muted gate-help"><button class="linkbtn sm" id="gForgot">Forgot your teacher code?</button></p></div></div>`;
   $('#gForm').onsubmit = async e => {
     e.preventDefault(); const email = !GUEST && ACCT_EMAIL ? ACCT_EMAIL : normEmail($('#gName').value), code = $('#gCode').value;
     const fail = m => { $('#gErr').textContent = m; $('#gGo').disabled = false; signLog(email, code, m === OFF_MSG() ? 'off' : /don.t match/.test(m) ? 'nomatch' : 'other'); };
-    if (!isEmail(email)) return fail('Enter the email address the site owner registered for you.');
+    if (!isEmail(email)) return fail('Enter the email address of your teacher account.');
     if (normCode(code).length < 4) return fail('Enter your access code.');
     $('#gGo').disabled = true;
     const asTeacher = async () => { MEMBER = { name: email, email, role: 'teacher', ck: await ckOf(email, code), joinedAt: new Date().toISOString() }; GATE_MSG = ''; saveCred(email, code); signLog(email, code, 'ok'); enterMember(); go(ROUTE || 'home'); };
     if (GUEST) { if (await teacherOK(email, code)) { if (await liveAccess(email, 'teacher', true) === false) return fail(OFF_MSG()); return asTeacher(); }
-      if (!(await guestValid(email, code))) return fail('That email and access code don\'t match. Monthly codes change on the 1st, so check you have the latest one, or use "Forgot your code?" below.');
-      if (await liveAccess(email, 'student', true) === false) return fail(OFF_MSG());
-      MEMBER = { name: email, email, ck: await ckOf(email, code), joinedAt: new Date().toISOString() }; GATE_MSG = ''; saveCred(email, code); signLog(email, code, 'ok'); enterMember(); go(ROUTE || 'home'); return; }
+      return fail('That email and teacher code don\'t match. Students: use the class code box above instead.'); }
     await loadAccess();
     if (await teacherOK(email, code)) return asTeacher();
-    if (!ACCESS_DOC.emails.length && !(ACCESS_DOC.remails || []).length) return fail('The site couldn\'t load its invitation list for your Claude account. Make sure you\'re signed in at claude.ai with the email the site owner shared the site with, then reload.');
-    if (!(await emailActive(email)) || !(await codeOK(email, code))) return fail('That email and access code don\'t match. Monthly codes change on the 1st, so check you have the latest one, or use "Forgot your code?" below.');
-    if (ACCESS_DOC.removed.includes(memberKey())) return fail('The site owner removed your access. Ask them to restore it.');
-    MEMBER = { name: email, email, ck: await ckOf(email, code), joinedAt: new Date().toISOString() }; GATE_MSG = '';
-    saveCred(email, code); signLog(email, code, 'ok'); enterMember(); go(ROUTE || 'home');
+    return fail('That email and teacher code don\'t match. Students: use the class code box above instead.');
   };
-  formFix('#gForm'); (!GUEST && ACCT_EMAIL ? $('#gCode') : $('#gName')).focus();
+  $('#cForm').onsubmit = async e => { e.preventDefault(); const b = $('#cGo'), code = $('#cCode').value; $('#cErr').textContent = ''; b.disabled = true; b.textContent = 'Checking…';
+    await clsEnter(code, m => { $('#cErr').textContent = m; b.disabled = false; b.textContent = 'Start practicing'; $('#cCode').focus(); }); CLS_PREFILL = ''; };
+  formFix('#cForm');
+  formFix('#gForm'); if (!matchMedia('(pointer: coarse)').matches) $('#cCode').focus(); /* no auto-focus on tablets: it pops the keyboard over the page */
   $('#gShow').onclick = () => { const v = $('#gCode').type === 'password'; $('#gCode').type = v ? 'text' : 'password'; $('#gShow').textContent = v ? 'Hide' : 'Show'; $('#gShow').setAttribute('aria-pressed', v); };
   $('#gForgot').onclick = () => openForgot($('#gName').value);
   $('#suOpen').onclick = () => openSignup();
@@ -16481,7 +16510,66 @@ Object.assign(IC, {
   teacher: '<circle cx="9" cy="7.5" r="3.2"/><path d="M3 20c.6-3.7 3-5.8 6-5.8s5.4 2.1 6 5.8"/><path d="M15 4h6v8h-4"/>',
 });
 const isTeacher = () => MODE === 'owner' || (MODE === 'member' && !!MEMBER && MEMBER.role === 'teacher');
-const myEmail = () => MODE === 'member' && MEMBER ? normEmail(MEMBER.email || '') : normEmail(LS.get('ap.testonly.email', '') || '');
+const myEmail = () => MODE === 'member' && MEMBER ? normEmail(MEMBER.email || '') : '';
+/* Students are known by the number their teacher gives them (1–999). Scholar Lab never asks for, sends or keeps a
+   student's name or email: test results go to the teacher as "Student 14", and the teacher matches numbers to names in
+   their own browser (Gradebook & Classes → Students → No.). */
+const stuNo = v => { const m = String(v == null ? '' : v).trim().replace(/^#/, '').match(/^\d{1,3}$/); return m && +m[0] > 0 ? String(+m[0]) : ''; };
+const stuNoKey = () => `ap.${PID}.ut.no`;
+const stuNoGet = () => stuNo(LS.get(stuNoKey(), ''));
+const stuName = no => 'Student ' + no;
+const stuNoOf = nm => { const m = String(nm || '').trim().match(/^(?:student\s*(?:no\.?\s*)?)?#?(\d{1,3})$/i); return m ? stuNo(m[1]) : ''; };
+const NO_FIELD = (id, v) => `<label>Your student number from your teacher<input id="${id}" class="mono stu-no" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="e.g. 14" value="${esc(v || '')}"></label>
+  <p class="small muted" style="margin:-4px 0 0">Type only your number, not your name. Your results go to your teacher as “Student <i>number</i>”.</p>`;
+/* names and emails this browser kept from before (students typed them to take tests, and sign-ins were logged): forget them */
+(() => { try { if (!PERSIST) return; for (let i = localStorage.length - 1; i >= 0; i--) { const k = localStorage.key(i); if (k && (/^ap\..+\.ut\.name$/.test(k) || k === 'ap.testonly.email' || k === 'ap.signin.log')) localStorage.removeItem(k); } } catch (e) {} })();
+
+/* ═════ CLASS CODES ═════
+   A teacher makes a class code on the Class Codes page; students type it on the sign-in page to practice. No student
+   account, name or email. A code is 6 random characters + 4 check characters (from SITE_KEY), shown as XXXXX-XXXXX, so a
+   typo is caught on the device. The sign-up script's "Class codes" tab (ScholarTests.gs) says whether a code is real and
+   still open; if it can't be reached, a well-formed code is let in and checked again later. */
+const clsNorm = c => String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+const clsFmt = c => { c = clsNorm(c); return c.length === 10 ? c.slice(0, 5) + '-' + c.slice(5) : c; };
+async function clsCheckChars(six) { const h = await sha256hex(SITE_KEY + '|cls|' + six); let s = ''; for (let i = 0; i < 4; i++) s += CODE_ABC[parseInt(h.slice(i * 4, i * 4 + 4), 16) % CODE_ABC.length]; return s; }
+async function clsValid(c) { c = clsNorm(c); return c.length === 10 && [...c].every(ch => CODE_ABC.includes(ch)) && c.slice(6) === await clsCheckChars(c.slice(0, 6)); }
+async function clsMake() { const r = crypto.getRandomValues(new Uint8Array(6)), six = [...r].map(b => CODE_ABC[b % CODE_ABC.length]).join(''); return clsFmt(six + await clsCheckChars(six)); }
+async function clsStatus(c) {
+  const cfg = await signupReady(); if (!cfg || !cfg.endpoint) return null;
+  try { const ac = new AbortController(), tm = setTimeout(() => ac.abort(), 8000);
+    const r = await fetch(`${cfg.endpoint}?a=cls&c=${clsNorm(c)}`, { signal: ac.signal }); clearTimeout(tm); const d = await r.json(); return d && d.ok ? d : null; } catch (e) { return null; }
+}
+async function clsCall(body) {
+  const me = myTk(), cfg = await signupReady(); if (!me || !cfg || !cfg.endpoint) return { ok: false, msg: 'Class codes are made on the website, scholarlab.net, while you’re signed in as a teacher.' };
+  try { const ac = new AbortController(), tm = setTimeout(() => ac.abort(), 15000);
+    const r = await fetch(cfg.endpoint, { method: 'POST', signal: ac.signal, body: JSON.stringify({ a: 'cls', site: 'scholarlab', email: me.e, tk: me.tk, ...body }) }); clearTimeout(tm); return await r.json(); }
+  catch (e) { return { ok: false, msg: 'Couldn’t reach Scholar Lab’s class code service. Check your connection and try again.' }; }
+}
+/* a student types a class code on the sign-in page */
+async function clsEnter(code, fail) {
+  if (!(await clsValid(code))) return fail('That class code doesn’t look right. It has 10 letters and numbers, like ABCDE-FGH23. Check it with your teacher.');
+  const st = await clsStatus(code);
+  if (st && !st.known) return fail('That class code isn’t active. Check it with your teacher.');
+  if (st && !st.open) return fail('Your teacher has closed this class code. Ask them for the new one.');
+  if (st) LS.set('ap.cls.ok', { c: clsNorm(code), t: Date.now() });
+  MEMBER = { name: 'Student', email: '', role: 'class', cls: clsFmt(code), joinedAt: new Date().toISOString() }; GATE_MSG = '';
+  enterMember(); go(ROUTE || 'home');
+}
+/* a remembered class-code sign-in: check quietly that the code is still open (at most every 6 hours) */
+function clsRecheck() {
+  if (!MEMBER || MEMBER.role !== 'class' || inExam) return; const m = MEMBER, c = LS.get('ap.cls.ok', null);
+  if (c && c.c === clsNorm(m.cls) && Date.now() - c.t < 6 * 3600e3) return;
+  clsStatus(m.cls).then(st => { if (!st || MEMBER !== m || inExam) return;
+    if (st.known && st.open) { LS.set('ap.cls.ok', { c: clsNorm(m.cls), t: Date.now() }); return; }
+    LS.del('ap.member.' + memberKey()); MEMBER = null; PID = null; MODE = 'gate';
+    GATE_MSG = st.known ? 'Your teacher closed this class code. Ask them for the new one. Your practice history on this device is kept.' : 'That class code isn’t active any more. Ask your teacher for a new one.'; go('home'); route(); });
+}
+/* a student who signed in with an email before class codes: forget the email on this device, keep their history */
+function retireStudent(m) {
+  try { if (m && m.email) { const keep = PID; LS.set('ap.cls.pid', memberPID(m.email)); PID = keep; } } catch (e) {}
+  LS.del('ap.member.' + memberKey());
+  GATE_MSG = 'Scholar Lab now uses class codes instead of student accounts. Enter the class code from your teacher. Your practice history on this device is kept.';
+}
 /* the email results go to by default: a signed-in teacher's own address, or the one the owner last used */
 const teacherDefaultEmail = () => MODE === 'member' && MEMBER && MEMBER.role === 'teacher' ? normEmail(MEMBER.email) : normEmail(LS.get('ap.ut.email', OWNER_EMAIL));
 /* optional site-wide results relay (a Google Apps Script web app). A teacher can also set their own under Assign Tests → Email settings. */
@@ -17120,7 +17208,7 @@ function renderUtNew() {
         ${(() => { const sc = utShortOf(ut); return sc ? `<div class="sc-box"><span class="small">Short test code${ut.o ? ' (works without an account)' : ''}</span><div class="sc-code" id="utShort">${esc(sc)}</div><div class="row"><button class="btn" data-copyt="${esc(sc)}">Copy code</button><span class="small muted">Students go to <b>${esc(siteBase().replace(/^https?:\/\//, ''))}/#take</b> and type it. They enter your email at the end to send you their results.</span></div></div>` : `<p class="small muted" style="margin:0">${ut.z == null ? 'A short code isn’t available after replacing or removing questions. Share the link instead, or generate a new version.' : 'Share the link below.'}</p>`; })()}
         <label class="small">Or share the long test code (students paste it on the Unit Tests page)<div class="copyline"><input readonly value="${esc(code)}" id="utCodeIn"><button class="btn" data-copy="#utCodeIn">Copy code</button></div></label><span class="copied" id="utCopied" aria-live="polite"></span></div>
       <ol class="utlist">${items.map((q, i) => `<li><span class="u-n ${q.type === 'cr' ? 'frq' : q.def ? 'def' : q.custom ? 'own' : ''}">${q.type === 'cr' ? (CASES[q.caseId] && CASES[q.caseId].custom ? 'Own FRQ' : 'FRQ') : q.def ? 'Definition' : q.custom ? 'Yours' : 'Unit ' + q.cat}</span><span class="ut-stem">${q.gen ? '<span class="ut-tag new">New numbers</span>' : !q.def && !q.custom && q.type !== 'cr' && x2.secure.has(q.id) ? '<span class="ut-tag sec">Teacher-only</span>' : ''}${q.type === 'cr' ? `<b>${esc(CASES[q.caseId].title)}</b> <span class="muted">· ${esc(frqLabel(CASES[q.caseId]))} · ${q.max} pts</span>` : F(String(q.stem).replace(/<table[\s\S]*?<\/table>/g, '[table]').replace(/<[^>]+>/g, ' ').slice(0, 170))}${q.type !== 'cr' && String(q.stem).length > 170 ? '…' : ''}</span>${q.type === 'cr' ? `<button class="linkbtn sm" data-frm="${esc(ut.f[items.filter(o => o.type === 'cr').indexOf(q)] || q.caseId)}" style="color:var(--bad)">Remove</button>` : !q.def && !q.custom && !q.gen && i < ut.q.length ? `<button class="linkbtn sm" data-swap="${i}">Replace</button>` : ''}</li>`).join('')}</ol></section>`; })() : '';
-  $('#hub').innerHTML = nav('ut-new') + `<div class="page ut-page">${pageHead('Teacher Tools', 'Create a unit test', 'Build a fixed test from the question bank, with multiple-choice and free-response questions. Students get no feedback while testing, and their results are sent to you when they finish.')}
+  $('#hub').innerHTML = nav('ut-new') + `<div class="page ut-page">${pageHead('Teacher Tools', 'Create a unit test', 'Build a fixed test from the question bank, with multiple-choice and free-response questions. Students get no feedback while testing, and their results are sent to you when they finish.')}${devNote(true)}
     <div class="ut-toplinks"><a class="btn" href="#ut-mine">${SVG(IC.list)} My unit tests${mine.length ? ` <span class="ut-badge">${mine.length}</span>` : ''}</a><a class="btn quiet" href="#ut-check">${SVG(IC.check)} Check results</a></div>
     <div class="ut-grid"><section class="card ut-form">${(() => { let sn = 0; const H = (t, extra) => `<h4 class="ut-sh"><span class="ut-num">${++sn}</span><span>${t}</span>${extra ? `<span class="ut-cnt">${extra}</span>` : ''}</h4>`; return `
       <section class="ut-step">${H('Course and test type')}
@@ -17429,7 +17517,7 @@ function renderUtIntro(code) {
   const items = exam ? [] : utItems(ut), mc = exam ? x.nSR : utMcq(items).filter(q => !q.def).length, dfn = exam ? 0 : utMcq(items).length - mc, fr = exam ? (x.crCat ? x.crCat.n : 0) : items.length - mc - dfn, miss = exam ? 0 : utMissing(ut);
   if (PID && ut.e) LS.set(`ap.${PID}.teacher`, { e: ut.e, r: ut.r || '' });
   setAccent(x); show('hub');
-  const name = LS.get(`ap.${PID}.ut.name`, MODE === 'member' && MEMBER && MEMBER.role !== 'teacher' ? meName() : (me() || {}).name || '');
+  const no = stuNoGet();
   const prev = exam ? 0 : LS.get(utResKey(), []).filter(r => r.code === p.code).length; let cur = exam ? loadCur(x) : LS.get(utCurKey(), null);
   const same = o => !!o && (o.code === p.code || (!!o.ut && tidOf(o.ut) === tidOf(ut)));
   let resumable = !!cur && same(exam ? cur.assign : cur.unit);
@@ -17448,8 +17536,7 @@ function renderUtIntro(code) {
       ${miss ? `<p class="notice">${miss} question${miss > 1 ? 's' : ''} from this test ${miss > 1 ? 'were' : 'was'} updated or removed since your teacher made it, so it is scored out of ${mc + dfn}.</p>` : ''}
       ${prev ? `<p class="notice">You already submitted this test ${prev} time${prev > 1 ? 's' : ''} on this device. A new attempt is reported to your teacher as attempt ${prev + 1}.</p>` : ''}
       ${sebBlock ? '' : resumable ? `<div class="row" style="margin:12px 0"><button class="btn primary big" id="utRes">Resume this ${exam ? 'exam' : 'test'}</button></div>` : `
-      <form id="utStartF" autocomplete="off"><label>Your full name (as your teacher knows you)<input id="utName" maxlength="60" value="${esc(name)}" placeholder="First and last name"></label>
-      ${MODE === 'member' ? '' : `<label>Your school email (optional)<input id="utMe" type="email" maxlength="80" value="${esc(LS.get('ap.testonly.email', '') || '')}" placeholder="you@school.org"></label>`}
+      <form id="utStartF" autocomplete="off" novalidate>${NO_FIELD('utNo', no)}
       ${!exam && !ut.e ? `<label>Your teacher’s email (where your results go)<input id="utTo" type="email" maxlength="80" value="${esc((LS.get(`ap.${PID}.teacher`, null) || {}).e || '')}" placeholder="teacher@school.org"></label>` : ''}
       <button class="btn primary big" type="submit">${lkm ? SVG(IC.lock) + ' Start in full screen' : 'Start ' + (exam ? 'exam simulation' : 'unit test')}</button>
       <p class="small muted acc-pre">${UTACC[p.code] && UTACC[p.code].log.length ? `<b>Accommodations set by your teacher:</b> ${esc(UTACC[p.code].log.join('; '))} · ` : ''}<button class="linkbtn sm" type="button" id="utAcc">Teacher: accommodations</button></p><div class="err" id="utStErr" role="alert"></div></form>`}
@@ -17466,12 +17553,11 @@ function renderUtIntro(code) {
   const openP = testCheck([ut]).then(res => { const t = res && res.tests[tidOf(ut)]; return t && t.closed ? t : null; });
   const shut = t => { const f = $('#utStartF'); if (!f) return; f.outerHTML = `<div class="notice ut-closed" role="alert"><b>This test is closed.</b> ${t.status === 'Closed' || !t.closeAt ? 'Your teacher has closed it' : 'It closed ' + esc(fmtWhen(t.closeAt))}, so it can’t be started now. If you think this is a mistake, ask your teacher.</div>`; };
   openP.then(t => { if (t) shut(t); });
-  $('#utStartF').onsubmit = async e => { e.preventDefault(); const nm = $('#utName').value.trim().replace(/\s+/g, ' ');
+  $('#utStartF').onsubmit = async e => { e.preventDefault(); const sn = stuNo($('#utNo').value), nm = stuName(sn);
     const closedT = await Promise.race([openP, new Promise(r => setTimeout(() => r(null), 2500))]); if (closedT) return shut(closedT);
-    if (nm.length < 3 || !/\s/.test(nm)) { $('#utStErr').textContent = 'Enter your first and last name so your teacher can match your results.'; return; }
-    if ($('#utMe')) { const me2 = normEmail($('#utMe').value); if (me2 && !isEmail(me2)) { $('#utStErr').textContent = 'Check your email address, or leave it blank.'; return; } LS.set('ap.testonly.email', me2); }
+    if (!sn) { $('#utStErr').textContent = 'Enter the student number your teacher gave you (a number from 1 to 999).'; $('#utNo').focus(); return; }
     if ($('#utTo')) { const to = normEmail($('#utTo').value); if (!isEmail(to)) { $('#utStErr').textContent = 'Enter your teacher’s email address so you can send them your results.'; return; } LS.set(`ap.${PID}.teacher`, { e: to, r: '' }); }
-    const go2 = () => { LS.set(`ap.${PID}.ut.name`, nm); X = x; const lk = lkNew(ut); if (lk && fsOK() && !lkTablet()) { lk.fs = 1; lkFull(); }
+    const go2 = () => { LS.set(stuNoKey(), sn); X = x; const lk = lkNew(ut); if (lk && fsOK() && !lkTablet()) { lk.fs = 1; lkFull(); }
       if (exam) { T = buildTest(x, 'full', null, ut.lv || 'std', false); T.title = ut.n; T.assign = { code: p.code, ut }; T.studentName = nm; T.lk = lk; stretchTime(ut, x); accStart(p.code); save(); enterExam(); return; }
       T = { v: 1, testId: x.id, mode: 'unit', level: 'std', cat: null, items, title: ut.n, ans: items.map(() => []), marked: items.map(() => false), visited: items.map(() => false), cur: 0, screen: 'q',
         remaining: ut.m * 60, total: ut.m * 60, untimed: !ut.m, elapsed: 0, spent: 0, started: new Date().toISOString(), unit: { code: p.code, ut }, studentName: nm, lk };
@@ -17541,7 +17627,7 @@ function utScorecard(r, teacher) {
   const units = Object.entries(r.byCat).map(([k, [ok, t]]) => ({ name: `Unit ${k}: ${x.CAT[k] ? x.CAT[k].short : ''}`, ok, t }));
   const rows = r.items.map((q, i) => q.type === 'cr' ? { n: i + 1, cr: true } : { n: i + 1, w: q.type === 'txt', ans: ansShow(q, r.ans[i]), key: reveal ? keyShow(q) : '', ok: isRight(q, r.ans[i]) });
   const frqs = r.items.map((q, i) => [q, i]).filter(([q]) => q.type === 'cr').map(([q, i]) => ({ title: CASES[q.caseId] ? CASES[q.caseId].title : 'Free response', max: q.max, pts: null, text: r.ans[i][0] || '' }));
-  return scoreCardHTML({ title: r.ut.n, course: x.subject, sub: utUnits(r.ut).join(' · '), student: r.name, email: r.email, date: fmtDate(r.date), used: r.used, mc: { c: r.correct, n: r.n }, fr: frqs.length ? { done: false } : null, units, rows: reveal ? rows : rows.map(o => ({ ...o, key: '' })), frqs, note: frqs.length ? 'Free-response answers are scored by your teacher.' : '' });
+  return scoreCardHTML({ title: r.ut.n, course: x.subject, sub: utUnits(r.ut).join(' · '), student: gbLabel(r.name), email: r.email, date: fmtDate(r.date), used: r.used, mc: { c: r.correct, n: r.n }, fr: frqs.length ? { done: false } : null, units, rows: reveal ? rows : rows.map(o => ({ ...o, key: '' })), frqs, note: frqs.length ? 'Free-response answers are scored by your teacher.' : '' });
 }
 async function renderUtResult(idx, fresh) {
   const list = LS.get(utResKey(), []), r = list[idx]; if (!r) return renderUnitTests();
@@ -17585,7 +17671,7 @@ async function examData(rec, x, nm) {
   return `APEX.${payload}.${sig}`;
 }
 async function examMail(rec, x, to) {
-  const t = crTotals(rec), nm = rec.studentName || LS.get(`ap.${PID}.ut.name`, '') || meName() || 'Student', em = myEmail();
+  const t = crTotals(rec), nm = rec.studentName || (stuNoGet() ? stuName(stuNoGet()) : '') || (isTeacher() ? meName() : '') || 'Student', em = isTeacher() ? myEmail() : '';
   const units = x.cats.filter(c => rec.byCat[c.k]).map(c => `  Unit ${c.k} ${c.short}: ${rec.byCat[c.k][0]}/${rec.byCat[c.k][1]}`).join('\n');
   const fr = rec.items ? rec.items.map((q, i) => [q, i]).filter(([q]) => q.type === 'cr') : [];
   const data = await examData(rec, x, nm);
@@ -17639,7 +17725,7 @@ async function examSendBox(rec, x, fresh) {
       histPatch(x, rec, { autoSt: st === 'off' ? null : st, ...(st === 'ok' || st === 'maybe' ? { sent: { at: new Date().toISOString(), via: 'auto' } } : {}) }); examSendBox(rec, x, false); }
   }
 }
-function examScorecardPdf(rec, x, btn) { const nm = rec.studentName || LS.get(`ap.${PID}.ut.name`, '') || meName() || 'Student'; makePdf(examScorecard(rec, x, nm), fileSafe(`${x.subject} ${rec.mode === 'full' ? 'exam' : rec.mode === 'calc' ? 'calculation' : 'practice'} ${nm}`) + '-score-card.pdf', btn); }
+function examScorecardPdf(rec, x, btn) { const nm = rec.studentName || (stuNoGet() ? stuName(stuNoGet()) : '') || (isTeacher() ? meName() : '') || 'Student'; makePdf(examScorecard(rec, x, nm), fileSafe(`${x.subject} ${rec.mode === 'full' ? 'exam' : rec.mode === 'calc' ? 'calculation' : 'practice'} ${nm}`) + '-score-card.pdf', btn); }
 
 /* ── teacher: check pasted results (unit tests and exam simulations), score free response, score cards ── */
 let UTC = { text: '', out: null, sc: {} };
@@ -17731,14 +17817,14 @@ function correctionPages(o) {
 function utcReview(r, fix) {
   const x = BY_ID[r.ut.t], items = r.rows.map(o => o.q);
   const ans = r.rows.map(o => o.cr ? [o.text || ''] : o.w ? [o.a === '–' ? '' : o.a] : o.q.type === 'num' ? [o.a === '-' ? '' : o.a] : String(o.a || '').split('').map(ch => LETTERS.indexOf(ch)).filter(j => j >= 0));
-  return (fix ? correctionPages : reviewPages)({ title: r.ut.n, course: x.subject, sub: utUnits(r.ut).join(' · '), student: r.d.nm, date: r.d.d ? fmtDate(r.d.d) : '', items, ans });
+  return (fix ? correctionPages : reviewPages)({ title: r.ut.n, course: x.subject, sub: utUnits(r.ut).join(' · '), student: gbLabel(r.d.nm), date: r.d.d ? fmtDate(r.d.d) : '', items, ans });
 }
 function utcScorecard(r) {
   if (r.kind === 'EX') { const x = BY_ID[r.d.t] || TESTS[0], d = r.d;
-    return scoreCardHTML({ title: d.as || `${x.subject} exam simulation`, course: x.subject, sub: 'Exam simulation · ' + ((LEVEL[d.lv] || LEVEL.std).name), student: d.nm, email: d.em, date: d.d ? fmtDate(d.d) : '', used: d.u, mc: { c: d.mc[0], n: d.mc[1] }, fr: d.fr ? { done: !!d.fr[2], pts: d.fr[0], max: d.fr[1], who: 'self-scored' } : null, weighted: d.fr && d.fr[2] ? d.w : null, ap: d.ap ? { score: d.ap[0], comp: d.ap[1] } : null,
+    return scoreCardHTML({ title: d.as || `${x.subject} exam simulation`, course: x.subject, sub: 'Exam simulation · ' + ((LEVEL[d.lv] || LEVEL.std).name), student: gbLabel(d.nm), email: d.em, date: d.d ? fmtDate(d.d) : '', used: d.u, mc: { c: d.mc[0], n: d.mc[1] }, fr: d.fr ? { done: !!d.fr[2], pts: d.fr[0], max: d.fr[1], who: 'self-scored' } : null, weighted: d.fr && d.fr[2] ? d.w : null, ap: d.ap ? { score: d.ap[0], comp: d.ap[1] } : null,
       units: Object.entries(d.bc || {}).map(([k, [ok, t]]) => ({ name: `Unit ${k}: ${x.CAT[k] ? x.CAT[k].short : ''}`, ok, t })), note: r.sigOk ? 'Check code verified.' : 'Warning: the check code does not match, so these results may have been edited.', check: r.sig }); }
   const x = BY_ID[r.ut.t], tt = utcTotals(r);
-  return scoreCardHTML({ title: r.ut.n, course: x.subject, sub: utUnits(r.ut).join(' · '), student: r.d.nm, email: r.d.em, date: r.d.d ? fmtDate(r.d.d) : '', used: r.d.u, mc: { c: r.c, n: r.n }, fr: tt.fq.length ? { done: true, pts: tt.fp, max: tt.fm, who: 'teacher-scored' } : null, weighted: tt.fq.length && r.n ? tt.comb : null, weightNote: tt.byPts ? 'total points' : '50% MC · 50% FRQ',
+  return scoreCardHTML({ title: r.ut.n, course: x.subject, sub: utUnits(r.ut).join(' · '), student: gbLabel(r.d.nm), email: r.d.em, date: r.d.d ? fmtDate(r.d.d) : '', used: r.d.u, mc: { c: r.c, n: r.n }, fr: tt.fq.length ? { done: true, pts: tt.fp, max: tt.fm, who: 'teacher-scored' } : null, weighted: tt.fq.length && r.n ? tt.comb : null, weightNote: tt.byPts ? 'total points' : '50% MC · 50% FRQ',
     units: Object.entries(r.byCat).map(([k, [ok, t]]) => ({ name: `Unit ${k}: ${x.CAT[k] ? x.CAT[k].short : ''}`, ok, t })), rows: r.rows.map((o, i) => o.cr ? { n: i + 1, cr: true } : { n: i + 1, w: !!o.w, ans: o.w ? o.a : o.a.replace('-', '–'), key: o.want, ok: o.ok }),
     frqs: tt.fq.map(f => ({ title: CASES[f.o.q.caseId] ? CASES[f.o.q.caseId].title : 'Free response', max: f.max, pts: f.pts, text: f.o.text == null ? '(answer is in the email)' : f.o.text, rubric: f.P && f.P.rubric ? f.P.rubric.map((rb, j) => ({ t: rb.t, pts: rb.pts, on: !!f.on[j] })) : null })),
     note: r.sigOk ? 'Multiple-choice score recalculated from the student’s answers; check code verified.' : 'Warning: the check code does not match, so these results may have been edited.', check: r.sig });
@@ -17757,16 +17843,16 @@ function renderUtCheck() {
     if (r.bad) return `<div class="card notice">${esc(r.bad)}</div>`;
     const sigTag = r.sigOk ? '<span class="st-on">✓ Check code valid</span>' : '<span class="st-off">⚠ Check code doesn’t match — the results may have been edited</span>';
     if (r.kind === 'EX') { const d = r.d, x = BY_ID[d.t];
-      return `<section class="card utc"><div class="card-h sm"><h3>${esc(d.nm || 'Unknown student')}</h3><span class="small muted">${esc(d.em || '')}</span>${sigTag}<span style="flex:1"></span><button class="btn sm" data-scp="${ri}">${SVG(IC.dl)} Score card PDF</button><button class="btn sm" data-fxp="${ri}">${SVG(IC.dl)} Corrections sheet PDF</button><button class="btn sm" data-rvp="${ri}">${SVG(IC.dl)} Answer review PDF</button></div>
+      return `<section class="card utc"><div class="card-h sm"><h3>${gbWho(d.nm)}</h3><span class="small muted">${esc(d.em || '')}</span>${sigTag}<span style="flex:1"></span><button class="btn sm" data-scp="${ri}">${SVG(IC.dl)} Score card PDF</button><button class="btn sm" data-fxp="${ri}">${SVG(IC.dl)} Corrections sheet PDF</button><button class="btn sm" data-rvp="${ri}">${SVG(IC.dl)} Answer review PDF</button></div>
         ${lkLine(d.lk, d)}<p class="small" style="margin:0 0 8px"><b>${esc(d.as || 'Exam simulation')}</b> · ${esc(x ? x.subject : d.t)} · ${(LEVEL[d.lv] || LEVEL.std).name} · submitted ${d.d ? fmtDate(d.d) : '—'} · time ${fmtDur(d.u || 0)}</p>
         ${(() => { if (!d.fx) return `<div class="utc-k"><div><small>Multiple choice</small><b>${d.mc[0]}/${d.mc[1]}</b></div>${d.fr ? `<div><small>Free response (self-scored)</small><b>${d.fr[2] ? d.fr[0] + '/' + d.fr[1] : 'not scored'}</b></div>` : ''}${d.ap ? `<div><small>AP estimate</small><b>${apBadge(d.ap[0])}</b></div>` : ''}</div>
           <p class="small muted" style="margin:8px 0 0">Exam simulations draw random questions, so the score can’t be recalculated here; the check code shows whether these numbers were changed. The student’s free-response answers are in their email.</p>`;
           const tt = utcTotals(r), ap = x && tt.fq.length ? apFrom(x, d.mc[1] ? d.mc[0] / d.mc[1] : 0, tt.fm ? tt.fp / tt.fm : 0) : null;
           return `<div class="utc-k"><div><small>Multiple choice</small><b>${d.mc[0]}/${d.mc[1]}</b></div>${tt.fq.length ? `<div><small>Free response${tt.confirmed ? '' : ' (auto, confirm below)'}</small><b>${tt.fp}/${tt.fm}</b></div><div><small>Weighted</small><b>${tt.comb}%</b></div>` : ''}${ap ? `<div><small>AP estimate${tt.confirmed ? '' : ' (so far)'}</small><b>${apBadge(ap.score)}</b></div>` : ''}</div>
           ${frqHTML(ri, tt.fq)}<p class="small muted" style="margin:8px 0 0">Multiple choice comes from the student’s results (the check code shows whether it was changed). Free response is scored automatically against the scoring guide for you to review; the student doesn’t see these points.</p>`; })()}</section>`; }
-    if (!r.ut) return `<section class="card utc"><div class="card-h sm"><h3>${esc(r.d.nm || 'Unknown student')}</h3>${sigTag}</div><p class="notice">This test isn’t in your saved tests and couldn’t be rebuilt. Open the test from “Your unit tests” on this device, then check again.</p></section>`;
+    if (!r.ut) return `<section class="card utc"><div class="card-h sm"><h3>${gbWho(r.d.nm)}</h3>${sigTag}</div><p class="notice">This test isn’t in your saved tests and couldn’t be rebuilt. Open the test from “Your unit tests” on this device, then check again.</p></section>`;
     const tt = utcTotals(r);
-    return `<section class="card utc"><div class="card-h sm"><h3>${esc(r.d.nm || 'Unknown student')}</h3><span class="small muted">${esc(r.d.em || '')}</span>${sigTag}<span style="flex:1"></span><button class="btn sm" data-scp="${ri}">${SVG(IC.dl)} Score card PDF</button><button class="btn sm" data-fxp="${ri}">${SVG(IC.dl)} Corrections sheet PDF</button><button class="btn sm" data-rvp="${ri}">${SVG(IC.dl)} Answer review PDF</button></div>
+    return `<section class="card utc"><div class="card-h sm"><h3>${gbWho(r.d.nm)}</h3><span class="small muted">${esc(r.d.em || '')}</span>${sigTag}<span style="flex:1"></span><button class="btn sm" data-scp="${ri}">${SVG(IC.dl)} Score card PDF</button><button class="btn sm" data-fxp="${ri}">${SVG(IC.dl)} Corrections sheet PDF</button><button class="btn sm" data-rvp="${ri}">${SVG(IC.dl)} Answer review PDF</button></div>
       <p class="small" style="margin:0 0 8px"><b>${esc(r.ut.n)}</b> · ${esc(BY_ID[r.ut.t].subject)} · submitted ${r.d.d ? fmtDate(r.d.d) : '—'} · time ${fmtDur(r.d.u || 0)}${r.d.x ? ' (time ran out)' : ''}${r.d.at > 1 ? ` · <b>attempt ${r.d.at}</b> on their device` : ''}</p>
       ${lkLine(r.d.lk, r.d)}<div class="utc-k"><div><small>Multiple choice${r.rows.some(o => o.q.def) ? ' + definitions' : ''} (recalculated)</small><b>${r.c}/${r.n} · ${r.n ? Math.round(r.c / r.n * 100) : 0}%</b></div>${r.rows.some(o => o.q.def) ? `<div><small>Definitions${r.rows.some(o => o.w) ? ' (points)' : ''}</small><b>${r.rows.filter(o => o.q.def && o.ok).reduce((t, o) => t + qPts(o.q), 0)}/${r.rows.filter(o => o.q.def).reduce((t, o) => t + qPts(o.q), 0)}</b></div>` : ''}${tt.fq.length ? `<div><small>Free response${tt.confirmed ? '' : ' (auto, confirm below)'}</small><b>${tt.fp}/${tt.fm}</b></div>${r.n ? `<div><small>Combined (${tt.byPts ? `${r.c + tt.fp}/${r.n + tt.fm} points` : '50/50'})</small><b>${tt.comb}%</b></div>` : ''}` : ''}</div>
       ${frqHTML(ri, tt.fq)}
@@ -17774,7 +17860,7 @@ function renderUtCheck() {
       <details style="margin-top:10px"><summary class="small">Question-by-question</summary><div class="tablewrap"><table class="hist"><thead><tr><th>#</th><th>Unit</th><th>Student</th><th>Key</th><th></th></tr></thead><tbody>${r.rows.map((o, i) => `<tr><td>${i + 1}</td><td>${o.cr ? 'FRQ' : esc(o.q.cat)}</td><td class="${o.w ? '' : 'mono'}">${o.cr ? (o.a === '-' ? 'blank' : 'written') : esc(o.a)}</td><td class="${o.w ? '' : 'mono'}">${o.cr ? 'see above' : esc(o.want)}</td><td>${o.cr ? '' : o.ok ? '<span class="st-on">✓</span>' : '<span class="st-off">✕</span>'}</td></tr>`).join('')}</tbody></table></div></details></section>`;
   };
   const summary = good.length > 1 ? `<section class="card" style="margin-top:18px"><div class="card-h sm"><h3>Class summary · ${good.length} results</h3><span style="flex:1"></span><button class="btn" id="utcCsv">${SVG(IC.dl)} Spreadsheet (CSV)</button></div><div class="tablewrap"><table class="hist"><thead><tr><th>Student</th><th>Test</th><th>MC</th><th>FRQ</th><th>Overall</th><th>Check</th></tr></thead><tbody>${good.map(r => { if (r.kind === 'EX') { const d = r.d; return `<tr><td>${esc(d.nm)}</td><td>${esc(d.as || (BY_ID[d.t] || {}).subject || '')}</td><td class="mono">${d.mc[0]}/${d.mc[1]}</td><td class="mono">${d.fr ? (d.fr[2] ? d.fr[0] + '/' + d.fr[1] : '—') : ''}</td><td class="mono">${d.ap ? 'AP ' + d.ap[0] : d.w + '%'}</td><td>${r.sigOk ? '<span class="st-on">valid</span>' : '<span class="st-off">edited?</span>'}</td></tr>`; }
-      const tt = r.ut ? utcTotals(r) : null; return `<tr><td>${esc(r.d.nm)}</td><td>${r.ut ? esc(r.ut.n) : '—'}</td><td class="mono">${r.ut ? `${r.c}/${r.n}` : '—'}</td><td class="mono">${tt && tt.fq.length ? `${tt.fp}/${tt.fm}` : ''}</td><td class="mono">${tt ? tt.comb + '%' : '—'}</td><td>${r.sigOk ? '<span class="st-on">valid</span>' : '<span class="st-off">edited?</span>'}</td></tr>`; }).join('')}</tbody></table></div></section>` : '';
+      const tt = r.ut ? utcTotals(r) : null; return `<tr><td>${gbWho(r.d.nm)}</td><td>${r.ut ? esc(r.ut.n) : '—'}</td><td class="mono">${r.ut ? `${r.c}/${r.n}` : '—'}</td><td class="mono">${tt && tt.fq.length ? `${tt.fp}/${tt.fm}` : ''}</td><td class="mono">${tt ? tt.comb + '%' : '—'}</td><td>${r.sigOk ? '<span class="st-on">valid</span>' : '<span class="st-off">edited?</span>'}</td></tr>`; }).join('')}</tbody></table></div></section>` : '';
   $('#hub').innerHTML = nav('ut-check') + `<div class="page">${pageHead('Teacher Tools', 'Check results', 'Paste result emails from unit tests and exam simulations. Unit test scores are recalculated from the student’s actual answers, you score free response with the scoring guide, and the check code shows whether results were edited.')}
     <section class="card"><textarea id="utcIn" class="crin" style="min-height:170px" placeholder="Paste result emails here (you can paste several at once)">${esc(UTC.text)}</textarea>
       <div class="row" style="margin-top:10px"><button class="btn primary" id="utcGo">Check results</button>${MODE === 'owner' && DB ? `<button class="btn" id="utcLoad">Load results submitted on this site</button>` : ''}<button class="btn quiet" id="utcClr">Clear</button>${good.length ? `<span style="flex:1"></span>${paperSel()}${pdfBtn('utcPdfAll', good.length > 1 ? `All ${good.length} score cards (PDF)` : 'Score card (PDF)')}${good.some(r => r.kind === 'UT' && r.ut) ? pdfBtn('utcFxAll', good.filter(r => r.kind === 'UT' && r.ut).length > 1 ? 'All corrections sheets (PDF)' : 'Corrections sheet (PDF)') + pdfBtn('utcRvAll', good.filter(r => r.kind === 'UT' && r.ut).length > 1 ? 'All answer reviews (PDF)' : 'Answer review (PDF)') : ''}` : ''}</div><div class="small muted" id="utcMsg" role="status" style="margin-top:6px"></div></section>
@@ -17799,63 +17885,98 @@ function renderUtCheck() {
     if (!!v === o.auto) delete saved['w' + i]; else saved['w' + i] = v; LS.set(utcKey(r.sig), saved);
     o.ok = !!v; o.ov = saved['w' + i] != null; r.c = r.rows.filter(z => !z.cr && z.ok).length; r.byCat = {}; r.rows.forEach(z => { if (z.cr) return; const k = z.q.cat; r.byCat[k] = r.byCat[k] || [0, 0]; r.byCat[k][1]++; if (z.ok) r.byCat[k][0]++; }); redo(); });
   $$('[data-ukc]').forEach(b => b.onclick = () => { const [ri, i] = b.dataset.ukc.split('|').map(Number), r = out[ri]; const f = utcFrq(r).find(o => o.i === i); const saved = LS.get(utcKey(r.sig), {}); saved[i] = f.on.slice(); LS.set(utcKey(r.sig), saved); redo(); });
-  $$('[data-scp]').forEach(b => b.onclick = () => { const r = out[+b.dataset.scp]; makePdf(utcScorecard(r), fileSafe((r.ut ? r.ut.n : 'results') + ' ' + (r.d.nm || '')) + '-score-card.pdf', b); });
+  $$('[data-scp]').forEach(b => b.onclick = () => { const r = out[+b.dataset.scp]; makePdf(utcScorecard(r), fileSafe((r.ut ? r.ut.n : 'results') + ' ' + gbLabel(r.d.nm)) + '-score-card.pdf', b); });
   [['rvp', false, '-answer-review.pdf'], ['fxp', true, '-corrections.pdf']].forEach(([k, fix, suf]) => $$(`[data-${k}]`).forEach(b => { const r = out[+b.dataset[k]]; if (r.kind !== 'UT' || !r.ut) { b.disabled = true; b.title = 'Exam simulations: open Teacher access on the student’s device to download this.'; return; }
-    b.onclick = () => makePdf(utcReview(r, fix), fileSafe(r.ut.n + ' ' + (r.d.nm || '')) + suf, b); }));
+    b.onclick = () => makePdf(utcReview(r, fix), fileSafe(r.ut.n + ' ' + gbLabel(r.d.nm)) + suf, b); }));
   if ($('#utcRvAll')) $('#utcRvAll').onclick = () => makePdf(good.filter(r => r.kind === 'UT' && r.ut).map((r, i) => `<div class="${i ? 'pb' : ''}">${utcReview(r)}</div>`).join(''), 'Answer-reviews-' + new Date().toISOString().slice(0, 10) + '.pdf', $('#utcRvAll'));
   if ($('#utcFxAll')) $('#utcFxAll').onclick = () => makePdf(good.filter(r => r.kind === 'UT' && r.ut).map((r, i) => `<div class="${i ? 'pb' : ''}">${utcReview(r, true)}</div>`).join(''), 'Corrections-sheets-' + new Date().toISOString().slice(0, 10) + '.pdf', $('#utcFxAll'));
   if ($('#utcPdfAll')) $('#utcPdfAll').onclick = () => makePdf(good.filter(r => r.kind === 'EX' || r.ut).map((r, i) => `<div class="sc-set ${i ? 'pb' : ''}">${utcScorecard(r)}</div>`).join(''), 'Score-cards-' + new Date().toISOString().slice(0, 10) + '.pdf', $('#utcPdfAll'));
   if ($('#utcCsv')) $('#utcCsv').onclick = () => { const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
-    const rows = [['Student', 'Email', 'Test', 'Course', 'Submitted', 'MC correct', 'MC total', 'FRQ points', 'FRQ max', 'Overall %', 'AP estimate', 'Check code']].concat(good.map(r => { if (r.kind === 'EX') { const d = r.d; return [d.nm, d.em, d.as || 'Exam simulation', (BY_ID[d.t] || {}).subject, d.d, d.mc[0], d.mc[1], d.fr ? d.fr[0] : '', d.fr ? d.fr[1] : '', d.w, d.ap ? d.ap[0] : '', r.sigOk ? 'valid' : 'MISMATCH']; }
-      const tt = r.ut ? utcTotals(r) : null; return [r.d.nm, r.d.em, r.ut ? r.ut.n : '', r.ut ? BY_ID[r.ut.t].subject : '', r.d.d, r.ut ? r.c : '', r.ut ? r.n : '', tt && tt.fq.length ? tt.fp : '', tt && tt.fq.length ? tt.fm : '', tt ? tt.comb : '', '', r.sigOk ? 'valid' : 'MISMATCH']; }));
+    const rows = [['Student', 'Student no.', 'Email', 'Test', 'Course', 'Submitted', 'MC correct', 'MC total', 'FRQ points', 'FRQ max', 'Overall %', 'AP estimate', 'Check code']].concat(good.map(r => { if (r.kind === 'EX') { const d = r.d; return [gbLabel(d.nm), stuNoOf(d.nm), d.em, d.as || 'Exam simulation', (BY_ID[d.t] || {}).subject, d.d, d.mc[0], d.mc[1], d.fr ? d.fr[0] : '', d.fr ? d.fr[1] : '', d.w, d.ap ? d.ap[0] : '', r.sigOk ? 'valid' : 'MISMATCH']; }
+      const tt = r.ut ? utcTotals(r) : null; return [gbLabel(r.d.nm), stuNoOf(r.d.nm), r.d.em, r.ut ? r.ut.n : '', r.ut ? BY_ID[r.ut.t].subject : '', r.d.d, r.ut ? r.c : '', r.ut ? r.n : '', tt && tt.fq.length ? tt.fp : '', tt && tt.fq.length ? tt.fm : '', tt ? tt.comb : '', '', r.sigOk ? 'valid' : 'MISMATCH']; }));
     saveFile('results-' + new Date().toISOString().slice(0, 10) + '.csv', rows.map(r => r.map(q).join(',')).join('\n'), 'text/csv'); };
 }
 
-/* ═════ TEACHER: MY STUDENTS (class roster + access codes) ═════ */
+/* ═════ TEACHER: CLASS CODES ═════
+   Students practice with a class code instead of an account. The teacher makes it here; it's saved to the sign-up
+   script's "Class codes" tab (ScholarTests.gs) so it can be closed from any computer. The optional student email list
+   below is kept only in this browser and only addresses assignment emails sent from the teacher's own Gmail. */
 const classKey = () => 'ap.class.' + (myEmail() || 'owner');
 const classList = () => LS.get(classKey(), []);
-async function classSync(list) {
-  if (!DB || GUEST || !UID || MODE !== 'member') return null;
-  try { await DB.doc(`rosters/${UID}`).set({ t: await emHash(myEmail()), emails: await Promise.all(list.map(s => emHash(s.email))), at: new Date().toISOString() }); return true; } catch (e) { return false; }
+let CL = { msg: '', codes: null, err: '', open: null };
+const clsMineKey = () => 'ap.cls.mine.' + (myEmail() || 'owner');
+const clsLink = c => location.origin + (PATH_MODE ? '/' : location.pathname) + '#join-' + clsNorm(c);
+const clsHow = o => `Scholar Lab class code for ${o.label || 'our class'}: ${clsFmt(o.code)}\nGo to ${location.host || 'scholarlab.net'}, type the code in the Students box and press Start practicing. You don’t need an account or an email, and please don’t type your name anywhere.\nOr open this link: ${clsLink(o.code)}`;
+/* shown where teachers make and assign tests: online tests depend on the student's device and browser */
+const devNote = here => `<p class="notice dev-note" role="note"><b>Which devices work best?</b> Online tests run in the student’s web browser, and tablets and phones (iPad, Android, iPhone) behave differently from each other, so technical problems can happen on them: the keyboard covering questions, full screen not being available, a test locking when an app or notification pops up, or the results email not opening. <b>For the fewest problems, have students use laptops.</b> For the safest option, use a <b>paper test or worksheet</b>: ${here ? 'after you generate the test, download the test, answer sheet and answer key as PDF or Word files below' : 'in <a href="#ut-new">Create Unit Test</a>, download the test, answer sheet and answer key as PDF or Word files'}.</p>`;
+const ymdLocal = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+async function clsLoadMine() {
+  const d = await clsCall({ op: 'mine' });
+  if (d && d.ok) { CL.codes = d.codes || []; CL.err = ''; LS.set(clsMineKey(), CL.codes); }
+  else { CL.codes = LS.get(clsMineKey(), []); CL.err = (d && d.msg) || 'Couldn’t load your class codes.'; }
+  if (ROUTE === 'class') drawClsList();
 }
-let CL = { sel: new Set(), msg: '', codes: {} };
-async function classCodes(list) { const mk = monthKey(), nk = monthKey(1); for (const s of list) if (!CL.codes[s.email + mk]) { const i = await accInfo(s.email); /* a code the site owner reset (version) or made lifetime */
-  CL.codes[s.email + mk] = i.life ? await lifeCode(s.email, i.v, i.lk) : await monthCode(s.email, mk, i.v); CL.codes[s.email + nk] = i.life ? CL.codes[s.email + mk] : await monthCode(s.email, nk, i.v); } }
+function drawClsList() {
+  const box = $('#clList'); if (!box) return; const list = (CL.codes || []).slice().reverse();
+  if (CL.codes == null) { box.innerHTML = '<p class="small muted">Loading your class codes…</p>'; return; }
+  box.innerHTML = (CL.err ? `<p class="notice small">${esc(CL.err)}${list.length ? ' Showing the codes saved on this computer.' : ''}</p>` : '') + (list.length ? `<ul class="cls-list">${list.map(o => `<li class="cls-row ${o.open ? '' : 'off'}">
+      <div class="cls-main"><b>${esc(o.label || 'Untitled class')}</b><span class="cls-code mono">${esc(clsFmt(o.code))}</span>
+        <small class="muted">${o.open ? `Open${o.until ? ' · works through ' + esc(fmtDate(o.until + 'T12:00:00').split(',')[0]) : ''}` : o.status === 'Closed' ? 'Closed by you' : 'Closed · its date has passed'}</small></div>
+      <div class="cls-acts"><button class="btn sm" data-clcp="${esc(o.code)}">Copy code</button><button class="btn sm" data-clhow="${esc(o.code)}">Copy instructions</button>
+        ${o.open ? `<button class="btn sm danger" data-clset="${esc(o.code)}" data-st="Closed">Close</button>` : `<button class="btn sm" data-clset="${esc(o.code)}" data-st="Open">Reopen</button>`}</div></li>`).join('')}</ul>`
+    : '<div class="empty">No class codes yet. Make one above.</div>');
+  const find = c => (CL.codes || []).find(o => o.code === c) || { code: c };
+  $$('[data-clcp]').forEach(b => b.onclick = () => copyText(clsFmt(b.dataset.clcp), '#clListMsg', 'Copied ' + clsFmt(b.dataset.clcp)));
+  $$('[data-clhow]').forEach(b => b.onclick = () => copyText(clsHow(find(b.dataset.clhow)), '#clListMsg', 'Instructions copied. Paste them into Google Classroom or an email.'));
+  $$('[data-clset]').forEach(b => b.onclick = async () => { const st = b.dataset.st;
+    const doIt = async () => { b.disabled = true; b.textContent = st === 'Closed' ? 'Closing…' : 'Reopening…'; const d = await clsCall({ op: 'set', code: clsNorm(b.dataset.clset), status: st });
+      if (d && d.ok) { const o = (CL.codes || []).find(x => x.code === d.code.code); if (o) Object.assign(o, d.code); LS.set(clsMineKey(), CL.codes); drawClsList(); }
+      else { b.disabled = false; b.textContent = st === 'Closed' ? 'Close' : 'Reopen'; $('#clListMsg').textContent = (d && d.msg) || 'Couldn’t change it right now.'; } };
+    if (st === 'Closed') confirmBox('Close this class code?', 'Students using it are signed out the next time Scholar Lab checks (within a few hours), and nobody new can join with it. You can reopen it later.', 'Close code', doIt); else doIt(); });
+}
 function renderClass() {
   if (!isTeacher()) return renderHome();
   if (MODE === 'owner') { go('admin'); return; }
   setAccent(null); show('hub');
-  const list = classList(), mk = monthKey(), nk = monthKey(1), late = kstDay() >= 20;
-  const missing = list.some(s => !CL.codes[s.email + mk]); if (missing) classCodes(list).then(() => { if (ROUTE === 'class') { renderClass(); bindNav(); } });
-  const sent = mailSent(mailMonth());
-  const allSel = list.length && list.every(s => CL.sel.has(s.email)), nSel = list.filter(s => CL.sel.has(s.email)).length;
-  $('#hub').innerHTML = nav('class') + `<div class="page">${pageHead('Teacher Tools', 'My students', 'Add your students’ emails to make their access codes, email the codes, and choose who gets each assignment.')}
-    <section class="panel"><h2>Add students</h2><p class="small muted" style="margin-top:0">Paste one or more student emails (one per line, or separated by commas). Each student gets their own access code. Codes change on the 1st of every month (Korea time); last month’s code keeps working through the 3rd.</p>
-      <textarea id="clIn" class="crin" style="min-height:90px" placeholder="jenny.park@school.org&#10;sam.lee@school.org"></textarea>
-      <div class="row" style="margin-top:10px"><button class="btn primary" id="clAdd">Add students</button><span class="small" id="clMsg" role="status" style="color:var(--good);font-weight:600">${esc(CL.msg)}</span></div></section>
-    <section class="panel cl-box" style="margin-top:16px"><h2>Your class · ${list.length}</h2>
-      <form class="cl-pw" id="clPwF" autocomplete="off"><label class="small"><b>Teacher access password</b><input id="clPw" maxlength="40" value="${esc(teacherPw())}" spellcheck="false" autocomplete="off"></label><button class="btn" type="submit">Save</button><span class="small muted">The same password your tests use (default ad31). It unlocks tests, accommodations, and Teacher access on a student’s device. Keep it from students.</span></form>
-      ${list.length ? `<div class="mail-bar"><label class="chk"><input type="checkbox" id="clAll" ${allSel ? 'checked' : ''}> Select all</label><button class="btn primary" id="clMail" ${nSel ? '' : 'disabled'}>✉ Email codes to selected (${nSel})</button><a class="btn" href="#assign">${SVG(IC.assign)} Assign a test</a><span class="small muted">Sent this month: ${list.filter(s => sent[s.email]).length} of ${list.length}</span></div>
-      <div class="tablewrap"><table class="adm"><thead><tr><th class="cbx"><span class="sr">Select</span></th><th>Student email</th><th>${esc(monthName(mk))} code</th>${late ? `<th>${esc(monthName(nk))} code</th>` : ''}<th></th></tr></thead><tbody>
-      ${list.map(s => `<tr><td class="cbx"><input type="checkbox" data-cls="${esc(s.email)}" ${CL.sel.has(s.email) ? 'checked' : ''} aria-label="Select ${esc(s.email)}"></td><td><b>${esc(s.email)}</b><br><small class="muted">added ${fmtDate(s.added).split(',')[0]}</small>${sent[s.email] ? '<br><span class="st-on small">✓ code emailed</span>' : ''}</td>
-        <td class="mono" data-l="${esc(monthName(mk))}"><b>${esc(CL.codes[s.email + mk] || '…')}</b> <button class="linkbtn sm" data-clc="${esc(CL.codes[s.email + mk] || '')}">Copy</button> <button class="linkbtn sm cl-ta" data-clta="${esc(s.email)}" aria-expanded="${CL.ta === s.email}">${SVG(IC.lock)}Teacher access</button>${CL.ta === s.email ? `<div class="cl-tanote">Password: <b>${esc(teacherPw())}</b><br><span>On this student’s device, scroll to the bottom of any page and choose <i>Teacher access</i> to see their tests, including anything they reset or deleted.</span></div>` : ''}</td>${late ? `<td class="mono" data-l="${esc(monthName(nk))}">${esc(CL.codes[s.email + nk] || '…')} <button class="linkbtn sm" data-clc="${esc(CL.codes[s.email + nk] || '')}">Copy</button></td>` : ''}
-        <td><div class="row" style="gap:6px"><button class="btn" data-clm="${esc(s.email)}">✉ Email</button><button class="btn danger" data-clr="${esc(s.email)}">Remove</button></div></td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">No students yet. Add their emails above.</div>'}
-      <p class="small muted">${DB && !GUEST ? 'Students on your list can sign in on this Claude page and on your website.' : 'Students on your list sign in on your website with their email and code.'} Removing a student takes them off your list; their code keeps working until the end of the month.</p></section>
+  const list = classList(), until0 = (() => { const d = new Date(); d.setMonth(d.getMonth() + 6); return ymdLocal(d); })();
+  $('#hub').innerHTML = nav('class') + `<div class="page cls-page">${pageHead('Teacher Tools', 'Class codes', 'Students type a class code on the sign-in page to practice. They don’t need accounts, and Scholar Lab never gets their names or emails.')}
+    <section class="panel"><h2>Make a class code</h2>
+      <form id="clNewF" class="cls-new" novalidate autocomplete="off">
+        <label>Class name <span class="muted">(only you see it)</span><input id="clName" maxlength="40" placeholder="e.g. AP Biology · Period 2" autocomplete="off"></label>
+        <label>Works until<input id="clUntil" type="date" value="${until0}" min="${ymdLocal(new Date())}"></label>
+        <button class="btn primary" type="submit" id="clGo">Make class code</button></form>
+      <p class="small" id="clMsg" role="status" style="font-weight:600">${esc(CL.msg)}</p>
+      <p class="small muted" style="margin:0">One code per class works best. For unit tests, also give each student a number (1, 2, 3…) and add it next to their name in <a href="#grades">Gradebook &amp; Classes</a> → Students. Results arrive as “Student 14”, and your gradebook (only on your computer) shows who that is.</p></section>
+    <section class="panel" style="margin-top:16px"><div class="row" style="align-items:center"><h2 style="margin:0;flex:1">Your class codes</h2><button class="btn sm" id="clRef">Refresh</button></div>
+      <p class="small" id="clListMsg" role="status"></p><div id="clList"></div></section>
+    <section class="panel" style="margin-top:16px"><h2>Teacher access password</h2>
+      <form class="cl-pw" id="clPwF" autocomplete="off"><label class="small"><b>Password</b><input id="clPw" maxlength="40" value="${esc(teacherPw())}" spellcheck="false" autocomplete="off" autocapitalize="off"></label><button class="btn" type="submit">Save</button><span class="small muted">The same password your tests use (default ${esc(LK_DEFAULT)}). On a student’s device, scroll to the bottom of any page and choose <i>Teacher access</i> to see their tests.</span></form></section>
+    <section class="panel" style="margin-top:16px"><h2>Student emails for assignments <span class="muted" style="font-weight:500">(optional)</span></h2>
+      <p class="small muted" style="margin-top:0">Only if you want to email assignments from your own Gmail (Assign Tests). This list is saved only in this browser and is never sent to Scholar Lab.</p>
+      <textarea id="clIn" class="crin" style="min-height:70px;font-size:16px" placeholder="jenny.park@school.org&#10;sam.lee@school.org" autocomplete="off"></textarea>
+      <div class="row" style="margin-top:10px"><button class="btn" id="clAdd">Add emails</button><span class="small" id="clEMsg" role="status"></span></div>
+      ${list.length ? `<ul class="cls-emails">${list.map(s => `<li><span>${esc(s.email)}</span><button class="linkbtn sm" data-clr="${esc(s.email)}" style="color:var(--bad)">Remove</button></li>`).join('')}</ul>` : ''}</section>
     ${foot()}</div>`;
-  const redo = () => { const y = window.scrollY, back = keepBoxes(); renderClass(); bindNav(); window.scrollTo(0, y); back(); };
-  $('#clAdd').onclick = async () => { const raw = $('#clIn').value.split(/[\s,;]+/).map(normEmail).filter(Boolean); const good = raw.filter(isEmail), bad = raw.filter(e => !isEmail(e));
-    if (!good.length) { $('#clMsg').style.color = 'var(--bad)'; $('#clMsg').textContent = bad.length ? 'Those don’t look like email addresses.' : 'Paste at least one email.'; return; }
+  CL.msg = '';
+  drawClsList(); if (CL.codes == null || !CL.at || Date.now() - CL.at > 60000) { CL.at = Date.now(); clsLoadMine(); }
+  $('#clRef').onclick = () => { CL.codes = null; drawClsList(); CL.at = Date.now(); clsLoadMine(); };
+  $('#clNewF').onsubmit = async e => { e.preventDefault(); const b = $('#clGo'), label = $('#clName').value.trim().replace(/\s+/g, ' '), until = $('#clUntil').value;
+    const say = (m, bad) => { $('#clMsg').textContent = m; $('#clMsg').style.color = bad ? 'var(--bad)' : 'var(--good)'; };
+    if (!label) { say('Give the class a name, so you can tell your codes apart.', true); return $('#clName').focus(); }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(until) || until < ymdLocal(new Date())) { say('Pick a “works until” date that’s today or later.', true); return; }
+    b.disabled = true; b.textContent = 'Making…'; say('');
+    let d = null; for (let i = 0; i < 3; i++) { d = await clsCall({ op: 'new', code: clsNorm(await clsMake()), label, until }); if (!(d && d.taken)) break; } /* a code someone already has: make another */
+    b.disabled = false; b.textContent = 'Make class code';
+    if (!d || !d.ok) return say((d && d.msg) || 'Couldn’t make a class code right now.', true);
+    CL.codes = (CL.codes || []).concat(d.code); LS.set(clsMineKey(), CL.codes); $('#clName').value = '';
+    say(`✓ ${clsFmt(d.code.code)} is ready for ${label}. Copy the code or the instructions below and give it to your class.`); drawClsList(); };
+  $('#clAdd').onclick = () => { const raw = $('#clIn').value.split(/[\s,;]+/).map(normEmail).filter(Boolean), good = raw.filter(isEmail), bad = raw.filter(e => !isEmail(e));
+    if (!good.length) { $('#clEMsg').textContent = bad.length ? 'Those don’t look like email addresses.' : 'Paste at least one email.'; return; }
     const l = classList(); let n = 0; good.forEach(e => { if (!l.some(s => s.email === e)) { l.push({ email: e, added: new Date().toISOString() }); n++; } }); LS.set(classKey(), l);
-    await classCodes(l); const sync = await classSync(l);
-    CL.msg = `Added ${n} student${n === 1 ? '' : 's'}.${bad.length ? ` Skipped ${bad.length} that weren’t email addresses.` : ''}${sync === false ? ' (Couldn’t update the Claude page’s list; they can still use your website.)' : ''}`; redo(); setTimeout(() => { CL.msg = ''; }, 4000); };
-  if ($('#clAll')) $('#clAll').onchange = () => { list.forEach(s => $('#clAll').checked ? CL.sel.add(s.email) : CL.sel.delete(s.email)); redo(); };
-  $$('[data-cls]').forEach(c => c.onchange = () => { c.checked ? CL.sel.add(c.dataset.cls) : CL.sel.delete(c.dataset.cls); redo(); });
-  if ($('#clMail')) $('#clMail').onclick = () => openCodeMail(list.filter(s => CL.sel.has(s.email)).map(s => s.email));
-  $$('[data-clm]').forEach(b => b.onclick = () => openCodeMail([b.dataset.clm]));
-  $$('[data-clc]').forEach(b => b.onclick = () => copyText(b.dataset.clc, '#clMsg', 'Copied ' + b.dataset.clc));
-  $$('[data-clta]').forEach(b => b.onclick = () => { CL.ta = CL.ta === b.dataset.clta ? null : b.dataset.clta; redo(); });
-  $('#clPwF').onsubmit = e => { e.preventDefault(); const v = $('#clPw').value.trim(); if (v.length < 4) { CL.msg = 'The teacher password needs at least 4 characters.'; return redo(); } LS.set('ap.lk.pw', v); CL.msg = 'Teacher password saved. Tests you make from now on use it; older tests keep the password they were made with.'; redo(); setTimeout(() => { CL.msg = ''; }, 5000); };
-  $$('[data-clr]').forEach(b => b.onclick = () => confirmBox(`Remove ${b.dataset.clr}?`, 'They are taken off your class list. Their current code keeps working until the end of the month.', 'Remove', async () => { const l = classList().filter(s => s.email !== b.dataset.clr); LS.set(classKey(), l); CL.sel.delete(b.dataset.clr); await classSync(l); redo(); }));
+    CL.msg = ''; renderClass(); bindNav(); $('#clEMsg').textContent = `Added ${n} email${n === 1 ? '' : 's'} (saved only in this browser).${bad.length ? ` Skipped ${bad.length} that weren’t email addresses.` : ''}`; };
+  $$('[data-clr]').forEach(b => b.onclick = () => { LS.set(classKey(), classList().filter(s => s.email !== b.dataset.clr)); const y = window.scrollY; renderClass(); bindNav(); window.scrollTo(0, y); });
+  $('#clPwF').onsubmit = e => { e.preventDefault(); const v = $('#clPw').value.trim(); if (v.length < 4) { CL.msg = 'The teacher password needs at least 4 characters.'; return renderClass(), bindNav(); } LS.set('ap.lk.pw', v); CL.msg = 'Teacher password saved. Tests you make from now on use it; older tests keep the password they were made with.'; renderClass(); bindNav(); };
+  formFix('#clNewF');
 }
 
 /* ═════ TEACHER: ASSIGN TESTS ═════ */
@@ -17892,7 +18013,7 @@ function renderAssign() {
   const roster = rosterEmails(), relay = myRelay(), x = BY_ID[AS.t];
   const nSel = roster.filter(e => AS.sel.has(e)).length;
   const o = AS.out;
-  $('#hub').innerHTML = nav('assign') + `<div class="page">${pageHead('Teacher Tools', 'Assign tests', 'Send a unit test or a full exam simulation (AP format or a final exam) to your students. When they finish, the results page walks them through sending their results to you.')}
+  $('#hub').innerHTML = nav('assign') + `<div class="page">${pageHead('Teacher Tools', 'Assign tests', 'Send a unit test or a full exam simulation (AP format or a final exam) to your students. When they finish, the results page walks them through sending their results to you.')}${devNote(false)}
     <div class="ut-grid"><section class="card ut-form">
       <fieldset><legend>What to assign</legend>
         <label class="chk"><input type="radio" name="asK" value="ut" ${AS.kind === 'ut' ? 'checked' : ''}> A saved unit test</label>
@@ -17905,7 +18026,7 @@ function renderAssign() {
       <div class="row2"><label>Due date (optional)<input type="date" id="asDue" value="${esc(AS.due)}"></label>${AS.kind === 'exam' ? `<label>Send results to (your school email)<input type="email" id="asTo" value="${esc(AS.to)}"></label>` : `<label>Results go to (your school email)<input type="email" id="asTo" placeholder="you@school.org" value="${esc(asUtTo())}"></label>`}</div>
       <label>Message to students (optional)<textarea id="asMsg" maxlength="400" style="min-height:70px">${esc(AS.msg)}</textarea></label>
       <fieldset><legend>Students ${roster.length ? `<span class="muted">(${nSel} of ${roster.length} selected)</span>` : ''}</legend>
-        ${roster.length ? `<label class="chk"><input type="checkbox" id="asAll" ${nSel === roster.length ? 'checked' : ''}> Select all</label><div class="ucks as-roster">${roster.map(e => `<label class="chk"><input type="checkbox" data-ass="${esc(e)}" ${AS.sel.has(e) ? 'checked' : ''}> ${esc(e)}</label>`).join('')}</div>` : `<p class="small muted" style="margin:0">No students yet. ${MODE === 'owner' ? 'Add them in <a href="#admin">Manage Students</a>.' : 'Add them in <a href="#class">My Students</a>.'} You can still create the assignment and share the link yourself.</p>`}
+        ${roster.length ? `<label class="chk"><input type="checkbox" id="asAll" ${nSel === roster.length ? 'checked' : ''}> Select all</label><div class="ucks as-roster">${roster.map(e => `<label class="chk"><input type="checkbox" data-ass="${esc(e)}" ${AS.sel.has(e) ? 'checked' : ''}> ${esc(e)}</label>`).join('')}</div>` : `<p class="small muted" style="margin:0">No students yet. ${MODE === 'owner' ? 'Add them in <a href="#admin">Manage Students</a>.' : 'Add emails (optional, kept only in this browser) in <a href="#class">Class Codes</a>.'} You can still create the assignment and share the link yourself, for example in Google Classroom.</p>`}
       </fieldset>
       <button class="btn primary big" id="asGo">${SVG(IC.assign)} Create assignment</button><div class="err" id="asErr" role="alert"></div>
     </section>
@@ -17965,7 +18086,7 @@ How to sign in:
     Teacher code:  ${code} (does not change each month)
 
 With teacher access you'll see Teacher Tools in the menu:
-  • My Students: add student emails, get their access codes, and email the codes.
+  • Class Codes: make a class code for each class; students type it to practice (no student accounts).
   • Assign Tests: send unit tests or full exam simulations to your students.
   • Create Unit Test: build tests from the question bank (multiple choice and free response), with PDF printouts and answer keys.
   • Check Results: paste results emails to verify scores, score free response with the scoring guides, and download score cards.
@@ -18248,33 +18369,31 @@ function dfListHTML(x, units) {
 }
 
 /* ── test-only entry: students take a teacher's test with a short code or link, without a Scholar Lab account ── */
-let TK_PREFILL = '';
+let TK_PREFILL = '', CLS_PREFILL = '';
 function renderTake(err, val) {
   setAccent(null); show('hub'); if (!val && TK_PREFILL) { val = TK_PREFILL; TK_PREFILL = ''; }
   const res = PID ? LS.get(utResKey(), []) : [], cur = PID ? LS.get(utCurKey(), null) : null;
   $('#hub').innerHTML = nav('take') + `<div class="page take-page"><div class="gate-brand">${SVG(IC.cap)}<span>${BRAND}</span></div><h1 class="display">Take a test</h1>
-    <p class="lead">Enter your name, your email, and your teacher’s email, then the test code your teacher gave you.</p>
+    <p class="lead">Enter your student number, your teacher’s email, and the test code your teacher gave you. You don’t need an account, and Scholar Lab never asks for your name.</p>
     ${cur && cur.unit ? `<div class="resume card"><p><b>Test in progress:</b> ${esc(cur.title)}</p><div class="row"><button class="btn primary" id="tkRes">Resume</button></div></div>` : ''}
-    <section class="panel"><form id="tkF" autocomplete="on"><label>Your full name<input id="tkName" maxlength="60" autocomplete="name" value="${esc(LS.get(`ap.${PID}.ut.name`, '') || '')}" placeholder="First and last name"></label>
-      <label>Your email<input id="tkMail" type="email" maxlength="80" autocomplete="email" value="${esc(myEmail() || '')}" placeholder="you@school.org"></label>
+    <section class="panel"><form id="tkF" autocomplete="off" novalidate>${NO_FIELD('tkNo', stuNoGet())}
       <label>Your teacher’s email<input id="tkTo" type="email" maxlength="80" value="${esc((LS.get(`ap.${PID}.teacher`, null) || {}).e || '')}" placeholder="teacher@school.org"></label>
       <label>Test code<input id="tkIn" class="tk-in" maxlength="40000" autocomplete="off" value="${esc(val || '')}" placeholder="XXXX-XXXX-XXXX-XXX" spellcheck="false" autocapitalize="characters"></label>
       <button class="btn primary big" type="submit">Open test</button><div class="err" id="tkErr" role="alert">${err ? esc(err) : ''}</div></form></section>
     ${res.length ? `<p class="small"><a href="#unit-tests">Your submitted tests on this device (${res.length})</a></p>` : ''}
-    ${MODE === 'gate' ? `<p class="small muted">Have a Scholar Lab account? <a href="#home">Sign in</a> to practice, see your history, and more.</p>` : ''}
+    ${MODE === 'gate' ? `<p class="small muted">Have a class code? <a href="#home">Enter it on the sign-in page</a> to practice and see your history.</p>` : ''}
     <p class="small muted take-ta"><a href="#device">Teacher access</a></p></div>`;
-  $('#tkF').onsubmit = e => { e.preventDefault(); const v = $('#tkIn').value.trim(), nm = $('#tkName').value.trim().replace(/\s+/g, ' '), em = normEmail($('#tkMail').value);
+  $('#tkF').onsubmit = e => { e.preventDefault(); const v = $('#tkIn').value.trim(), sn = stuNo($('#tkNo').value);
     const bad = (m, el) => { $('#tkErr').textContent = m; $(el).focus(); };
-    if (nm.length < 3 || !/\s/.test(nm)) return bad('Enter your first and last name so your teacher can match your results.', '#tkName');
-    if (!isEmail(em)) return bad('Enter your email address.', '#tkMail');
+    if (!sn) return bad('Enter the student number your teacher gave you (a number from 1 to 999).', '#tkNo');
     const to = normEmail($('#tkTo').value); if (!isEmail(to)) return bad('Enter your teacher’s email address so you can send them your results.', '#tkTo');
     if (!v) return bad('Enter the test code from your teacher.', '#tkIn');
-    LS.set(`ap.${PID}.ut.name`, nm); LS.set('ap.testonly.email', em); LS.set(`ap.${PID}.teacher`, { e: to, r: '' });
+    LS.set(stuNoKey(), sn); LS.set(`ap.${PID}.teacher`, { e: to, r: '' });
     const sc = utShortParse(v); if (sc && sc.stale) return renderTake('This code is from an older version of the question bank. Ask your teacher for the test link instead.', v);
     const p = utParse(v); if (!p) return renderTake('That code doesn’t look right. Check each letter and number and try again.', v);
-    if (MODE === 'gate' && !p.ut.o) return renderTake('This test needs you to sign in first. Sign in with your Scholar Lab account, or ask your teacher for a code that works without one.', v);
+    if (MODE === 'gate' && !p.ut.o) return renderTake('This test needs you to sign in first: go to the sign-in page and enter your class code, or ask your teacher for a code that works without one.', v);
     go('ut-' + p.code); };
-  formFix('#tkF'); (!$('#tkName').value ? $('#tkName') : !$('#tkMail').value ? $('#tkMail') : !$('#tkTo').value ? $('#tkTo') : $('#tkIn')).focus();
+  formFix('#tkF'); if (!matchMedia('(pointer: coarse)').matches) (!$('#tkNo').value ? $('#tkNo') : !$('#tkTo').value ? $('#tkTo') : $('#tkIn')).focus();
   if ($('#tkRes')) $('#tkRes').onclick = () => { T = cur; X = BY_ID[T.testId]; enterExam(); };
 }
 function renderTestOnly(h) {
@@ -18341,7 +18460,7 @@ async function renderDevice(err) {
     <p class="lead">Everything taken on this device: teacher tests and assignments (sent or not, finished or not), plus history a student reset or cleared.</p>`;
   if (!DEV.list) {
     $('#hub').innerHTML = nav('device') + head + `<section class="panel"><form id="devF" autocomplete="off"><label>Teacher password<input id="devPw" autocomplete="off" placeholder="Teacher only"></label><button class="btn primary" type="submit">Enter</button><p class="err" id="devErr" role="alert">${err ? esc(err) : ''}</p></form></section>
-      <p class="small muted">Use the teacher access password from My Students (the same one your tests use). This page is for teachers.</p></div>`;
+      <p class="small muted">Use the teacher access password from Class Codes (the same one your tests use). This page is for teachers.</p></div>`;
     $('#devF').onsubmit = async e => { e.preventDefault(); const pw = pwOf($('#devPw')); $('#devErr').textContent = 'Checking…'; const { ok, list, resets } = await devScan(pw);
       if (!ok && !list.length && !resets.length) { $('#devErr').textContent = LS.get('ap.dev.keys', []).length || lsAllKeys().some(k => /ut\.(results|current)\.v1$|\.history\.v1$/.test(k))
         ? 'That password doesn’t match the tests saved in this browser. Use the teacher password that was set when the test was made (or ad31 if you never set one). Make sure the box was empty before you typed.'
@@ -18415,20 +18534,19 @@ function devReopenGo(o, add) {
 
 /* ═════ SIGN UP (website only) ═════
    signup.js (loaded only on scholarlab.net) connects the sign-up service and sets window.SIGNUP = { endpoint, site }.
-   The form itself is drawn here, in the site's own design. Students and teachers both sign up here; teacher
-   requests always wait for the owner's approval in the sign-up script. */
+   The form itself is drawn here, in the site's own design. Only teachers sign up (Nov 2026): students have no accounts
+   and join with a teacher's class code. Teacher requests always wait for the owner's approval in the sign-up script. */
 const SU_OPT = { student: 'Email me news about new products from Comma, the team behind Scholar Lab. Optional. If you’re under 14, ask a parent first. You can unsubscribe anytime.',
   teacher: 'Email me about new Comma products, teaching resources, and updates. Optional. You can unsubscribe anytime.' };
-let SU = { role: 'student' };
+let SU = { role: 'teacher' };
 function openSignup() {
   const cfg = window.SIGNUP; if (!cfg || !cfg.endpoint) return;
   const keep = {}; const grab = () => $$('.su2 input[id]').forEach(i => { keep[i.id] = i.type === 'checkbox' ? i.checked : i.value; });
   const draw = (msg, bad) => {
     const t = SU.role === 'teacher', v = id => esc(keep[id] != null ? keep[id] : '');
-    $('#modal-root').innerHTML = `<div class="scrim" id="scrim"><div class="modal sm su2" role="dialog" aria-modal="true" aria-labelledby="suT"><div class="mhead"><h3 id="suT">Sign up for ${BRAND}</h3><button class="btn" id="suX">Close</button></div>
+    $('#modal-root').innerHTML = `<div class="scrim" id="scrim"><div class="modal sm su2" role="dialog" aria-modal="true" aria-labelledby="suT"><div class="mhead"><h3 id="suT">Request a ${BRAND} teacher account</h3><button class="btn" id="suX">Close</button></div>
       <form class="mbody su2-f" id="suF" novalidate>
-        <div class="su2-role" role="radiogroup" aria-label="I am a">${[['student', 'I’m a student', 'cap'], ['teacher', 'I’m a teacher', 'teacher']].map(([k, l, ic]) => `<button type="button" role="radio" aria-checked="${SU.role === k}" data-surole="${k}">${SVG(IC[ic] || IC.users)}<span>${l}</span></button>`).join('')}</div>
-        <p class="small muted su2-lead">${t ? 'Teacher accounts unlock answer keys, Create Unit Test, and Teacher access, so each one is approved by the site owner. You’ll get your teacher code by email.' : 'Free practice for AP, high school, and middle school courses. We’ll email your access code.'}</p>
+                <p class="small muted su2-lead">${t ? 'Teacher accounts unlock answer keys, Create Unit Test, and Teacher access, so each one is approved by the site owner. You’ll get your teacher code by email.' : 'Free practice for AP, high school, and middle school courses. We’ll email your access code.'}</p>
         <label>Full name<input id="suName" autocomplete="name" maxlength="60" placeholder="First and last name" value="${v('suName')}"></label>
         <label>${t ? 'School email' : 'Email'}<input id="suEmail" type="email" autocomplete="email" maxlength="80" placeholder="${t ? 'you@school.org' : 'you@example.com'}" value="${v('suEmail')}"></label>
         ${t ? `<label>School<input id="suSchool" maxlength="80" placeholder="e.g. Seoul International School" value="${v('suSchool')}"></label>
@@ -18464,7 +18582,7 @@ function openSignup() {
         if (!d.ok) { say(d.msg || 'Something went wrong. Please try again.', true); $('#suGo').disabled = false; return; }
         $('.su2').innerHTML = `<div class="mhead"><h3>${d.status === 'sent' ? 'Check your email' : 'Request sent'}</h3><button class="btn" id="suX2">Close</button></div>
           <div class="mbody su2-done"><span class="su2-big" aria-hidden="true">${SVG(d.status === 'sent' ? IC.check : IC.clock || IC.check)}</span><p>${esc(d.msg)}</p><p class="small muted">Don’t see it in a few minutes? Check your spam folder.</p><button class="btn primary" id="suOk">OK</button></div>`;
-        $('#suX2').onclick = close; $('#suOk').onclick = close; $('#suOk').focus(); SU = { role: 'student' };
+        $('#suX2').onclick = close; $('#suOk').onclick = close; $('#suOk').focus(); SU = { role: 'teacher' };
       } catch (er) { say('Couldn’t reach the sign-up service. Check your connection, or email ' + OWNER_EMAIL + '.', true); $('#suGo').disabled = false; }
     };
   };
@@ -18487,10 +18605,11 @@ async function liveAccess(email, role, fresh) {
   } catch (e) { return null; }
 }
 /* sign-in attempts on this device, newest last (shown to the teacher in Teacher access, to sort out a code that won't work) */
-function signLog(email, code, res) { if (!email) return; const l = LS.get('ap.signin.log', []); l.push({ e: normEmail(email), c: normCode(code || ''), r: res, t: new Date().toISOString() }); LS.set('ap.signin.log', l.slice(-15)); }
+function signLog() { /* no longer kept: it stored the emails and codes typed on a shared device */ }
 const OFF_MSG = () => `Your access has been turned off. If you think this is a mistake, email ${OWNER_EMAIL}.`;
 /* after a remembered sign-in, check quietly in the background */
 function liveRecheck() {
+  if (MEMBER && MEMBER.role === 'class') return clsRecheck();
   if (!GUEST || !MEMBER || !MEMBER.email) return; const m = MEMBER;
   liveAccess(m.email, m.role).then(on => { if (on !== false || MEMBER !== m) return;
     leaveExam(); const s = LS.get('ap.member.' + memberKey(), null); if (s) { delete s.ck; delete s.exp; LS.set('ap.member.' + memberKey(), s); }
@@ -19007,10 +19126,19 @@ const gbRedo = (keepY = true) => { const y = window.scrollY; renderGrades(); bin
 function gbNewClassHTML(first) {
   return `<section class="card gb-new"><h3 class="ch">${first ? 'Create your first class' : 'New class'}</h3>${first ? '<p class="small muted" style="margin:0 0 12px">Make one class per group you teach, for example “Biology · Period 2” or “AP Chemistry”. You can archive or delete classes when the school year ends.</p>' : ''}
     <div class="ut-form"><div class="row2"><label>Class name<input id="gbNName" maxlength="60" placeholder="Biology · Period 2"></label><label>Course<select id="gbNCourse"><option value="">(no course)</option>${courseOpts(LS.get('ap.gb.lastcourse', ''))}</select></label></div>
-      <label>Students (optional, one per line: name, email)<textarea id="gbNStu" rows="5" placeholder="Jenny Park, jenny.park@school.org&#10;Sam Lee"></textarea></label>
+      <label>Students (optional, one per line: the number you gave them, then their name)<textarea id="gbNStu" rows="5" style="font-size:16px" placeholder="1 Jenny Park&#10;2 Sam Lee"></textarea></label>
+      <p class="small muted" style="margin:-6px 0 0">Kept only in this browser. Students’ test results arrive as “Student 14”, and the gradebook matches them by number.</p>
       <div class="row"><button class="btn primary" id="gbNGo">Create class</button>${first ? '' : '<button class="btn quiet" id="gbNCancel">Cancel</button>'}</div><div class="err" id="gbNErr" role="alert"></div></div></section>`;
 }
-const gbParseStudents = txt => String(txt || '').split(/\n+/).map(l => l.trim()).filter(Boolean).map(l => { const em = (l.match(/[^\s,;<>]+@[^\s,;<>]+\.[^\s,;<>]+/) || [])[0] || ''; const name = l.replace(em, '').replace(/[<>,;\t]+/g, ' ').replace(/\s+/g, ' ').trim() || (em ? prettyName(em) : ''); return name ? { id: gbId(), name, email: em ? normEmail(em) : '' } : null; }).filter(Boolean);
+const gbParseStudents = txt => String(txt || '').split(/\n+/).map(l => l.trim()).filter(Boolean).map(l0 => { const mn = l0.match(/^#?(\d{1,3})[\s.,:;)\-]+(.+)$/), no = mn ? stuNo(mn[1]) : '', l = no ? mn[2].trim() : l0; const em = (l.match(/[^\s,;<>]+@[^\s,;<>]+\.[^\s,;<>]+/) || [])[0] || ''; const name = l.replace(em, '').replace(/[<>,;\t]+/g, ' ').replace(/\s+/g, ' ').trim() || (em ? prettyName(em) : ''); return name ? { id: gbId(), name, email: em ? normEmail(em) : '', ...(no ? { no } : {}) } : null; }).filter(Boolean);
+/* "Student 14" in a result → the name(s) the teacher gave number 14 in their gradebook (only in this browser) */
+function gbNoNames(nm) { const n = stuNoOf(nm); return n ? [...new Set(gbLoad().classes.filter(c => !c.archived).flatMap(c => c.students.filter(s => s.no === n).map(s => s.name)))] : []; }
+const gbNoName = nm => gbNoNames(nm).join(' or ');
+/* what teacher screens, PDFs and exports call a student: "Minjun Kim (14)" when this browser's gradebook knows number 14
+   (in exactly one class), otherwise what the result says ("Student 14"). The name never leaves this browser. */
+const gbLabel = nm => { const ns = gbNoNames(nm); return ns.length === 1 ? `${ns[0]} (${stuNoOf(nm)})` : (nm || 'Unknown student'); };
+const gbWho = nm => { const ns = gbNoNames(nm);
+  return ns.length === 1 ? `${esc(ns[0])} <span class="gb-who">· Student ${esc(stuNoOf(nm))}</span>` : esc(nm || 'Unknown student') + (ns.length ? ` <span class="gb-who">· ${esc(ns.join(' or '))}</span>` : stuNoOf(nm) ? ` <a class="gb-who gb-add" href="#grades">· add a name in your gradebook</a>` : ''); };
 
 function gbGridHTML(c) {
   const asg = gbSort(c), cs = gbClassStats(c);
@@ -19031,9 +19159,9 @@ function gbEnterHTML(c) {
       <p class="small muted" style="margin:10px 0 0">Grades save as you type. Use Tab to move across, and Enter to move down. Leave a box empty if it isn’t graded yet.</p>` : '<p class="empty">Add students first.</p>'}</section>`;
 }
 function gbStudentsHTML(c) {
-  return `<div class="ut-grid"><section class="card"><h3 class="ch">Students</h3>${c.students.length ? `<div class="tablewrap"><table class="hist gb-stu"><thead><tr><th>Name</th><th>Email</th><th></th></tr></thead><tbody>${c.students.map(st => `<tr><td><input data-gbrn="${st.id}" value="${esc(st.name)}" maxlength="60" aria-label="Name"></td><td><input data-gbre="${st.id}" value="${esc(st.email || '')}" maxlength="80" type="email" placeholder="optional" aria-label="Email"></td><td><button class="linkbtn sm" data-gbrm="${st.id}" style="color:var(--bad)">Remove</button></td></tr>`).join('')}</tbody></table></div>` : '<p class="empty">No students yet.</p>'}</section>
-    <section class="card ut-form"><h3 class="ch">Add students</h3><label>One per line: name, then email (optional)<textarea id="gbAddStu" rows="8" placeholder="Jenny Park, jenny.park@school.org&#10;Sam Lee"></textarea></label><button class="btn primary" id="gbAddStuGo">Add students</button>
-      <p class="small muted" style="margin:0">Tip: paste names straight from a spreadsheet column. Results you add from Check Results match students by email, then by name.</p></section></div>`;
+  return `<div class="ut-grid"><section class="card"><h3 class="ch">Students</h3>${c.students.length ? `<div class="tablewrap"><table class="hist gb-stu"><thead><tr><th>No.</th><th>Name</th><th>Email</th><th></th></tr></thead><tbody>${c.students.map(st => `<tr><td><input data-gbrno="${st.id}" value="${esc(st.no || '')}" class="gb-no" inputmode="numeric" pattern="[0-9]*" maxlength="3" autocomplete="off" aria-label="Student number"></td><td><input data-gbrn="${st.id}" value="${esc(st.name)}" maxlength="60" aria-label="Name"></td><td><input data-gbre="${st.id}" value="${esc(st.email || '')}" maxlength="80" type="email" placeholder="optional" aria-label="Email"></td><td><button class="linkbtn sm" data-gbrm="${st.id}" style="color:var(--bad)">Remove</button></td></tr>`).join('')}</tbody></table></div>` : '<p class="empty">No students yet.</p>'}</section>
+    <section class="card ut-form"><h3 class="ch">Add students</h3><label>One per line: the number you gave them, then their name (email optional)<textarea id="gbAddStu" rows="8" style="font-size:16px" placeholder="1 Jenny Park&#10;2 Sam Lee"></textarea></label><button class="btn primary" id="gbAddStuGo">Add students</button>
+      <p class="small muted" style="margin:0">Students send test results under their number, never their name. Results you add from Check Results match students by number. This list stays in this browser and is never sent to Scholar Lab.</p></section></div>`;
 }
 function gbAsgHTML(c) {
   const x = BY_ID[c.course], e = GBU.edit ? c.asg.find(a => a.id === GBU.edit) : null, a = e || GBU.draft || (GBU.draft = gbBlankAsg('test'));
@@ -19157,6 +19285,7 @@ function gbBind(db, c) {
   $$('[data-gbn]').forEach(inp => inp.onchange = () => { const g = rec(inp.dataset.gbn); g.note = inp.value.trim(); save(); });
   /* students */
   if ($('#gbAddStuGo')) $('#gbAddStuGo').onclick = () => { const add = gbParseStudents($('#gbAddStu').value); add.forEach(s => { if (!c.students.some(o => o.name.toLowerCase() === s.name.toLowerCase())) c.students.push(s); }); save(); GBU.msg = `Added ${add.length} student${add.length === 1 ? '' : 's'}.`; gbRedo(); };
+  $$('[data-gbrno]').forEach(i => i.onchange = () => { const s = c.students.find(o => o.id === i.dataset.gbrno), n = stuNo(i.value); if (n) s.no = n; else delete s.no; i.value = s.no || ''; save(); });
   $$('[data-gbrn]').forEach(i => i.onchange = () => { const s = c.students.find(o => o.id === i.dataset.gbrn); s.name = i.value.trim() || s.name; save(); });
   $$('[data-gbre]').forEach(i => i.onchange = () => { const s = c.students.find(o => o.id === i.dataset.gbre); s.email = normEmail(i.value); save(); });
   $$('[data-gbrm]').forEach(b => b.onclick = () => { const s = c.students.find(o => o.id === b.dataset.gbrm); confirmBox(`Remove ${s.name}?`, 'Their grades in this class are deleted too.', 'Remove', () => { c.students = c.students.filter(o => o !== s); Object.values(c.g).forEach(m => delete m[s.id]); save(); gbRedo(); }); });
@@ -19198,8 +19327,9 @@ function gbImport(results, classId, addNew) {
   for (const r of results) {
     const d = r.d || {}, nm = (d.nm || '').trim(), em = normEmail(d.em || '');
     if (r.kind === 'UT' && !r.ut) { skipped++; continue; }
-    let st = (em && c.students.find(s => s.email === em)) || c.students.find(s => s.name.toLowerCase() === nm.toLowerCase());
-    if (!st) { if (!addNew || !nm) { skipped++; continue; } st = { id: gbId(), name: nm, email: em }; c.students.push(st); newStu++; }
+    const sn = stuNoOf(nm); /* results from students say "Student 14": match the number the teacher gave them */
+    let st = (sn && c.students.find(s => s.no === sn)) || (em && c.students.find(s => s.email === em)) || (!sn && c.students.find(s => s.name.toLowerCase() === nm.toLowerCase())) || null;
+    if (!st) { if (!addNew || !nm) { skipped++; continue; } st = { id: gbId(), name: nm, email: em, ...(sn ? { no: sn } : {}) }; c.students.push(st); newStu++; }
     let key, mk, gs, byUnit;
     if (r.kind === 'UT') { const tt = utcTotals(r); key = utKey(r.ut);
       mk = () => ({ id: gbId(), title: r.ut.n, type: r.ut.ex ? 'exam' : 'test', date: (d.d || '').slice(0, 10), units: r.ut.u.slice(), key, cats: [{ id: 'mc', label: 'Multiple choice', max: r.n, kind: 'mc' }].concat(tt.fq.length ? [{ id: 'wr', label: 'Written response', max: tt.fm, kind: 'written' }] : []) });

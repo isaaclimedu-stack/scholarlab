@@ -1,4 +1,4 @@
-/* Sign up for an access code: shared by comma-ltd.com (Comma, teachers) and scholarlab.net (Scholar Lab, students).
+/* Sign up for an access code: shared by comma-ltd.com (Comma, teachers) and scholarlab.net (Scholar Lab, teachers only).
    Adds a "Sign up" button to the sign-in page. Requests go to the "Comma sign-ups" Google Apps Script.
    ▼ After you deploy the Apps Script, paste its Web app URL between the quotes on the next line. ▼ */
 const SIGNUP_ENDPOINT = 'https://script.google.com/macros/s/AKfycby1jWaTEgqIqPZGIKKeDXFbhmuzOPlP304fAmFJJJLSNPPYTHNWHqNY5bdJhckTxm62/exec';
@@ -12,9 +12,9 @@ const SIGNUP_ENDPOINT = 'https://script.google.com/macros/s/AKfycby1jWaTEgqIqPZG
   const T = {
     comma: { contact: 'admin@comma-ltd.com', title: 'Get your Comma access code', lead: 'Comma is free practice for teacher certification exams. Tell us who you are and we’ll email your access code.',
       extra: ['School or organization (optional)', 'suOrg', 'e.g. Lincoln High School'], opt: 'Email me about new Comma products, practice tests, and updates. Optional. You can unsubscribe anytime.' },
-    scholarlab: { contact: 'admin@scholarlab.net', title: 'Sign up for Scholar Lab', lead: 'Free practice for AP, high school, and middle school courses. Tell us who you are and we’ll email your access code.',
-      extra: ['Class code (if your teacher gave you one)', 'suJoin', 'e.g. BIO-P2'], extra2: ['Your teacher’s email (optional)', 'suTeacher', 'teacher@school.org'],
-      opt: 'Email me news about new products from Comma, the team behind Scholar Lab. Optional. If you’re under 14, ask a parent first. You can unsubscribe anytime.' },
+    /* Scholar Lab: teachers only (students have no accounts; they join with a teacher's class code) */
+    scholarlab: { contact: 'admin@scholarlab.net', role: 'teacher', title: 'Request a Scholar Lab teacher account', lead: 'Teacher accounts are approved by the site owner. We’ll email your teacher code. Students don’t sign up: they use the class code from their teacher.',
+      extra: ['School', 'suOrg', 'e.g. Seoul International School'], opt: 'Email me about new Comma products, teaching resources, and updates. Optional. You can unsubscribe anytime.' },
   }[SITE];
   const css = `.su-cta{display:flex;flex-wrap:wrap;align-items:center;gap:10px 12px;margin:16px 0 14px;padding:13px 14px;border:1px dashed var(--line,#ccc);border-radius:10px;font-size:13.5px;line-height:1.45;color:var(--ink,#111)}
 .su-cta .su-t{flex:1 1 200px;min-width:0}.su-cta .su-t b{font-weight:700}
@@ -73,7 +73,7 @@ const SIGNUP_ENDPOINT = 'https://script.google.com/macros/s/AKfycby1jWaTEgqIqPZG
       const details = [org && 'Organization: ' + org, tch && 'Teacher: ' + tch, join && 'Class code: ' + join].filter(Boolean).join(' · ');
       $('#suGo').disabled = true; msg('Sending…');
       try {
-        const r = await fetch(SIGNUP_ENDPOINT, { method: 'POST', body: JSON.stringify({ site: SITE, name, email, join, details, agree: true, agreeText: 'I agree to the Terms of Service and Privacy Policy. I agree to follow the Community Guidelines.', terms: '2026-10-29', optIn: $('#suOpt').checked, optInText: T.opt, hp: $('#suHp').value }) });
+        const r = await fetch(SIGNUP_ENDPOINT, { method: 'POST', body: JSON.stringify({ site: SITE, ...(T.role ? { role: T.role } : {}), name, email, join, details, agree: true, agreeText: 'I agree to the Terms of Service and Privacy Policy. I agree to follow the Community Guidelines.', terms: '2026-10-29', optIn: $('#suOpt').checked, optInText: T.opt, hp: $('#suHp').value }) });
         const d = await r.json();
         if (!d.ok) { msg(d.msg || 'Something went wrong. Please try again.', 'bad'); $('#suGo').disabled = false; return; }
         $('.su-card').innerHTML = `<div class="su-done"><div class="su-ic">${d.status === 'sent' ? '✉️' : '⏳'}</div><h2>${d.status === 'sent' ? 'Check your email' : 'Request sent'}</h2><p class="su-lead">${esc(d.msg)}</p><p class="su-small">Don’t see it in a few minutes? Check your spam folder.</p><div class="su-row" style="justify-content:center"><button type="button" class="su-go" id="suOk">OK</button></div></div>`;
