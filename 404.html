@@ -16450,10 +16450,54 @@ async function loadRosters() {
 
 /* ── small helpers ── */
 const mailtoHref = (to, m, bcc) => 'mailto:' + encodeURIComponent(to || '') + '?' + (bcc && bcc.length ? 'bcc=' + encodeURIComponent(bcc.join(',')) + '&' : '') + 'subject=' + encodeURIComponent(m.subject) + '&body=' + encodeURIComponent(m.body);
-const gmailHref = (to, m, bcc) => 'https://mail.google.com/mail/?view=cm&fs=1&to=' + encodeURIComponent(to || '') + (bcc && bcc.length ? '&bcc=' + encodeURIComponent(bcc.join(',')) : '') + '&su=' + encodeURIComponent(m.subject) + '&body=' + encodeURIComponent(m.body);
-function copyText(txt, out, okMsg) {
+/* Gmail compose links. A whole results email (written answers + check data) can be far longer than a link may be, and
+   Gmail then opens an empty or broken draft. Long emails are trimmed (the written answers are inside the check data
+   anyway); if it's still too long, the full text is copied when the button is pressed and the draft asks to paste it. */
+const GM_MAX = 7000, GM_FULL = new Map(), GM_BODY = new Map();
+const gmTrim = b => b.replace(/\n\[FRQ \d+\][\s\S]*?(?=\nTeacher check data)/, '\n(Written answers are inside the check data below. Paste this email into Check Results to read and score them.)\n')
+  .replace(/\nFree-response answers:[\s\S]*?(?=\nTeacher check data)/, '\n(Written answers are inside the check data below. Paste this email into Check Results to read and score them.)\n');
+const gmUrl = (to, su, body, bcc) => 'https://mail.google.com/mail/?view=cm&fs=1&to=' + encodeURIComponent(to || '') + (bcc && bcc.length ? '&bcc=' + encodeURIComponent(bcc.join(',')) : '') + '&su=' + encodeURIComponent(su) + '&body=' + encodeURIComponent(body);
+function gmailHref(to, m, bcc) {
+  let url = gmUrl(to, m.subject, m.body, bcc); if (url.length <= GM_MAX) return url;
+  url = gmUrl(to, m.subject, gmTrim(m.body), bcc); GM_BODY.set(url, m.body); if (url.length <= GM_MAX) return url;
+  const head = m.body.split('\n\n')[0];
+  url = gmUrl(to, m.subject, head + '\n\n▼ Your full results were copied when you pressed the button. Paste them here (press and hold, then Paste, or Ctrl+V / ⌘+V), then send.\n', bcc);
+  GM_FULL.set(url, (to ? 'To: ' + to + '\n' : '') + m.body); GM_BODY.set(url, m.body); return url;
+}
+const isApple = () => /iPad|iPhone|iPod/.test(navigator.userAgent || '') || (/Macintosh/.test(navigator.userAgent || '') && (navigator.maxTouchPoints || 0) > 1);
+const isAndroid = () => /Android/i.test(navigator.userAgent || '');
+function copyNow(txt) { /* works inside a tap or click, with or without the clipboard API */
+  try { if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(txt).catch(() => {}); return; } } catch (e) {}
+  try { const t = document.createElement('textarea'); t.value = txt; t.setAttribute('readonly', ''); t.style.cssText = 'position:fixed;top:0;left:0;opacity:0'; document.body.appendChild(t); t.select(); t.setSelectionRange(0, txt.length); document.execCommand('copy'); t.remove(); } catch (e) {}
+}
+/* open a Gmail compose link: the Gmail app on iPad/iPhone/Android (the web link opens the app without the draft there),
+   Gmail in a new tab on computers */
+function openGmail(url) {
+  const full = GM_FULL.get(url); if (full) copyNow(full);
+  const q = new URL(url).searchParams, to = q.get('to') || '', su = q.get('su') || '', bcc = q.get('bcc') || '', body = GM_BODY.get(url) || q.get('body') || '';
+  const enc = encodeURIComponent;
+  if (isApple()) {
+    const app = 'googlegmail://co?to=' + enc(to) + (bcc ? '&bcc=' + enc(bcc) : '') + '&subject=' + enc(su) + '&body=' + enc(body);
+    let left = false; const away = () => { left = true; }; document.addEventListener('visibilitychange', away, { once: true }); window.addEventListener('pagehide', away, { once: true });
+    location.href = app; /* no Gmail app installed: nothing happens, so fall back to the phone's mail app */
+    setTimeout(() => { if (!left && !document.hidden) location.href = 'mailto:' + enc(to) + '?' + (bcc ? 'bcc=' + enc(bcc) + '&' : '') + 'subject=' + enc(su) + '&body=' + enc(body); }, 1600);
+    return;
+  }
+  if (isAndroid()) {
+    location.href = 'intent:' + enc(to) + '?' + (bcc ? 'bcc=' + enc(bcc) + '&' : '') + 'subject=' + enc(su) + '&body=' + enc(body) + '#Intent;scheme=mailto;package=com.google.android.gm;S.browser_fallback_url=' + enc(url) + ';end';
+    return;
+  }
+  const w = window.open(url, '_blank', 'noopener'); if (!w) location.href = url;
+}
+/* every "Open in Gmail" link on the site goes through openGmail */
+document.addEventListener('click', e => { const a = e.target && e.target.closest && e.target.closest('a[href^="https://mail.google.com/mail/?view=cm"]'); if (!a) return; e.preventDefault(); openGmail(a.href); }, true);
+function copyText(txt, out, okMsg, showBox) {
   const say = t => { const el = typeof out === 'string' ? $(out) : out; if (el) el.textContent = t; };
-  try { navigator.clipboard.writeText(txt).then(() => say(okMsg || 'Copied'), () => say('Copy was blocked. Select the text and copy it by hand.')); } catch (e) { say('Copy was blocked. Select the text and copy it by hand.'); }
+  const old = () => { try { const t = document.createElement('textarea'); t.value = txt; t.setAttribute('readonly', ''); t.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0'; document.body.appendChild(t); t.focus(); t.select(); t.setSelectionRange(0, txt.length); const ok = document.execCommand('copy'); t.remove(); return ok; } catch (e) { return false; } };
+  const byHand = () => { say('Your device blocked copying. Select the text below and copy it.'); if (showBox) { showBox.open = true; const pre = showBox.querySelector('pre'); if (pre) { const r = document.createRange(); r.selectNodeContents(pre); const s = getSelection(); s.removeAllRanges(); s.addRange(r); pre.scrollIntoView({ block: 'nearest' }); } } };
+  if (old()) { say(okMsg || 'Copied'); return; }
+  try { if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(txt).then(() => say(okMsg || 'Copied'), byHand); return; } } catch (e) {}
+  byHand();
 }
 const fileSafe = s => String(s).replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-').slice(0, 80) || 'file';
 async function saveFile(filename, data, type) {
@@ -16661,23 +16705,24 @@ function sendBoxHTML(o) {
     site: `<p class="sb-auto ok">${SVG(IC.send)} Your results were also saved to the class site for your teacher.</p>` };
   const autoLine = (o.auto ? auto[o.auto] || '' : '') + (o.site ? auto.site : '');
   if (o.sent) return `<h2>${SVG(IC.mail)} Results sent</h2>${autoLine}<p class="small muted" style="margin:0 0 10px">${o.sent.via === 'auto' ? 'Sent automatically' : 'You confirmed you sent these results'} on ${fmtDate(o.sent.at)}. Need to send them again?</p>
-    <div class="row"><a class="btn" href="${gmailHref(o.to, m)}" target="_blank" rel="noopener">Open in Gmail</a><a class="btn" href="${mailtoHref(o.to, m)}" target="_blank" rel="noopener">Open in my email app</a><button class="btn quiet" data-sb="copy">Copy results</button><span class="copied" data-sb="msg" aria-live="polite"></span></div>
+    <div class="row"><button class="btn" data-sb="copy">Copy results</button><button class="btn quiet" data-sb="copyto">Copy teacher’s email</button><span class="copied" data-sb="msg" aria-live="polite"></span></div>
     <details class="sb-prev"><summary class="small">Preview the email</summary><pre class="cm-body">${esc('To: ' + o.to + '\nSubject: ' + m.subject + '\n\n' + m.body)}</pre></details>`;
   const relay = okRelay(o.relay) && !IN_VIEWER;
   return `<h2>${SVG(IC.mail)} Send your results to your teacher</h2>${autoLine}
     <p class="small" style="margin:0 0 12px">${o.lead || 'Your teacher needs a copy of these results. Follow the three steps below.'}</p>
     <ol class="sb-steps">
       <li><b class="sb-h">Check your teacher’s school email address.</b>${o.editable ? `<div class="copyline sb-to"><input type="email" data-sb="to" value="${esc(o.to)}" placeholder="teacher@school.org" aria-label="Teacher's school email"><button class="btn quiet" data-sb="setto">Use this address</button></div>` : `<div class="sb-addr">${esc(o.to)}</div>`}</li>
-      <li><b class="sb-h">Send the email.</b> ${relay ? 'Send it automatically, or open' : 'Open'} it in your email with everything filled in, then press <b>Send</b>. Use your school email account if you have one, so your teacher knows it’s you.
-        <div class="row sb-btns">${relay ? `<button class="btn primary" data-sb="auto">${SVG(IC.send)} Send automatically</button>` : ''}<a class="btn ${relay ? '' : 'primary'}" href="${gmailHref(o.to, m)}" target="_blank" rel="noopener">Open in Gmail</a><a class="btn" href="${mailtoHref(o.to, m)}" target="_blank" rel="noopener">Open in my email app</a><button class="btn quiet" data-sb="copy">Copy results</button><span class="copied" data-sb="msg" aria-live="polite"></span></div>
-        <span class="small muted">No email window? Use <b>Copy results</b>, then paste into a new email to ${esc(o.to || 'your teacher')}.</span></li>
+      <li><b class="sb-h">${relay ? 'Send your results automatically, or copy them.' : 'Copy your results.'}</b>
+        <div class="row sb-btns">${relay ? `<button class="btn primary" data-sb="auto">${SVG(IC.send)} Send automatically</button>` : ''}<button class="btn ${relay ? '' : 'primary'}" data-sb="copy">Copy results</button><button class="btn quiet" data-sb="copyto">Copy teacher’s email</button><span class="copied" data-sb="msg" aria-live="polite"></span></div></li>
+      <li><b class="sb-h">Paste them into an email to your teacher and send it.</b> Open your school email (Gmail, Outlook, or Mail), start a new email to <b>${esc(o.to || 'your teacher')}</b>, and paste into the message: press and hold, then <b>Paste</b> (on a computer: Ctrl+V, or ⌘+V on a Mac). For the subject, write <i>${esc(m.subject)}</i>. Then press <b>Send</b>.</li>
       <li><b class="sb-h">Confirm it was sent.</b> Check your Sent folder first.${o.unlock ? ' ' + o.unlock : ''} <button class="btn primary" data-sb="sent">I sent my results</button></li></ol>
     <details class="sb-prev"><summary class="small">Preview the email</summary><pre class="cm-body">${esc('To: ' + o.to + '\nSubject: ' + m.subject + '\n\n' + m.body)}</pre></details>`;
 }
 function bindSendBox(root, o, cb) {
   const q = s => root.querySelector(`[data-sb="${s}"]`);
   const msg = t => { const el = q('msg'); if (el) el.textContent = t; };
-  if (q('copy')) q('copy').onclick = () => copyText('To: ' + o.to + '\nSubject: ' + o.mail.subject + '\n\n' + o.mail.body, q('msg'), 'Copied. Paste it into a new email to ' + o.to + '.');
+  if (q('copy')) q('copy').onclick = () => copyText('Subject: ' + o.mail.subject + '\n\n' + o.mail.body, q('msg'), 'Copied ✓ Now paste it into a new email to ' + (o.to || 'your teacher') + '.', root.querySelector('.sb-prev'));
+  if (q('copyto')) q('copyto').onclick = () => copyText(o.to || '', q('msg'), 'Email address copied ✓');
   if (q('setto')) q('setto').onclick = () => { const v = normEmail(q('to').value); if (!isEmail(v)) return msg('Enter a full email address.'); cb.onTo(v); };
   if (q('to')) q('to').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); q('setto').click(); } });
   if (q('auto')) q('auto').onclick = async () => { if (!isEmail(o.to)) return msg('Enter your teacher’s email in step 1 first.'); q('auto').disabled = true; q('auto').textContent = 'Sending…'; const st = await relaySend(o.relay, { to: o.to, subject: o.mail.subject, body: o.mail.tbody || o.mail.body, replyTo: myEmail() }); cb.onAuto(st); };
@@ -17237,6 +17282,16 @@ function renderUnitTests(err) {
 }
 /* accommodations set on the intro page, applied when the test starts */
 const UTACC = {};
+/* extra time on every teacher-given test (unit tests and assigned exams): 1.5 = time and a half for everyone.
+   Change this one number to give more or less; teacher accommodations are added on top of it. */
+const TEST_TIME_X = 1.5;
+const xMin = (m, ut, x) => Math.round((m || 0) * timeX(ut, x));
+const timeX = (ut, x) => (x && isAP(x) && ut && (ut.k === 'exam' || ut.ex)) ? 1 : TEST_TIME_X; /* AP exam simulations keep the official timing */
+function stretchTime(ut, x) {
+  const X2 = timeX(ut, x); if (!T || T.untimed || X2 === 1) return;
+  if (T.secs) { T.secs.forEach(s => { s.t = Math.round(s.t * X2); }); T.remaining = T.secs[T.sec || 0].t; T.total = T.secs.reduce((a, s) => a + s.t, 0); }
+  else { T.remaining = Math.round(T.remaining * X2); T.total = Math.round(T.total * X2); }
+}
 function accStart(code) {
   const A = UTACC[code]; if (!A || !T) return; T.acc = { log: A.log.slice(), big: !!A.big, nolock: !!A.nolock, sp: !!A.sp, r3: !!A.r3 };
   if (A.nolock && T.lk) T.lk.off = true;
@@ -17258,13 +17313,13 @@ function renderUtIntro(code) {
   const same = o => !!o && (o.code === p.code || (!!o.ut && tidOf(o.ut) === tidOf(ut)));
   let resumable = !!cur && same(exam ? cur.assign : cur.unit);
   if (!resumable) { const b = LS.get(utBakKey(ut), null); if (b && b.T && same(exam ? b.T.assign : b.T.unit)) { cur = b.T; if (exam) cur.testId = cur.testId || x.id; resumable = true; } }
-  const minutes = exam ? x.minutes : ut.m;
+  const minutes = exam ? xMin(x.minutes, ut, x) : xMin(ut.m, ut, x);
   const auto = okRelay(ut.r) && !IN_VIEWER, lkm = (lkOf(ut) || {}).m || 0, sebBlock = lkm === 3 && !isSEB();
   $('#hub').innerHTML = nav('unit-tests') + `<div class="page" style="max-width:780px">${pageHead(exam ? 'Assignment · Exam simulation' : 'Unit Test', esc(ut.n), esc(x.subject) + ' · ' + utUnits(ut).map(esc).join(' · ') + (ut.due ? ' · due ' + esc(dueText(ut)) : ''))}
     <section class="card ut-intro">
       ${ut.msg ? `<p class="ut-msg">${esc(ut.msg)}</p>` : ''}
       <div class="specs"><div><b>${mc}</b><small>multiple choice</small></div>${dfn ? `<div><b>${dfn}</b><small>definitions</small></div>` : ''}${fr ? `<div><b>${fr}</b><small>free response</small></div>` : ''}<div><b>${minutes ? minutes : '—'}</b><small>${minutes ? 'minutes' : 'no time limit'}</small></div></div>
-      <ul class="rules">${exam ? `<li>${isAP(x) ? `This is a full AP exam simulation: Section I (multiple choice, ${x.srMinutes} min), then Section II (free response, ${x.minutes - x.srMinutes} min). Each section has its own clock.` : `This is a full final exam: ${x.nSR} multiple-choice questions from every unit in ${x.minutes} minutes.`}</li><li>When time runs out in a section, it ends automatically.</li>` : `<li>No answers or feedback are shown during the test.</li><li>${ut.m ? `The timer starts when you begin. When time runs out, the test is submitted automatically.` : 'There is no time limit, but your time is recorded.'}</li>`}
+      <ul class="rules">${exam ? `<li>${isAP(x) ? `This is a full AP exam simulation: Section I (multiple choice, ${xMin(x.srMinutes, ut, x)} min), then Section II (free response, ${xMin(x.minutes - x.srMinutes, ut, x)} min). Each section has its own clock.` : `This is a full final exam: ${x.nSR} multiple-choice questions from every unit in ${xMin(x.minutes, ut, x)} minutes.`}</li><li>When time runs out in a section, it ends automatically.</li>` : `<li>No answers or feedback are shown during the test.</li><li>${ut.m ? `The timer starts when you begin. When time runs out, the test is submitted automatically.` : 'There is no time limit, but your time is recorded.'}</li>`}
         <li>When you finish, ${auto ? `your results are <b>emailed to your teacher automatically</b> at <b>${esc(ut.e)}</b>. If that doesn’t work, you’ll send them yourself.` : `you must <b>send your results to your teacher</b>${ut.e ? ` at <b>${esc(ut.e)}</b>` : ' by email (the results page walks you through it)'}.`}${exam ? '' : ut.a === 'send' ? ' Then you’ll see the answers and explanations.' : ' Your teacher will go over the answers in class.'}</li>
         ${x.tools.length ? '<li>' + (x.tools.includes('calc') ? 'A calculator' + (x.tools.length > 1 ? ' and the reference sheets are' : ' is') : 'The course reference sheet is') + ' under <b>Help</b> during the test.</li>' : ''}
         ${lkm ? `<li class="lk-rule">${SVG(IC.lock)} <span><b>This test is locked.</b> ${lkm === 3 ? 'It must be taken in Safe Exam Browser. ' : ''}It opens in full screen, and copying, pasting, right-click, and printing are turned off. If you leave the test (switch tabs or apps, open another window, or open an assistant panel such as Gemini or Copilot), the questions hide and it’s recorded for your teacher.${lkm === 2 ? ' After 3 exits the test submits itself.' : ''} Close other tabs and turn off notifications before you start.</span></li>` : ''}</ul>
@@ -17296,10 +17351,10 @@ function renderUtIntro(code) {
     if ($('#utMe')) { const me2 = normEmail($('#utMe').value); if (me2 && !isEmail(me2)) { $('#utStErr').textContent = 'Check your email address, or leave it blank.'; return; } LS.set('ap.testonly.email', me2); }
     if ($('#utTo')) { const to = normEmail($('#utTo').value); if (!isEmail(to)) { $('#utStErr').textContent = 'Enter your teacher’s email address so you can send them your results.'; return; } LS.set(`ap.${PID}.teacher`, { e: to, r: '' }); }
     const go2 = () => { LS.set(`ap.${PID}.ut.name`, nm); X = x; const lk = lkNew(ut); if (lk && fsOK() && !lkTablet()) { lk.fs = 1; lkFull(); }
-      if (exam) { T = buildTest(x, 'full', null, ut.lv || 'std', false); T.title = ut.n; T.assign = { code: p.code, ut }; T.studentName = nm; T.lk = lk; accStart(p.code); save(); enterExam(); return; }
+      if (exam) { T = buildTest(x, 'full', null, ut.lv || 'std', false); T.title = ut.n; T.assign = { code: p.code, ut }; T.studentName = nm; T.lk = lk; stretchTime(ut, x); accStart(p.code); save(); enterExam(); return; }
       T = { v: 1, testId: x.id, mode: 'unit', level: 'std', cat: null, items, title: ut.n, ans: items.map(() => []), marked: items.map(() => false), visited: items.map(() => false), cur: 0, screen: 'q',
         remaining: ut.m * 60, total: ut.m * 60, untimed: !ut.m, elapsed: 0, spent: 0, started: new Date().toISOString(), unit: { code: p.code, ut }, studentName: nm, lk };
-      accStart(p.code); save(); enterExam(); };
+      stretchTime(ut, x); accStart(p.code); save(); enterExam(); };
     const other = exam ? loadCur(x) : cur && cur.unit ? cur : null;
     if (other) confirmBox(exam ? 'Start this exam?' : 'Start this unit test?', exam ? `You have another ${x.subject} attempt in progress. Starting this one discards it.` : `You have another unit test in progress (${other.title}). Starting this one discards it.`, 'Start', go2); else go2(); };
   formFix('#utStartF');
@@ -18079,11 +18134,11 @@ async function devScan(pw) {
   }
   /* copies kept in the vault whose originals are gone (reset, cleared, or deleted) */
   const live = new Set(out.map(o => (o.r && o.r.date) || ''));
-  for (const e of LS.get(VAULT, [])) { const r = e.r; if (!r || live.has(r.date)) continue; live.add(r.date);
+  for (const e of LS.get(VAULT, [])) { const r = e.r; if (!r || r.reopened || live.has(r.date)) continue; live.add(r.date);
     if (e.kind === 'ut' && r.ut) out.push({ kind: 'ut', key: null, r, ut: r.ut, name: r.name, title: r.ut.n, date: r.date, score: `${r.correct}/${r.n} MC`, sent: r.sent, gone: 1 });
     else if (e.kind === 'ex' && r.assign && BY_ID[e.xid]) out.push({ kind: 'ex', key: null, r, x: BY_ID[e.xid], ut: r.assign.ut, name: r.studentName, title: r.assign.ut.n, date: r.date, score: `${r.correct}/${r.n} MC`, sent: r.sent, gone: 1 }); }
   const mine = []; for (const o of out) if (await keyOK(o.ut, pw)) mine.push(o);
-  let ok = mine.length > 0 || String(pw).trim().toLowerCase() === LK_DEFAULT;
+  let ok = mine.length > 0 || [String(pw), koKeys(pw)].some(p => p.trim().toLowerCase() === LK_DEFAULT);
   if (!ok) for (const u of LS.get('ap.dev.keys', [])) if (await keyOK(u, pw)) { ok = true; break; }
   return { list: mine.sort((a, b) => (a.date || '') < (b.date || '') ? 1 : -1), resets: ok ? LS.get(VAULT, []).filter(e => e.kind === 'reset').reverse() : [] };
 }
@@ -18101,21 +18156,62 @@ async function renderDevice(err) {
   const to0 = (LS.get('ap.dev.to', '') || (DEV.list[0] && DEV.list[0].ut.e) || '');
   $('#hub').innerHTML = nav('device') + head + `<section class="card"><div class="row" style="align-items:flex-end"><label class="dev-to">Send results to<input id="devTo" type="email" value="${esc(to0)}" placeholder="you@school.org"></label><span style="flex:1"></span><button class="btn quiet" id="devLock">${SVG(IC.lock)} Lock this page</button></div></section>
     <div class="dev-list">${DEV.list.map((o, n) => `<section class="card dev-item"><div><b>${esc(o.name || 'Unknown student')}</b><small>${esc(o.title)} · ${o.date ? fmtDate(o.date) : ''}</small><span class="small">${esc(o.score)} · ${/cur$/.test(o.kind) ? '<span class="st-off">not finished</span>' : o.sent ? '<span class="st-on">student confirmed sending</span>' : '<span class="st-off">not sent</span>'}${o.gone ? ' · <span class="st-off">removed from the student’s history</span>' : ''}</span></div>
-      <div class="row">${/cur$/.test(o.kind) ? `<button class="btn primary sm" data-devsub="${n}">Submit it now</button>` : `<button class="btn primary sm" data-devgm="${n}">Open in Gmail</button><button class="btn sm" data-devml="${n}">Email app</button><button class="btn quiet sm" data-devcp="${n}">Copy results</button>`}</div></section>`).join('')}</div>
+      <div class="row">${/cur$/.test(o.kind) ? `<button class="btn primary sm" data-devsub="${n}">Submit it now</button>` : `<button class="btn primary sm" data-devcp="${n}">Copy results</button>${o.r && o.r.items ? `<button class="btn sm" data-devre="${n}">Reopen with more time</button>` : ''}`}</div></section>`).join('')}</div>
     ${DEV.resets && DEV.resets.length ? `<h2 class="dev-h">Cleared by the student</h2><p class="small muted">Practice and exam history that was reset or cleared on this device. These are summaries kept when the history was removed.</p>
       <div class="dev-list">${DEV.resets.map(e => `<section class="card dev-reset"><div><b>${esc(e.name || 'Student')}</b><small>${esc(e.why)} · ${fmtDate(e.vt)}${e.email ? ' · ' + esc(e.email) : ''}</small></div>
         <div class="dev-tw"><div class="dev-tw"><table class="dev-t"><thead><tr><th>Course</th><th>Cleared</th><th>Recent results</th></tr></thead><tbody>${e.rows.map(r => `<tr><td>${esc((BY_ID[r.t] || {}).subject || r.t)}</td><td>${r.n} (${r.ex} test${r.ex === 1 ? '' : 's'}, ${r.p} practice)</td><td>${r.last.slice().reverse().map(h => `<span class="dev-pill" title="${esc(h.ti)}">${h.d ? esc(fmtDate(h.d)) + ': ' : ''}${h.pct}%${h.a ? ' (assigned)' : h.pr ? ' (practice)' : ''}</span>`).join(' ')}</td></tr>`).join('')}</tbody></table></div></section>`).join('')}</div>` : ''}
     <p class="small" id="devMsg" role="status"></p>
     <p class="small muted">Paste the email (or the copied results) into Check Results to verify the score, score written answers, and add it to your gradebook.</p></div>`;
-  const mail = async o => { const to = normEmail($('#devTo').value); LS.set('ap.dev.to', to); return o.kind === 'ut' ? { ...(await utMail({ ...o.r, to })), to } : { ...(await examMail(o.r, o.x, to)), to }; };
+  const mail = async o => { const to = normEmail($('#devTo').value); LS.set('ap.dev.to', to); const m = o.kind === 'ut' ? await utMail({ ...o.r, to }) : await examMail(o.r, o.x, to); return { ...m, body: m.tbody || m.body, to }; };
   $('#devLock').onclick = () => { DEV = { pw: null, list: null }; renderDevice(); bindNav(); };
   const need = () => { if (!isEmail(normEmail($('#devTo').value))) { $('#devMsg').textContent = 'Enter the email address to send results to.'; $('#devTo').focus(); return false; } return true; };
-  $$('[data-devgm]').forEach(b => b.onclick = async () => { if (!need()) return; const m = await mail(DEV.list[+b.dataset.devgm]); window.open(gmailHref(m.to, m), '_blank', 'noopener'); });
+  $$('[data-devgm]').forEach(b => b.onclick = async () => { if (!need()) return; const m = await mail(DEV.list[+b.dataset.devgm]); openGmail(gmailHref(m.to, m)); });
   $$('[data-devml]').forEach(b => b.onclick = async () => { if (!need()) return; const m = await mail(DEV.list[+b.dataset.devml]); location.href = mailtoHref(m.to, m); });
-  $$('[data-devcp]').forEach(b => b.onclick = async () => { const m = await mail(DEV.list[+b.dataset.devcp]); copyText('To: ' + m.to + '\nSubject: ' + m.subject + '\n\n' + m.body, '#devMsg', 'Copied. Paste it into an email to yourself, or straight into Check Results.'); });
+  $$('[data-devcp]').forEach(b => b.onclick = async () => { const m = await mail({ ...DEV.list[+b.dataset.devcp] }); copyText('Subject: ' + m.subject + '\n\n' + m.body, '#devMsg', 'Copied ✓ Paste it straight into Check Results on your teacher account, or into an email to yourself.'); });
+  $$('[data-devre]').forEach(b => b.onclick = () => devReopen(DEV.list[+b.dataset.devre]));
   $$('[data-devsub]').forEach(b => b.onclick = () => { const o = DEV.list[+b.dataset.devsub];
     confirmBox('Submit this test now?', `${o.name || 'The student'}’s answers so far are scored and saved. Unanswered questions count as wrong.`, 'Submit', () => {
       LS.del(o.key); T = o.c; X = o.x || BY_ID[T.testId]; DEV = { pw: DEV.pw, list: null }; inExam = false; if (T.lk) T.lk.off = true; finish(false); }); });
+}
+
+/* Teacher access: put a submitted test back in progress on this device, with extra time, so the student can finish it.
+   Their answers, lockdown record and accommodations carry over; the new submission replaces the old one. */
+function devReopen(o) {
+  if (!o || !o.r || !o.r.items) return;
+  const CH = [5, 10, 15, 20, 30, 45];
+  $('#modal-root').innerHTML = `<div class="scrim" id="scrim"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="reH" style="max-width:460px"><div class="mbody">
+    <h2 id="reH" style="margin-top:0">Reopen with more time</h2><p>${esc(o.name || 'The student')} · ${esc(o.title)}</p>
+    <p class="small muted">The test opens again on this device with all their answers. When they submit, the new results replace this attempt and go to you as usual.</p>
+    <div class="row" style="flex-wrap:wrap;gap:8px">${CH.map(m => `<button class="btn" data-readd="${m}">+${m} min</button>`).join('')}</div>
+    <div class="row" style="margin-top:14px"><button class="btn quiet" id="reX">Cancel</button></div></div></div></div>`;
+  $('#reX').onclick = closeModal; $('#scrim').onclick = e => { if (e.target.id === 'scrim') closeModal(); };
+  $$('[data-readd]').forEach(b => b.onclick = () => { const add = +b.dataset.readd; closeModal(); devReopenGo(o, add); });
+}
+function devReopenGo(o, add) {
+  const r = o.r, x = o.x || BY_ID[r.testId]; if (!x) return;
+  const pid = o.key ? (o.key.match(/^ap\.(.+?)\.(ut\.results\.v1|[a-z0-9]+\.history\.v1)$/) || [])[1] : null;
+  const ut = o.kind === 'ut' ? r.ut : r.assign.ut, note = `reopened by the teacher with +${add} min`;
+  const lk = lkNew(ut); if (lk && r.lk) { Object.keys(lk.log).forEach(k => { if (typeof r.lk[k] === 'number') lk.log[k] = r.lk[k]; }); lk.seb = r.lk.seb || lk.seb; }
+  let nt;
+  if (o.kind === 'ut') {
+    nt = { v: 1, testId: x.id, mode: 'unit', level: 'std', cat: null, items: r.items, title: r.ut.n, ans: r.ans, marked: r.items.map(() => false), visited: r.items.map(() => true), cur: 0, screen: 'q',
+      remaining: add * 60, total: (r.used || 0) + add * 60, untimed: false, elapsed: 0, spent: r.used || 0, started: r.started || r.date, unit: { code: r.code, ut: r.ut }, studentName: r.name, lk };
+  } else {
+    nt = buildTest(x, 'full', null, r.level || 'std', false);
+    if (!nt || nt.items.length !== r.items.length) { confirmBox('Can’t reopen this one', 'This exam was saved in an older format, so it can’t be reopened. Ask the student to take it again.', 'OK', () => {}); return; }
+    Object.assign(nt, { items: r.items, ans: r.ans, marked: r.marked || r.items.map(() => false), visited: r.items.map(() => true), title: r.title, assign: r.assign, studentName: r.studentName, lk, spent: r.used || 0, screen: 'q' });
+    if (nt.secs) { nt.sec = nt.secs.length > 1 ? 1 : 0; nt.cur = nt.sec ? nt.secs[0].n : 0; nt.secs[nt.sec].t = add * 60; }
+    else nt.cur = 0;
+    nt.remaining = add * 60; nt.total = (r.used || 0) + add * 60; nt.untimed = false;
+  }
+  nt.acc = { log: [...(r.acc || []), note], big: false, nolock: false, sp: false, r3: false };
+  if (r.pz) nt.pz = { n: r.pz[0] || 0, secs: r.pz[1] || 0 };
+  /* take the old attempt out of the student's list (the safety copy is marked so it isn't listed again) */
+  if (o.key) { const l = LS.get(o.key, []); const i = l.findIndex(h => h.date === r.date); if (i >= 0) { l.splice(i, 1); LS.set(o.key, l); } }
+  const v = LS.get(VAULT, []); v.forEach(e => { if (e.r && e.r.date === r.date) e.r.reopened = 1; }); LS.set(VAULT, v);
+  if (pid) PID = pid; else if (!PID) PID = 'testonly';
+  T = nt; X = x; DEV = { pw: null, list: null }; if (lk && fsOK() && !lkTablet()) { lk.fs = 1; lkFull(); }
+  save(); enterExam(); lkToast(`Reopened with ${add} more minutes. Hand the device back to the student.`);
 }
 
 /* ═════ SIGN UP (website only) ═════
@@ -18313,18 +18409,55 @@ const lkModeOf = v => +v === 4 ? { m: 1, k: 1 } : +v ? { m: +v } : null;
 const lkModeVal = lk => lk ? (lk.k ? '4' : String(lk.m || 0)) : '0';
 /* teacher password (unlock + accommodations + saved results): only a slow hash of it travels in the test code */
 const LK_DEFAULT = 'ad31';
+/* PBKDF2-HMAC-SHA256 in plain JavaScript, for pages opened without https (the browser's crypto.subtle only exists on
+   https pages, so before this the teacher password could never match there). Gives the same result as crypto.subtle. */
+const PB_K = new Uint32Array([0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2]);
+const PB_IV = [0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+function pbBlock(H, W) { for (let t = 16; t < 64; t++) { const a = W[t - 15], b = W[t - 2]; W[t] = (((a >>> 7 | a << 25) ^ (a >>> 18 | a << 14) ^ (a >>> 3)) + W[t - 16] + ((b >>> 17 | b << 15) ^ (b >>> 19 | b << 13) ^ (b >>> 10)) + W[t - 7]) | 0; }
+  let a = H[0], b = H[1], c = H[2], d = H[3], e = H[4], f = H[5], g = H[6], h = H[7];
+  for (let t = 0; t < 64; t++) { const t1 = (h + ((e >>> 6 | e << 26) ^ (e >>> 11 | e << 21) ^ (e >>> 25 | e << 7)) + ((e & f) ^ (~e & g)) + PB_K[t] + W[t]) | 0, t2 = (((a >>> 2 | a << 30) ^ (a >>> 13 | a << 19) ^ (a >>> 22 | a << 10)) + ((a & b) ^ (a & c) ^ (b & c))) | 0;
+    h = g; g = f; f = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0; }
+  H[0] = (H[0] + a) | 0; H[1] = (H[1] + b) | 0; H[2] = (H[2] + c) | 0; H[3] = (H[3] + d) | 0; H[4] = (H[4] + e) | 0; H[5] = (H[5] + f) | 0; H[6] = (H[6] + g) | 0; H[7] = (H[7] + h) | 0; }
+/* hash `msg` continuing from state H, where `pre` bytes were already hashed */
+function pbHash(H0, msg, pre) { const H = Int32Array.from(H0), n = msg.length, tot = pre + n, L = Math.ceil((n + 9) / 64) * 64, B = new Uint8Array(L); B.set(msg); B[n] = 0x80;
+  const bits = tot * 8; B[L - 4] = bits >>> 24; B[L - 3] = bits >>> 16; B[L - 2] = bits >>> 8; B[L - 1] = bits; B[L - 5] = Math.floor(bits / 2 ** 32);
+  const W = new Int32Array(64); for (let o = 0; o < L; o += 64) { for (let i = 0; i < 16; i++) W[i] = B[o + i * 4] << 24 | B[o + i * 4 + 1] << 16 | B[o + i * 4 + 2] << 8 | B[o + i * 4 + 3]; pbBlock(H, W); } return H; }
+function pbkdf2js(pass, salt, iter, nBytes) {
+  let key = pass; if (key.length > 64) { const h = pbHash(PB_IV, key, 0); key = new Uint8Array(32); h.forEach((v, i) => { key[i * 4] = v >>> 24; key[i * 4 + 1] = v >>> 16; key[i * 4 + 2] = v >>> 8; key[i * 4 + 3] = v; }); }
+  const ip = new Uint8Array(64).fill(0x36), op = new Uint8Array(64).fill(0x5c); key.forEach((b, i) => { ip[i] ^= b; op[i] ^= b; });
+  const toW = u => { const W = new Int32Array(64); for (let i = 0; i < 16; i++) W[i] = u[i * 4] << 24 | u[i * 4 + 1] << 16 | u[i * 4 + 2] << 8 | u[i * 4 + 3]; return W; };
+  const HI = Int32Array.from(PB_IV), HO = Int32Array.from(PB_IV); pbBlock(HI, toW(ip)); pbBlock(HO, toW(op));
+  const s1 = new Uint8Array(salt.length + 4); s1.set(salt); s1[salt.length + 3] = 1;
+  let u = pbHash(HO, (() => { const h = pbHash(HI, s1, 64), b = new Uint8Array(32); h.forEach((v, i) => { b[i * 4] = v >>> 24; b[i * 4 + 1] = v >>> 16; b[i * 4 + 2] = v >>> 8; b[i * 4 + 3] = v; }); return b; })(), 64);
+  const out = Int32Array.from(u), W = new Int32Array(64), H = new Int32Array(8);
+  for (let j = 1; j < iter; j++) { /* one 32-byte message through HMAC = two single-block compressions */
+    H.set(HI); W.fill(0); W.set(u); W[8] = 0x80000000; W[15] = 768; pbBlock(H, W);
+    const v = Int32Array.from(H); H.set(HO); W.fill(0); W.set(v); W[8] = 0x80000000; W[15] = 768; pbBlock(H, W);
+    u = Int32Array.from(H); for (let i = 0; i < 8; i++) out[i] ^= u[i]; }
+  const res = new Uint8Array(32); out.forEach((v, i) => { res[i * 4] = v >>> 24; res[i * 4 + 1] = v >>> 16; res[i * 4 + 2] = v >>> 8; res[i * 4 + 3] = v; }); return res.slice(0, nBytes);
+}
+async function pbkdf2(pw, salt, iter, nBits) {
+  const enc = new TextEncoder(), P = enc.encode(String(pw).trim().toLowerCase()), S = enc.encode(salt);
+  try { if (window.crypto && crypto.subtle) { const key = await crypto.subtle.importKey('raw', P, 'PBKDF2', false, ['deriveBits']); return new Uint8Array(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: S, iterations: iter }, key, nBits)); } } catch (e) {}
+  return pbkdf2js(P, S, iter, nBits / 8);
+}
 async function keyHash(pw, salt) {
-  const enc = new TextEncoder(), key = await crypto.subtle.importKey('raw', enc.encode(String(pw).trim().toLowerCase()), 'PBKDF2', false, ['deriveBits']);
-  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: enc.encode('eh-key|' + salt), iterations: 120000 }, key, 32);
-  return [...new Uint8Array(bits)].slice(0, 3).map(b => b.toString(16).padStart(2, '0')).join('');
+  const bits = await pbkdf2(pw, 'eh-key|' + salt, 120000, 32);
+  return [...bits].slice(0, 3).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 /* a second slow hash of the teacher password, used only to close or reopen a test online (its fingerprint is kept by the sign-up script) */
 async function closeKey(pw, tid) {
-  const enc = new TextEncoder(), key = await crypto.subtle.importKey('raw', enc.encode(String(pw).trim().toLowerCase()), 'PBKDF2', false, ['deriveBits']);
-  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: enc.encode('eh-close|' + tid), iterations: 120000 }, key, 256);
-  return [...new Uint8Array(bits)].map(b => b.toString(16).padStart(2, '0')).join('');
+  const bits = await pbkdf2(pw, 'eh-close|' + tid, 120000, 256);
+  return [...bits].map(b => b.toString(16).padStart(2, '0')).join('');
 }
-async function keyOK(ut, pw) { if (!ut) return false; if (!ut.kh) return String(pw).trim().toLowerCase() === LK_DEFAULT; try { return (await keyHash(pw, String(ut.s))) === ut.kh; } catch (e) { return false; } }
+/* a password typed while the keyboard is in Korean mode (ㅁㅇ31 for ad31): turn it back into the English keys pressed */
+const KO_L = 'r R s e E f a q Q t T d w W c z x v g'.split(' '), KO_V = 'k o i O j p u P h hk ho hl y n nj np nl b m ml l'.split(' '),
+  KO_T = ' r R rt s sw sg e f fr fa fq ft fx fv fg a q qt t T d w c z x v g'.split(' '), KO_C = 'r R rt s sw sg e E f fr fa fq ft fx fv fg a q Q qt t T d w W c z x v g'.split(' ');
+const koKeys = str => [...String(str)].map(ch => { const c = ch.charCodeAt(0);
+  if (c >= 0xAC00 && c <= 0xD7A3) { const n = c - 0xAC00; return KO_L[Math.floor(n / 588)] + KO_V[Math.floor(n % 588 / 28)] + (n % 28 ? KO_T[n % 28] : ''); }
+  if (c >= 0x3131 && c <= 0x314E) return KO_C[c - 0x3131]; if (c >= 0x314F && c <= 0x3163) return KO_V[c - 0x314F]; return ch; }).join('');
+async function keyOK(ut, pw) { if (!ut) return false; const tries = [...new Set([String(pw), koKeys(pw)])];
+  for (const p of tries) { if (!ut.kh) { if (p.trim().toLowerCase() === LK_DEFAULT) return true; continue; } try { if ((await keyHash(p, String(ut.s))) === ut.kh) return true; } catch (e) {} } return false; }
 const teacherPw = () => LS.get('ap.lk.pw', LK_DEFAULT) || LK_DEFAULT;
 const isSEB = () => /\bSEB\b/i.test(navigator.userAgent || '');
 /* tablets and phones (iPadOS reports itself as a Mac, so check for touch too): full screen is unreliable there (the on-screen
@@ -18352,6 +18485,7 @@ function lkStart() {
   const note = (type, msg) => { L.ev.push({ t: T.spent || 0, type }); if (L.ev.length > 40) L.ev.shift(); save(); if (msg) lkToast(msg); };
   const violate = (type, label) => {
     if (L.off || L.locked) return;
+    if (Date.now() < (L.calm || 0)) return; /* the teacher just unlocked or closed accommodations: the screen returning to full screen or a browser pop-up isn't the student leaving */
     const now = Date.now(); if (now - lastV < 1500) return; lastV = now;
     L.log.n++; if (type === 'away') L.log.away++; if (type === 'fs') L.log.fsx++; if (type === 'rs') L.log.rs++;
     note(type);
@@ -18420,7 +18554,7 @@ function lkKeyOverlay(msg) {
   const f = ov.querySelector('#lkKeyF'), inp = noSave(ov.querySelector('#lkKey')), err = ov.querySelector('#lkErr'); setTimeout(() => inp.focus(), 50);
   f.onsubmit = async e => { e.preventDefault(); if (L.wait && Date.now() < L.wait) { err.textContent = `Too many tries. Wait ${Math.ceil((L.wait - Date.now()) / 1000)} seconds.`; return; }
     err.textContent = 'Checking…'; const ok = await keyOK(testUt(), pwOf(inp));
-    if (!ok) { L.log.bad++; L.tries = (L.tries || 0) + 1; if (L.tries >= 5) { L.wait = Date.now() + 30000; L.tries = 0; } save(); err.textContent = 'That password is not right. Ask your teacher.'; pwClear(inp); inp.focus(); return; }
+    if (!ok) { L.log.bad++; L.tries = (L.tries || 0) + 1; if (L.tries >= 5) { L.wait = Date.now() + 30000; L.tries = 0; } save(); err.textContent = 'That password doesn’t match this test. Use the teacher password that was set when this test was made (capital letters don’t matter).'; pwClear(inp); inp.focus(); return; }
     L.locked = false; L.log.unl++; L.tries = 0; L.calm = Date.now() + 4000; pwClear(inp); save(); lkHideOverlay(); if (L.fs) lkFull(); lkToast('Unlocked by your teacher. The test continues.'); };
   formFix(f);
 }
