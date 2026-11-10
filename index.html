@@ -66,6 +66,9 @@
 .qcount { font-family: var(--font-mono); font-size: 13.5px; font-variant-numeric: tabular-nums; }
 .qcount .score-run { color: var(--accent); margin-left: 12px; }
 .tbtns { display: flex; gap: 6px; flex-wrap: wrap; }
+.xz { display: inline-flex; gap: 2px; } .xz .tb { min-width: 38px; font-weight: 700; }
+#exam .xbody { zoom: var(--xz, 1); }
+.svd { font-size: 12px; font-weight: 600; white-space: nowrap; color: #2f7a4a; margin-left: auto; margin-right: 12px; } .svd.bad { color: #b42318; }
 .tb { min-height: 34px; padding: 0 12px; border-radius: 3px; border: 1px solid var(--rule); background: transparent; color: var(--ink); font-weight: 600; font-size: 13px; cursor: pointer; }
 .tb:hover { border-color: var(--ink); }
 .tb:disabled { opacity: .4; cursor: default; }
@@ -1346,6 +1349,7 @@ body.locked #exam textarea, body.locked #exam input { -webkit-user-select: text;
 .pw-box p .ico { display: inline-block; vertical-align: -3px; margin-right: 4px; }
 .pw-box .ico { width: 16px; height: 16px; flex: none; color: var(--mark); }
 .lk-key { display: flex; gap: 8px; justify-content: center; margin: 6px 0 4px; }
+.pw-mask { -webkit-text-security: disc; text-security: disc; }
 .lk-key input { flex: 1; min-width: 0; max-width: 240px; padding: 10px 12px; border: 1px solid var(--rule); border-radius: 10px; background: var(--surface); color: var(--ink); font: inherit; font-size: 16px; }
 .acc-box { max-width: none; text-align: left; }
 .acc-box h2 { text-align: center; }
@@ -13518,6 +13522,19 @@ function F1(s) {
     .replace(/\b(TWO|THREE|FOUR)\b/g, '<u>$1</u>');
 }
 /* The artifact frame may block native form submission, so forms are driven by button clicks and Enter instead. */
+/* teacher-password boxes: a plain text box shown as dots, never type="password", so no browser, phone or password
+   manager offers to save it (closing that offer used to count as leaving a locked test). Read it with pwOf(). */
+const MASK_CSS = (() => { try { return !!(window.CSS && (CSS.supports('-webkit-text-security', 'disc') || CSS.supports('text-security', 'disc'))); } catch (e) { return false; } })();
+function noSave(el) {
+  if (!el || el._ns) return el; el._ns = 1;
+  el.type = 'text'; el.removeAttribute('name');
+  [['autocomplete', 'off'], ['autocorrect', 'off'], ['autocapitalize', 'off'], ['spellcheck', 'false'], ['data-lpignore', 'true'], ['data-1p-ignore', 'true'], ['data-bwignore', 'true'], ['data-form-type', 'other']].forEach(([k, v]) => el.setAttribute(k, v));
+  el.classList.add('pw-mask');
+  if (!MASK_CSS) { el._v = ''; el.addEventListener('input', () => { const v = el.value, plain = v.replace(/•/g, ''); el._v = el._v.slice(0, v.length - plain.length) + plain; el.value = '•'.repeat(el._v.length); try { el.setSelectionRange(el.value.length, el.value.length); } catch (e) {} }); }
+  return el;
+}
+const pwOf = el => el ? (el._v != null ? el._v : el.value) : '';
+const pwClear = el => { if (el) { el.value = ''; if (el._v != null) el._v = ''; } };
 function formFix(sel) {
   const f = typeof sel === 'string' ? document.querySelector(sel) : sel; if (!f) return; const h = f.onsubmit; if (!h) return;
   const fire = () => { try { const r = h.call(f, { preventDefault() {}, target: f }); if (r && r.catch) r.catch(err => window.__ppErr && window.__ppErr(err && err.stack || err)); } catch (err) { window.__ppErr && window.__ppErr(err && err.stack || err); } };
@@ -13734,7 +13751,20 @@ function bindCaseTabs() { $$('[data-ct]').forEach(b => b.onclick = () => { const
 
 /* ── state & routing ── */
 let T = null, X = null, tick = null, hideTime = false, lastSave = 0, inExam = false;
-const save = () => { if (T && X) LS.set(T.unit ? `ap.${PID}.ut.current.v1` : KEY(X).cur, T); };
+/* a teacher test is also kept under its test id (the same whether it was opened by short code or link, signed in or not),
+   so a student who gets kicked out can always resume it; the copy is removed when the test is submitted */
+const utBakKey = ut => 'ap.utbak.' + tidOf(ut);
+let SAVE_OK = true, crSave = 0;
+function saveMark() { const el = document.getElementById('svd'); if (!el) return; el.className = 'svd ' + (SAVE_OK ? 'ok' : 'bad'); el.textContent = SAVE_OK ? '✓ Answers saved' : '⚠ Can’t save on this device. Keep this page open.'; }
+const save = () => { if (!T || !X) return; let ok = LS.set(T.unit ? `ap.${PID}.ut.current.v1` : KEY(X).cur, T);
+  const u = T.unit ? T.unit.ut : T.assign ? T.assign.ut : null; if (u) { try { ok = LS.set(utBakKey(u), { t: Date.now(), x: X.id, T }) || ok; } catch (e) {} }
+  if (ok !== SAVE_OK) { SAVE_OK = ok; saveMark(); } };
+/* old backups of tests that were never finished are cleared after three weeks */
+setTimeout(() => { try { if (!PERSIST) return; for (let i = localStorage.length - 1; i >= 0; i--) { const k = localStorage.key(i); if (k && k.indexOf('ap.utbak.') === 0) { const b = LS.get(k, null); if (!b || !b.t || Date.now() - b.t > 21 * 864e5) LS.del(k); } } } catch (e) {} }, 3000);
+/* text size on the test screen (A− / A+), remembered on this device; browser zoom and pinch-zoom work too */
+const XZ = [0.85, 1, 1.15, 1.3, 1.5, 1.75, 2];
+function xzApply() { const ex = document.getElementById('exam'), z = LS.get('ap.ui.xz', 1); if (!ex) return; ex.style.setProperty('--xz', z); const i = XZ.indexOf(z), a = document.getElementById('xzOut'), b = document.getElementById('xzIn'); if (a) a.disabled = i <= 0; if (b) b.disabled = i >= XZ.length - 1; }
+function xzStep(d) { const z = LS.get('ap.ui.xz', 1), i = Math.max(0, XZ.indexOf(z)); LS.set('ap.ui.xz', XZ[Math.max(0, Math.min(XZ.length - 1, (i < 0 ? 1 : i) + d))]); xzApply(); }
 const loadCur = x => { const c = LS.get(KEY(x).cur, null); if (c && c.v === 1) { c.testId = c.testId || x.id; return c; } return null; };
 /* remember where every inner scrolling box (like the free-response list) was scrolled, so a redraw doesn't jump it back to the top */
 function keepBoxes(root) { root = root || document.getElementById('hub'); const key = el => { const c = (el.className && typeof el.className === 'string') ? el.className.trim().split(/\s+/).sort().join('.') : ''; return el.tagName + '.' + c + '#' + (el.id || ''); };
@@ -13899,7 +13929,7 @@ function nav(active) {
   return (PERSIST ? '' : `<div class="memnote" role="status">This browser view is blocking saved data, so your scores last only until you close this page. To keep your progress, open the page in a regular (not private) browser window.</div>`) + side + top;
 }
 function testSummary(x) {
-  const hist = LS.get(KEY(x).hist, []); const fulls = hist.filter(h => h.mode === 'full' && !h.practice);
+  const hist = histOf(x); const fulls = hist.filter(h => h.mode === 'full' && !h.practice);
   return { hist, fulls, last: hist[hist.length - 1] || null, best: fulls.length ? Math.max(...fulls.map(h => h.pct)) : null, cur: loadCur(x) };
 }
 const DISCLAIMER = 'AP® is a trademark registered by the College Board, and NGSS is a registered trademark of WestEd; neither is affiliated with, or endorses, this site. Every question here is original.';
@@ -13940,7 +13970,7 @@ const AP_WORD = ['', 'No recommendation', 'Possibly qualified', 'Qualified', 'We
 const apBadge = (s, cls = '') => s ? `<span class="apb ap${s} ${cls}" title="Estimated AP score">${s}</span>` : '';
 
 /* ── data helpers for the dashboard ── */
-function allHist() { return TESTS.flatMap(x => LS.get(KEY(x).hist, []).map(h => ({ ...h, x }))).sort((a, b) => a.date < b.date ? 1 : -1); }
+function allHist() { return TESTS.flatMap(x => histOf(x).map(h => ({ ...h, x }))).sort((a, b) => a.date < b.date ? 1 : -1); }
 function areaStats(k, all) {
   const recs = (all || allHist()).filter(h => h.x.area === k && h.n), recent = recs.slice(0, 10);
   const sum = (a, f) => a.reduce((s, h) => s + h[f], 0);
@@ -13951,7 +13981,7 @@ function areaStats(k, all) {
 const srCatsOf = x => x.cats.filter(c => !c.cr);
 function weakUnits(all, lim = 3) {
   const rows = [];
-  TESTS.forEach(x => { const h = LS.get(KEY(x).hist, []); if (!h.length) return; const agg = catStats(x, h, 10);
+  TESTS.forEach(x => { const h = histOf(x); if (!h.length) return; const agg = catStats(x, h, 10);
     srCatsOf(x).forEach(c => { const [ok, t] = agg[c.k]; if (t >= 3) rows.push({ x, c, ok, t, p: Math.round(ok / t * 100) }); }); });
   return rows.sort((a, b) => a.p - b.p || b.t - a.t).slice(0, lim);
 }
@@ -14098,7 +14128,7 @@ function renderHome() {
   /* progress by subject (all levels) */
   const gStat = g => { const r = all.filter(h => h.n && g.areas.includes(h.x.area)).slice(0, 12); const c = r.reduce((t, h) => t + h.correct, 0), n = r.reduce((t, h) => t + h.n, 0); return { c, n, p: n ? Math.round(c / n * 100) : null }; };
   const rows = groups.concat(TESTS.some(isAP) ? [AP_ROW] : []).map(g => ({ g, s: gStat(g) })), tot = rows.reduce((t, r) => t + r.s.n, 0), cor = rows.reduce((t, r) => t + r.s.c, 0), ov = tot ? Math.round(cor / tot * 100) : null;
-  let sec = 0, secDone = 0; TESTS.forEach(x => { const h = LS.get(KEY(x).hist, []); if (!h.length) return; const agg = catStats(x, h, 99); srCatsOf(x).forEach(c => { sec++; if (agg[c.k] && agg[c.k][1]) secDone++; }); });
+  let sec = 0, secDone = 0; TESTS.forEach(x => { const h = histOf(x); if (!h.length) return; const agg = catStats(x, h, 99); srCatsOf(x).forEach(c => { sec++; if (agg[c.k] && agg[c.k][1]) secDone++; }); });
   const status = ov == null ? ['Not started yet', 'muted'] : ov >= 70 ? ['On track', 'good'] : ov >= 55 ? ['Getting there', 'mid'] : ['Needs focus', 'bad'];
   const ring = (p, sz = 92) => { const r = sz / 2 - 8, c = 2 * Math.PI * r; return `<svg class="hp-ring" viewBox="0 0 ${sz} ${sz}" width="${sz}" height="${sz}" role="img" aria-label="${p == null ? 'No data yet' : p + ' percent'}"><circle cx="${sz / 2}" cy="${sz / 2}" r="${r}" fill="none" stroke="var(--sunk)" stroke-width="8"/><circle cx="${sz / 2}" cy="${sz / 2}" r="${r}" fill="none" stroke="var(--good)" stroke-width="8" stroke-linecap="round" stroke-dasharray="${c * (p || 0) / 100} ${c}" transform="rotate(-90 ${sz / 2} ${sz / 2})"/><text x="50%" y="50%" dy=".35em" text-anchor="middle" font-size="${sz / 4.6}" font-weight="800" fill="var(--ink)">${p == null ? '—' : p + '%'}</text></svg>`; };
   const skSt = typeof skKey === 'function' ? LS.get(skKey(), {}) : {};
@@ -14198,7 +14228,7 @@ let BANK_T = null, BANK_N = 20;
 function renderBank() {
   setAccent(null); show('hub'); PREF_MODE = 'practice';
   const x = BY_ID[BANK_T] || BY_ID[LS.get('ap.ui.bank', '')] || TESTS[0]; BANK_T = x.id; setAccent(x);
-  const hist = LS.get(KEY(x).hist, []), seen = LS.get(KEY(x).seen, {}), agg = catStats(x, hist, 10);
+  const hist = histOf(x), seen = LS.get(KEY(x).seen, {}), agg = catStats(x, hist, 10);
   const units = srCatsOf(x).map(c => { const all = x.pub.filter(b => b.cat === c.k), sn = all.filter(b => seen[b.id]).length, [ok, t] = agg[c.k], p = t ? Math.round(ok / t * 100) : null, ng = (x.gens[c.k] || []).length;
     return `<article class="unit"><div class="u-h"><span class="u-n">Unit ${c.k}</span>${p == null ? '' : `<span class="u-p ${band(p)}">${p}%</span>`}</div><h3>${esc(c.name)}</h3>${c.ngss ? `<p class="ngss-codes">${c.ngss.map(esc).join(' · ')}</p>` : ''}
       <p class="small muted">${all.length} questions${ng ? ` + ${ng} problem generator${ng > 1 ? 's' : ''}` : ''} · ${sn} seen</p><div class="lbar"><i style="width:${all.length ? sn / all.length * 100 : 0}%"></i></div>
@@ -14223,7 +14253,7 @@ function renderAnalytics() {
   setAccent(null); show('hub');
   const all = allHist();
   const x = BY_ID[AN_T] || (all[0] && all[0].x) || TESTS[0]; AN_T = x.id; setAccent(x);
-  const hist = LS.get(KEY(x).hist, []), agg = catStats(x, hist, 10), fulls = hist.filter(h => h.mode === 'full' && !h.practice);
+  const hist = histOf(x), agg = catStats(x, hist, 10), fulls = hist.filter(h => h.mode === 'full' && !h.practice);
   const nQ = hist.reduce((s, h) => s + h.n, 0), nC = hist.reduce((s, h) => s + h.correct, 0), best = fulls.filter(h => h.ap).sort((p, q) => q.ap.comp - p.ap.comp)[0];
   const rows = hist.slice().reverse().slice(0, 25).map((h, i) => { const idx = hist.length - 1 - i;
     return `<tr><td>${fmtDate(h.date)}</td><td>${kindOf(h)}${h.mode !== 'full' && h.cat && x.CAT[h.cat] ? ' · Unit ' + esc(h.cat) : ''}${h.level === 'hard' ? ' <span class="pill hard">Challenge</span>' : ''}</td><td class="mono">${h.n ? h.correct + '/' + h.n + ' · ' : ''}<b>${h.cr && !h.crDone && !h.n ? 'not scored' : h.pct + '%'}</b></td>${isAP(x) ? `<td>${h.ap ? apBadge(h.ap.score, 'sm') : h.cr && !h.crDone ? '<span class="small muted">score FRQs</span>' : '<span class="muted">—</span>'}</td>` : ''}<td class="mono">${fmtDur(h.used)}</td><td>${h.items ? `<button class="linkbtn" data-review="${idx}">Review</button>` : ''}</td></tr>`; }).join('');
@@ -14237,7 +14267,7 @@ function renderAnalytics() {
     <section class="card" style="margin-top:18px"><h3 class="ch">Attempt history</h3>${hist.length ? `<div class="tablewrap"><table class="hist"><thead><tr><th>Date</th><th>Mode</th><th>Score</th>${isAP(x) ? '<th>AP est.</th>' : ''}<th>Time</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>` : '<p class="empty">No attempts yet for this course.</p>'}</section>
     ${foot()}</div>`;
   $$('[data-an]').forEach(b => b.onclick = () => { AN_T = b.dataset.an; renderAnalytics(); bindNav(); });
-  $$('[data-review]').forEach(b => b.onclick = () => { const h = LS.get(KEY(x).hist, [])[+b.dataset.review]; if (h) renderResults(h, false); });
+  $$('[data-review]').forEach(b => b.onclick = () => { const h = histOf(x)[+b.dataset.review]; if (h) renderResults(h, false); });
 }
 
 /* ── About & FAQ ── */
@@ -14293,7 +14323,7 @@ function renderAbout() {
 /* ── single course page ── */
 function renderTestPage(x) {
   X = x; setAccent(x); show('hub'); setTrack(x.band);
-  const k = KEY(x); const hist = LS.get(k.hist, []); const seen = LS.get(k.seen, {}); const saved = loadCur(x);
+  const k = KEY(x); const hist = histOf(x); const seen = LS.get(k.seen, {}); const saved = loadCur(x);
   const nGen = Object.values(x.gens).reduce((s, a) => s + a.length, 0); const nSeen = x.pub.filter(b => seen[b.id]).length;
   const agg = catStats(x, hist, 5); const hasStats = hist.length > 0; const maxN = Math.max(...x.cats.map(c => c.n));
   const srCats = srCatsOf(x);
@@ -14351,7 +14381,7 @@ function renderTestPage(x) {
   if ($('#discardBtn')) $('#discardBtn').onclick = () => confirmBox('Discard this attempt?', 'Your answers for the attempt in progress will be deleted. Your history is not affected.', 'Discard', () => { LS.del(k.cur); renderTestPage(x); bindNav(); });
   if ($('#resetBtn')) $('#resetBtn').onclick = () => confirmBox(`Clear all ${x.subject} history?`, 'This removes every attempt (practice and exam simulations) and the record of which questions you have seen for this course. It cannot be undone.', 'Clear all history', () => { LS.del(k.hist); LS.del(k.seen); syncProgress(); renderTestPage(x); bindNav(); });
   if ($('#resetPracBtn')) $('#resetPracBtn').onclick = () => { const n = hist.filter(h => h.practice).length; confirmBox(`Clear ${x.subject} practice scores?`, `This removes your ${n} practice result${n === 1 ? '' : 's'} for this course. Exam simulations and timed practice stay. It cannot be undone.`, 'Clear practice scores', () => { clearPractice([x]); renderTestPage(x); bindNav(); }); };
-  $$('[data-review]').forEach(b => b.onclick = () => { const h = LS.get(k.hist, [])[+b.dataset.review]; if (h) renderResults(h, false); });
+  $$('[data-review]').forEach(b => b.onclick = () => { const h = histOf(x)[+b.dataset.review]; if (h) renderResults(h, false); });
 }
 /* standards alignment for NGSS courses: each unit's performance expectations, core ideas, and crosscutting concepts */
 function ngssTable(x) {
@@ -14430,7 +14460,7 @@ function openProfileMenu() {
 }
 function resetPick() {
   const m = me(); if (!m) return;
-  const rows = TESTS.map(x => { const h = LS.get(KEY(x).hist, []), cur = loadCur(x), seen = Object.keys(LS.get(KEY(x).seen, {})).length; return { x, n: h.length, cur, seen }; }).filter(r => r.n || r.cur || r.seen);
+  const rows = TESTS.map(x => { const h = histOf(x), cur = loadCur(x), seen = Object.keys(LS.get(KEY(x).seen, {})).length; return { x, n: h.length, cur, seen }; }).filter(r => r.n || r.cur || r.seen);
   $('#modal-root').innerHTML = `<div class="scrim" id="scrim"><div class="modal sm" role="dialog" aria-modal="true" aria-labelledby="rpkT"><div class="mhead"><h3 id="rpkT">Reset selected tests</h3><button class="btn" id="rpkClose">Close</button></div>
     <div class="mbody">${rows.length ? `<p style="margin-top:0">Choose the tests to reset. Their attempts, scores, test in progress, and question history are cleared. Other tests are not affected.</p>
       <div style="display:grid;gap:8px">${rows.map(r => `<label style="display:flex;gap:10px;align-items:center;font-size:14.5px"><input type="checkbox" data-rpk="${r.x.id}"> <span><b>${esc(r.x.title)}</b><br><small class="muted">${r.n} attempt${r.n === 1 ? '' : 's'}${r.cur ? ' · test in progress' : ''}</small></span></label>`).join('')}</div>`
@@ -14619,7 +14649,7 @@ const DG_DEFS = `<linearGradient id="dgCard" x1="0" y1="0" x2="0" y2="1"><stop o
 function dgMapSVG(d) {
   const S = d.spread || 1.3, W = (d.w || 900) * S, H = (d.h || 560) * S;
   /* a node is a card: a coloured header strip (the first line, e.g. "Unit 3") over a light body (the rest) */
-  const box = (n, i) => { const lines = n.t.split('\n'), isU = lines.length > 1 && /^Unit\b/.test(lines[0]), head = isU ? lines[0] : '', body = isU ? lines.slice(1) : lines, w = n.w || Math.max(140, Math.max(...lines.map(l => l.length)) * 8.8 + 34), h = (head ? 30 : 0) + 18 + body.length * 20, c = n.c || DG_PAL[i % DG_PAL.length]; return { ...n, x: n.x * S, y: n.y * S, lines, head, body, w, h, c }; };
+  const box = (n, i) => { const lines = n.t.split('\n'), isU = lines.length > 1 && (d.eq || /^Unit\b/.test(lines[0])), head = isU ? lines[0] : '', body = isU ? lines.slice(1) : lines, w = n.w || Math.max(140, Math.max(...body.map(l => l.length)) * 8.8 + 34, head.length * 9.6 + 34), h = (head ? 30 : 0) + 18 + body.length * 20, c = n.c || DG_PAL[i % DG_PAL.length]; return { ...n, x: n.x * S, y: n.y * S, lines, head, body, w, h, c }; };
   const N = {}; d.nodes.forEach((n, i) => { N[n.id] = box(n, i); });
   const edgePt = (a, b) => { const dx = b.x - a.x, dy = b.y - a.y, sx = (a.w / 2 + 4) / Math.abs(dx || 1e-6), sy = (a.h / 2 + 4) / Math.abs(dy || 1e-6), s = Math.min(sx, sy); return { x: a.x + dx * s, y: a.y + dy * s }; };
   /* place each label at its edge's middle, then slide it along the edge's normal until it overlaps no box and no other label */
@@ -14980,6 +15010,158 @@ DGM({ id: 'pce-map', sub: 'From fields to induction', kind: 'map', title: 'AP Ph
     { id: 'u12', x: 450, y: 260, t: 'Unit 12\nMagnetic Fields &\nElectromagnetism', text: 'Magnetic forces, Biot–Savart law and Ampère’s law: ∮B·dl = μ₀I.' },
     { id: 'u13', x: 140, y: 260, t: 'Unit 13\nElectromagnetic\nInduction', text: 'Faraday’s and Lenz’s laws, inductance, LR and LC circuits.' } ],
   edges: [['u8', 'u9', 'V = −∫E·dr'], ['u9', 'u10', 'C = Q/V'], ['u10', 'u11', 'RC circuits'], ['u9', 'u11', 'emf drives current', 26], ['u11', 'u12', 'currents make B'], ['u12', 'u13', 'changing flux → emf'], ['u13', 'u11', 'LR circuits', -60], ['u8', 'u12', 'Gauss ↔ Ampère', 0]] });
+
+/* ═══ Equation webs: every box is an equation, every arrow is the step that turns one into the next ═══ */
+const EQ = o => DGM({ kind: 'map', eq: true, sub: 'Equations, and the steps that connect them', ...o });
+const EQ_BLURB = ' Each box is an equation; each arrow’s label is the step that gets you from one to the next. Click a box to see where it comes from and what it leads to.';
+EQ({ id: 'mech-eq', title: 'Mechanics equations, connected', decks: ['phys1', 'physcm', 'hs-phys'], w: 1100, h: 610,
+  blurb: 'How the main mechanics equations come out of each other, starting from Newton’s second law.' + EQ_BLURB,
+  nodes: [
+    { id: 'n2', x: 420, y: 70, t: 'Newton’s 2nd law\nΣF = ma', hub: true, text: 'The net force on an object equals its mass times its acceleration. It is the hub of mechanics: rearrange it for a, multiply it by time for momentum, or by distance for work.' },
+    { id: 'acc', x: 130, y: 70, t: 'Acceleration\na = Δv/Δt', text: 'Acceleration is how fast velocity changes. Newton’s second law says what it is: a = ΣF/m. The kinematics equations below all assume this a stays constant.' },
+    { id: 'imp', x: 710, y: 70, t: 'Impulse\nJ = ΣFΔt = Δp', text: 'Put a = Δv/Δt into ΣF = ma and multiply both sides by Δt: ΣFΔt = mΔv = Δp. A force acting over a time changes momentum (p = mv).' },
+    { id: 'momc', x: 990, y: 70, t: 'Momentum conservation\nm₁v₁ + m₂v₂ = m₁v₁′ + m₂v₂′', text: 'If no outside force acts on the system, ΣF_ext = 0, so the impulse is zero and the total momentum can’t change. Use it for collisions and explosions.' },
+    { id: 'vel', x: 130, y: 220, t: 'Velocity\nv = v₀ + at', text: 'With constant acceleration, velocity grows by a every second. It is a = Δv/Δt solved for the final velocity.' },
+    { id: 'circ', x: 420, y: 220, t: 'Circular motion\na_c = v²/r', text: 'An object moving in a circle at constant speed accelerates toward the center with a_c = v²/r. Put it into Newton’s law: the net force toward the center is mv²/r.' },
+    { id: 'grav', x: 710, y: 220, t: 'Gravitation\nF_g = Gm₁m₂/r²', text: 'Newton’s law of gravitation. Near Earth’s surface GM/R² works out to g = 9.8 m/s², so the force becomes F_g = mg.' },
+    { id: 'orb', x: 990, y: 220, t: 'Orbital speed\nv = √(GM/r)', text: 'For a circular orbit, gravity is the centripetal force: GMm/r² = mv²/r. The satellite’s mass cancels, so v = √(GM/r) for anything orbiting at that radius.' },
+    { id: 'pos', x: 130, y: 370, t: 'Position\nΔx = v₀t + ½at²', text: 'Displacement is the area under the velocity–time graph: a rectangle (v₀t) plus a triangle (½ · t · at = ½at²).' },
+    { id: 'work', x: 420, y: 370, t: 'Work\nW = FΔx cos θ', text: 'Work is force times the distance moved along the force (θ is the angle between them). Power is how fast work is done: P = W/Δt = Fv.' },
+    { id: 'pe', x: 710, y: 370, t: 'Potential energy\nU_g = mgh · U_s = ½kx²', text: 'Lifting against gravity takes force mg over height h, stored as U_g = mgh. Stretching a spring takes an average force ½kx over distance x, stored as U_s = ½kx².' },
+    { id: 'v2', x: 130, y: 530, t: 'Timeless equation\nv² = v₀² + 2aΔx', text: 'Solve v = v₀ + at for t and substitute it into Δx = v₀t + ½at². Time drops out, which is handy when a problem doesn’t give it.' },
+    { id: 'wke', x: 420, y: 530, t: 'Work–energy theorem\nW_net = ΔK', text: 'Multiply v² = v₀² + 2aΔx by ½m and use ma = ΣF: ½mv² − ½mv₀² = ΣF·Δx. The net work done on an object equals its change in kinetic energy.' },
+    { id: 'ke', x: 710, y: 530, t: 'Kinetic energy\nK = ½mv²', text: 'The energy of motion. It falls straight out of the work–energy theorem as the quantity that net work changes.' },
+    { id: 'cons', x: 990, y: 530, t: 'Energy conservation\nK₀ + U₀ = K + U', text: 'When only gravity and springs do work, work just moves energy between K and U, so K + U stays constant. With friction, subtract the energy it removes: K₀ + U₀ − f·d = K + U.' } ],
+  edges: [['n2', 'acc', 'a = ΣF/m'], ['acc', 'vel', 'constant a'], ['vel', 'pos', 'area under v–t'], ['pos', 'v2', 'eliminate t'], ['n2', 'imp', '× Δt'], ['imp', 'momc', 'ΣF_ext = 0'],
+    ['n2', 'circ', 'ΣF = mv²/r'], ['grav', 'n2', 'near Earth: mg'], ['grav', 'orb', 'F_g = mv²/r'], ['n2', 'work', '× Δx', 70], ['work', 'pe', 'against mg or kx'], ['work', 'wke', 'add all forces'],
+    ['v2', 'wke', '× ½m'], ['wke', 'ke', '½mv² − ½mv₀²'], ['ke', 'cons', ''], ['pe', 'cons', 'no friction']] });
+
+EQ({ id: 'rot-eq', title: 'Linear ↔ rotational equations', sub: 'Every linear equation has a rotational twin', decks: ['phys1', 'physcm'], w: 900, h: 850,
+  blurb: 'Rotation uses the same equations as straight-line motion with each quantity swapped for its angular partner. The arrow labels are the bridge formulas that convert one into the other.' + EQ_BLURB,
+  nodes: [
+    { id: 'x', x: 230, y: 50, t: 'Position\nΔx', text: 'How far something moves along a line, in meters.' },
+    { id: 'th', x: 670, y: 50, t: 'Angle\nΔθ (radians)', text: 'How far something turns. Measured in radians, the arc length is s = rθ, which is what links the two columns.' },
+    { id: 'v', x: 230, y: 140, t: 'Velocity\nv = Δx/Δt', text: 'Rate of change of position.' },
+    { id: 'w', x: 670, y: 140, t: 'Angular velocity\nω = Δθ/Δt', text: 'Rate of change of angle. Divide s = rθ by time to get the tangential speed of a point at radius r: v = rω.' },
+    { id: 'a', x: 230, y: 230, t: 'Acceleration\na = Δv/Δt', text: 'Rate of change of velocity.' },
+    { id: 'al', x: 670, y: 230, t: 'Angular acceleration\nα = Δω/Δt', text: 'Rate of change of angular velocity. Divide v = rω by time: a_t = rα.' },
+    { id: 'kin', x: 230, y: 320, t: 'Kinematics\nv = v₀ + at', text: 'The constant-acceleration equations: v = v₀ + at, Δx = v₀t + ½at², v² = v₀² + 2aΔx.' },
+    { id: 'rkin', x: 670, y: 320, t: 'Rotational kinematics\nω = ω₀ + αt', text: 'Exactly the same equations with x → θ, v → ω, a → α: ω = ω₀ + αt, Δθ = ω₀t + ½αt², ω² = ω₀² + 2αΔθ.' },
+    { id: 'm', x: 230, y: 410, t: 'Mass\nm', text: 'Resistance to changes in straight-line motion.' },
+    { id: 'I', x: 670, y: 410, t: 'Rotational inertia\nI = Σmr²', text: 'Resistance to changes in rotation. Each bit of mass counts more the farther it is from the axis (r²). Solid disk ½MR², hoop MR².' },
+    { id: 'F', x: 230, y: 500, t: 'Newton’s 2nd law\nΣF = ma', text: 'Net force causes linear acceleration.' },
+    { id: 'tau', x: 670, y: 500, t: 'Rotational 2nd law\nΣτ = Iα', text: 'Net torque causes angular acceleration. Torque is the turning effect of a force: τ = rF sin θ.' },
+    { id: 'p', x: 230, y: 590, t: 'Momentum\np = mv', text: 'Conserved when no net outside force acts.' },
+    { id: 'L', x: 670, y: 590, t: 'Angular momentum\nL = Iω', text: 'Conserved when no net outside torque acts. That’s why a skater spins faster when she pulls her arms in: I drops, so ω rises.' },
+    { id: 'K', x: 230, y: 680, t: 'Kinetic energy\nK = ½mv²', text: 'Energy of straight-line motion.' },
+    { id: 'Kr', x: 670, y: 680, t: 'Rotational KE\nK = ½Iω²', text: 'Energy of spinning. Swap m → I and v → ω in ½mv².' },
+    { id: 'roll', x: 450, y: 790, t: 'Rolling without slipping\nK = ½mv² + ½Iω²,  v = rω', hub: true, text: 'A rolling object both moves and spins, so it has both kinds of kinetic energy, tied together by v = rω. That is why a hoop rolls down a ramp more slowly than a solid ball.' } ],
+  edges: [['x', 'th', 's = rθ'], ['v', 'w', 'v = rω'], ['a', 'al', 'a_t = rα'], ['kin', 'rkin', 'x→θ, v→ω, a→α'], ['m', 'I', 'mass × r²'], ['F', 'tau', 'τ = rF sin θ'], ['p', 'L', 'L = rmv'], ['K', 'Kr', 'm→I, v→ω'], ['K', 'roll', ''], ['Kr', 'roll', '']] });
+
+EQ({ id: 'shm-eq', title: 'Oscillation & wave equations, connected', decks: ['phys1', 'physcm', 'hs-phys'], w: 1180, h: 620,
+  blurb: 'From Hooke’s law to periods, energy and waves.' + EQ_BLURB,
+  nodes: [
+    { id: 'hooke', x: 150, y: 70, t: 'Hooke’s law\nF_s = −kx', hub: true, text: 'A spring pulls back with a force proportional to how far it is stretched, always toward equilibrium (the minus sign). Any restoring force like this gives simple harmonic motion.' },
+    { id: 'shm', x: 450, y: 70, t: 'SHM condition\na = −(k/m)x', text: 'Put F = −kx into ΣF = ma and divide by m. Acceleration is proportional to displacement and opposite to it: the definition of simple harmonic motion.' },
+    { id: 'omega', x: 760, y: 70, t: 'Angular frequency\nω = √(k/m) = 2πf', text: 'The solution of a = −ω²x oscillates with ω² = k/m. Stiffer springs (big k) oscillate faster; heavier masses (big m) slower.' },
+    { id: 'Ts', x: 1060, y: 70, t: 'Period: spring\nT = 2π√(m/k)', text: 'One full cycle is 2π radians, so T = 2π/ω = 2π√(m/k). It doesn’t depend on the amplitude.' },
+    { id: 'en', x: 150, y: 230, t: 'Energy in SHM\n½kA² = ½mv_max²', text: 'At the turning points (x = ±A) all the energy is spring energy ½kA²; passing through equilibrium it is all kinetic, ½mv_max².' },
+    { id: 'Tp', x: 450, y: 230, t: 'Period: pendulum\nT = 2π√(L/g)', text: 'For small swings the restoring acceleration is −(g/L)x, the same form with k/m replaced by g/L. The mass cancels.' },
+    { id: 'xt', x: 760, y: 230, t: 'Position vs. time\nx = A cos(2πft)', text: 'The motion traces a cosine (or sine) curve with amplitude A and frequency f = ω/2π.' },
+    { id: 'f', x: 1060, y: 230, t: 'Frequency\nf = 1/T', text: 'Cycles per second (hertz) is the reciprocal of seconds per cycle.' },
+    { id: 'vmax', x: 150, y: 390, t: 'Max speed\nv_max = A√(k/m) = Aω', text: 'Solve ½kA² = ½mv_max² for v_max. Bigger amplitude means a faster pass through the middle.' },
+    { id: 'str', x: 760, y: 390, t: 'Wave on a string\nv = √(F_T/μ)', text: 'The speed of a wave depends only on the medium: string tension F_T and mass per length μ, not on the frequency.' },
+    { id: 'wave', x: 1060, y: 390, t: 'Wave speed\nv = fλ', hub: true, text: 'A wave moves one wavelength λ every period T, so v = λ/T = fλ.' },
+    { id: 'stand', x: 1060, y: 550, t: 'Standing waves\nλ_n = 2L/n,  f_n = nv/2L', text: 'On a string fixed at both ends only whole numbers of half-wavelengths fit: L = nλ/2. Combine with v = fλ to get the allowed frequencies (harmonics).' } ],
+  edges: [['hooke', 'shm', 'ΣF = ma, ÷ m'], ['shm', 'omega', 'ω² = k/m'], ['omega', 'Ts', 'T = 2π/ω'], ['hooke', 'en', 'U_s = ½kx²'], ['en', 'vmax', 'solve for v_max'], ['shm', 'Tp', 'k/m → g/L'],
+    ['omega', 'xt', 'ω = 2πf'], ['Ts', 'f', 'f = 1/T'], ['f', 'wave', 'one λ per T'], ['str', 'wave', 'medium sets v'], ['wave', 'stand', 'fixed ends: L = nλ/2']] });
+
+EQ({ id: 'circ-eq', title: 'Electricity & circuit equations, connected', decks: ['phys2', 'physce', 'hs-phys'], w: 1140, h: 640,
+  blurb: 'From the force between two charges to fields, potential, current, power and capacitors.' + EQ_BLURB,
+  nodes: [
+    { id: 'coul', x: 130, y: 70, t: 'Coulomb’s law\nF = k|q₁q₂|/r²', text: 'The electric force between two point charges. Same inverse-square shape as gravity, but it can repel as well as attract. k = 8.99 × 10⁹ N·m²/C².' },
+    { id: 'ef', x: 430, y: 70, t: 'Electric field\nE = F/q = kq/r²', hub: true, text: 'Divide Coulomb’s force by the small test charge q that feels it. What’s left is the field made by the source charge: force per unit charge (N/C).' },
+    { id: 'ep', x: 750, y: 70, t: 'Electric potential\nV = kq/r', text: 'Potential is potential energy per unit charge (J/C = volts). Adding up E over distance from infinity gives kq/r: one power of r less than the field.' },
+    { id: 'uni', x: 430, y: 220, t: 'Uniform field\nΔV = Ed', text: 'Between parallel plates E is constant, so the potential difference is just field × distance. It also gives the units V/m for E.' },
+    { id: 'pe', x: 750, y: 220, t: 'Potential energy\nΔU = qΔV', text: 'Multiply potential by charge to get energy. A charge falling through ΔV gains kinetic energy |q|ΔV.' },
+    { id: 'cur', x: 130, y: 370, t: 'Current\nI = ΔQ/Δt', text: 'Charge passing a point per second (C/s = amperes).' },
+    { id: 'ohm', x: 430, y: 370, t: 'Ohm’s law\nΔV = IR', hub: true, text: 'A potential difference pushes current through a resistance. Twice the voltage, twice the current.' },
+    { id: 'pow', x: 750, y: 370, t: 'Electric power\nP = IΔV = I²R = ΔV²/R', text: 'Energy per charge (ΔV) × charge per second (I) = energy per second. Substitute ΔV = IR to get the other two forms.' },
+    { id: 'res', x: 130, y: 540, t: 'Resistance\nR = ρL/A', text: 'Longer wires resist more; thicker wires resist less. ρ (resistivity) depends on the material.' },
+    { id: 'ser', x: 430, y: 540, t: 'Series & parallel\nR_s = R₁ + R₂\n1/R_p = 1/R₁ + 1/R₂', text: 'Kirchhoff’s rules applied with Ohm’s law. Series: same current, voltages add, so resistances add. Parallel: same voltage, currents add, so reciprocals add.' },
+    { id: 'cap', x: 750, y: 540, t: 'Capacitor\nC = Q/ΔV = κε₀A/d', text: 'Charge stored per volt. For parallel plates, use ΔV = Ed with the plate field E = Q/(ε₀A): bigger plates and a smaller gap store more.' },
+    { id: 'uc', x: 1030, y: 540, t: 'Stored energy\nU_C = ½QΔV = ½C(ΔV)²', text: 'The area under the Q–ΔV line (a triangle). The ½ is there because the voltage rises from 0 as the capacitor charges.' } ],
+  edges: [['coul', 'ef', '÷ test charge q'], ['ef', 'ep', 'add up E·Δr'], ['ef', 'uni', 'constant E'], ['ep', 'pe', '× q'], ['uni', 'ohm', 'ΔV pushes charge'], ['cur', 'ohm', 'I = ΔV/R'],
+    ['ohm', 'pow', 'substitute ΔV = IR'], ['pe', 'pow', 'energy per second'], ['res', 'ohm', 'R in ΔV = IR'], ['ohm', 'ser', 'Kirchhoff’s rules'], ['uni', 'cap', 'Q = CΔV', -30], ['cap', 'uc', 'area under Q–ΔV']] });
+
+EQ({ id: 'mag-eq', title: 'Magnetism, induction & light equations', decks: ['phys2', 'physce'], w: 1180, h: 470,
+  blurb: 'From the force on a moving charge to induction, electromagnetic waves and photons.' + EQ_BLURB,
+  nodes: [
+    { id: 'qvb', x: 150, y: 70, t: 'Force on a charge\nF = qvB sin θ', hub: true, text: 'A magnetic field pushes on a charge only while it moves, at right angles to both v and B (right-hand rule). It changes the direction of motion, never the speed.' },
+    { id: 'ilb', x: 450, y: 70, t: 'Force on a wire\nF = ILB sin θ', text: 'A current is many moving charges: replace qv with IL (charge × speed = current × length).' },
+    { id: 'flux', x: 760, y: 70, t: 'Magnetic flux\nΦ_B = BA cos θ', text: 'How much magnetic field passes through a loop of area A. θ is the angle between B and the loop’s normal.' },
+    { id: 'em', x: 1060, y: 70, t: 'EM waves\nc = fλ', text: 'A changing B field makes an E field and vice versa, so the pair travels on its own as light at c = 3.00 × 10⁸ m/s.' },
+    { id: 'rad', x: 150, y: 230, t: 'Circular path\nr = mv/(qB)', text: 'The magnetic force is the centripetal force: qvB = mv²/r. Solve for r. This is how a mass spectrometer sorts ions.' },
+    { id: 'bw', x: 450, y: 230, t: 'Field of a long wire\nB = μ₀I/(2πr)', text: 'Currents make magnetic fields that circle the wire and weaken as 1/r. Two parallel wires feel each other’s field: same direction attract, opposite repel.' },
+    { id: 'far', x: 760, y: 230, t: 'Faraday’s law\nε = −N ΔΦ_B/Δt', hub: true, text: 'A changing flux induces an emf. The minus sign is Lenz’s law: the induced current opposes the change.' },
+    { id: 'ph', x: 1060, y: 230, t: 'Photon energy\nE = hf = hc/λ', text: 'Light comes in packets (photons). Substitute f = c/λ from the wave equation.' },
+    { id: 'mot', x: 450, y: 390, t: 'Motional emf\nε = BLv', text: 'A bar of length L sliding at speed v sweeps area at ΔA/Δt = Lv, so ΔΦ/Δt = BLv.' },
+    { id: 'ind', x: 760, y: 390, t: 'Induced current\nI = ε/R', text: 'The induced emf drives current around the loop just like a battery would: Ohm’s law.' },
+    { id: 'pe', x: 1060, y: 390, t: 'Photoelectric effect\nK_max = hf − φ', text: 'One photon gives its energy to one electron; the work function φ is the cost to free it, and the rest is kinetic energy.' } ],
+  edges: [['qvb', 'ilb', 'qv → IL'], ['qvb', 'rad', 'qvB = mv²/r'], ['bw', 'ilb', 'one wire on another'], ['bw', 'flux', 'B through a loop'], ['flux', 'far', 'change it in time'], ['far', 'mot', 'ΔA/Δt = Lv'],
+    ['far', 'ind', 'Ohm’s law'], ['far', 'em', 'changing B ↔ E'], ['em', 'ph', 'light in quanta'], ['ph', 'pe', '− work function']] });
+
+EQ({ id: 'thermo-eq', title: 'Thermodynamics equations, connected', decks: ['phys2'], w: 1180, h: 470,
+  blurb: 'From pressure and the ideal gas law to the first law and heat engines.' + EQ_BLURB,
+  nodes: [
+    { id: 'P', x: 150, y: 70, t: 'Pressure\nP = F/A', text: 'Force per unit area. In a gas it comes from molecules hitting the walls.' },
+    { id: 'gas', x: 450, y: 70, t: 'Ideal gas law\nPV = nRT = Nk_BT', hub: true, text: 'Pressure, volume and temperature of a gas are tied together. Temperature must be in kelvin. nR = Nk_B because R = N_A·k_B.' },
+    { id: 'kin', x: 760, y: 70, t: 'Kinetic theory\nK_avg = (3/2)k_BT', text: 'Counting molecule collisions gives PV = ⅔N·K_avg. Set that equal to Nk_BT: temperature measures the average kinetic energy per molecule.' },
+    { id: 'rms', x: 1060, y: 70, t: 'RMS speed\nv_rms = √(3k_BT/m)', text: 'Set ½mv² = (3/2)k_BT and solve for v. Lighter molecules move faster at the same temperature.' },
+    { id: 'W', x: 150, y: 230, t: 'Work on a gas\nW = −PΔV', text: 'Pushing a piston with force PA through distance Δx changes the volume by AΔx, so the work is P·ΔV. Compressing (ΔV < 0) does positive work on the gas.' },
+    { id: 'U', x: 760, y: 230, t: 'Internal energy\nU = (3/2)nRT', text: 'For a monatomic ideal gas: N molecules × (3/2)k_BT each. Internal energy depends only on temperature.' },
+    { id: 'Q', x: 150, y: 390, t: 'Heat conduction\nQ/Δt = kAΔT/L', text: 'Heat flows from hot to cold faster through a wide (A), short (L), conductive (k) material with a big temperature difference ΔT.' },
+    { id: 'first', x: 450, y: 390, t: 'First law\nΔU = Q + W', hub: true, text: 'Energy conservation for a gas: its internal energy changes by the heat added plus the work done on it.' },
+    { id: 'eff', x: 760, y: 390, t: 'Engine efficiency\ne = |W|/|Q_H|', text: 'Over a full cycle the gas returns to the same state (ΔU = 0), so the net work out equals heat in minus heat out. Efficiency is the fraction of input heat turned into work.' } ],
+  edges: [['P', 'gas', 'molecules hit walls'], ['gas', 'kin', 'PV = ⅔N·K_avg'], ['kin', 'rms', 'K = ½mv²'], ['kin', 'U', '× N molecules'], ['P', 'W', 'F·Δx = P·ΔV'], ['W', 'first', 'the W'], ['U', 'first', 'the ΔU'], ['Q', 'first', 'the Q'], ['first', 'eff', 'full cycle: ΔU = 0']] });
+
+EQ({ id: 'calc-eq', title: 'Calculus links in mechanics', sub: 'Derivatives and integrals connect the equations', decks: ['physcm'], w: 1200, h: 620,
+  blurb: 'In Physics C the equations are linked by derivatives (rates) and integrals (totals). Follow an arrow forward to differentiate or integrate.' + EQ_BLURB,
+  nodes: [
+    { id: 'x', x: 150, y: 70, t: 'Position\nx(t)', text: 'Where the object is at each moment.' },
+    { id: 'v', x: 150, y: 230, t: 'Velocity\nv = dx/dt', text: 'The slope of x(t). Going back up, displacement is the area under v(t): Δx = ∫v dt.' },
+    { id: 'a', x: 150, y: 390, t: 'Acceleration\na = dv/dt = d²x/dt²', text: 'The slope of v(t). Going back up, Δv = ∫a dt. Use this when a changes with time; the constant-a equations are its special case.' },
+    { id: 'I', x: 470, y: 70, t: 'Rotational inertia\nI = ∫r² dm', text: 'Add up r² for every bit of mass. For a uniform rod about its center this gives (1/12)ML².' },
+    { id: 'tau', x: 470, y: 230, t: 'Torque\nτ = r × F = dL/dt', text: 'The rotational version of F = dp/dt. With I constant, dL/dt = I dω/dt = Iα.' },
+    { id: 'n2', x: 470, y: 390, t: 'Newton’s 2nd law\nF = dp/dt = ma', hub: true, text: 'Force is the rate of change of momentum. With constant mass, dp/dt = m dv/dt = ma.' },
+    { id: 'J', x: 470, y: 550, t: 'Impulse\nJ = ∫F dt = Δp', text: 'Integrate F = dp/dt over time: the area under a force–time graph is the change in momentum.' },
+    { id: 'U', x: 800, y: 230, t: 'Potential energy\nF = −dU/dx', text: 'For a conservative force, ΔU = −∫F dx, so F is minus the slope of U(x). Equilibrium is where U is flat (dU/dx = 0).' },
+    { id: 'W', x: 800, y: 390, t: 'Work\nW = ∫F·dr', text: 'Integrate force over distance: the area under a force–position graph. For a spring, ∫kx dx = ½kx².' },
+    { id: 'K', x: 800, y: 550, t: 'Work–energy\nW_net = ΔK', text: 'Use F = m dv/dt and dx = v dt: ∫F dx = ∫mv dv = ½mv² − ½mv₀².' },
+    { id: 'P', x: 1090, y: 390, t: 'Power\nP = dW/dt = F·v', text: 'The rate of doing work. Since dW = F·dx, dividing by dt gives F·v.' } ],
+  edges: [['x', 'v', 'd/dt'], ['v', 'x', '∫ v dt', 34], ['v', 'a', 'd/dt'], ['a', 'v', '∫ a dt', 34], ['a', 'n2', '× m'], ['n2', 'J', '∫ dt'], ['n2', 'W', '∫ dx'], ['W', 'K', 'net force'],
+    ['W', 'U', 'ΔU = −W'], ['U', 'n2', 'slope of U(x)'], ['n2', 'tau', 'r ×'], ['I', 'tau', 'τ = Iα'], ['W', 'P', 'd/dt']] });
+
+EQ({ id: 'stats-eq', title: 'Statistics formulas, connected', decks: ['ap-stats'], w: 1190, h: 620,
+  blurb: 'How the AP Statistics formulas build on each other: summary statistics → z-scores → correlation and regression, and sampling distributions → confidence intervals and tests.' + EQ_BLURB,
+  nodes: [
+    { id: 'mean', x: 140, y: 70, t: 'Mean\nx̄ = Σx/n', text: 'The balance point of the data: add up the values and divide by how many there are.' },
+    { id: 'sd', x: 440, y: 70, t: 'Standard deviation\ns = √(Σ(x − x̄)²/(n − 1))', hub: true, text: 'The typical distance of a value from the mean. Square the deviations, average them (dividing by n − 1 for a sample), and take the square root.' },
+    { id: 'sx', x: 770, y: 70, t: 'Sampling dist. of x̄\nσ_x̄ = σ/√n', text: 'Averages vary less than single values. The spread of sample means shrinks with √n (10% condition: n ≤ 10% of the population).' },
+    { id: 'bin', x: 1060, y: 70, t: 'Binomial count\nμ = np,  σ = √(np(1 − p))', text: 'The mean and SD of the number of successes in n independent trials with success probability p.' },
+    { id: 'z', x: 140, y: 230, t: 'z-score\nz = (x − x̄)/s', text: 'How many standard deviations a value is from the mean. It puts any variable on the same scale.' },
+    { id: 'r', x: 440, y: 230, t: 'Correlation\nr = Σz_x·z_y/(n − 1)', text: 'Multiply each point’s two z-scores and average the products. Positive when big x goes with big y. Always between −1 and 1.' },
+    { id: 'ci', x: 770, y: 230, t: 'Confidence interval\nestimate ± z* or t* × SE', hub: true, text: 'Point estimate ± margin of error. The margin is a critical value (how confident) times the standard error (how much the estimate varies).' },
+    { id: 'sp', x: 1060, y: 230, t: 'Sampling dist. of p̂\nσ_p̂ = √(p(1 − p)/n)', text: 'Divide a binomial count by n to get a proportion: its mean is p and its SD is the binomial σ ÷ n.' },
+    { id: 'r2', x: 140, y: 390, t: 'R-squared\nr² = 1 − Σresid²/Σ(y − ȳ)²', text: 'The fraction of the variation in y that the regression line explains. For a line it equals the correlation squared.' },
+    { id: 'b', x: 440, y: 390, t: 'Slope of the LSRL\nb = r · s_y/s_x', text: 'Rise of ŷ for each 1-unit increase in x. Correlation sets the direction and strength; the ratio of SDs converts units.' },
+    { id: 't', x: 770, y: 390, t: 'Test statistic\n(estimate − null value)/SE', text: 'How many standard errors the sample result is from what the null hypothesis claims. Large values give small P-values.' },
+    { id: 'chi', x: 1060, y: 390, t: 'Chi-square\nχ² = Σ(O − E)²/E', text: 'The test statistic for counts in categories: compares observed counts to the counts expected under the null.' },
+    { id: 'res', x: 140, y: 550, t: 'Residual\nresidual = y − ŷ', text: 'Observed minus predicted. Points above the line have positive residuals. The LSRL makes the sum of squared residuals as small as possible.' },
+    { id: 'line', x: 440, y: 550, t: 'Regression line\nŷ = a + bx', hub: true, text: 'The least-squares regression line, built from the slope b and intercept a.' },
+    { id: 'a', x: 770, y: 550, t: 'y-intercept\na = ȳ − b · x̄', text: 'The LSRL always passes through (x̄, ȳ). Substitute that point into ŷ = a + bx and solve for a.' } ],
+  edges: [['mean', 'sd', 'spread around x̄'], ['sd', 'sx', 'means of n: ÷ √n'], ['mean', 'z', 'distance from x̄'], ['sd', 'z', '÷ s'], ['z', 'r', 'average z_x·z_y'], ['r', 'r2', 'square it'], ['r', 'b', '× s_y/s_x'],
+    ['b', 'line', 'slope b'], ['b', 'a', 'through (x̄, ȳ)'], ['a', 'line', 'intercept a'], ['line', 'res', 'y − ŷ'], ['bin', 'sp', 'count ÷ n'], ['sx', 'ci', 'SE = s/√n'], ['sp', 'ci', 'SE from p̂'], ['ci', 't', 'same SE'], ['t', 'chi', 'for counts']] });
 
 /* ═══ Free-body diagram on an incline ═══ */
 DGM({ id: 'fbd', sub: 'Every force on a box sliding down a ramp', kind: 'parts', title: 'Forces on an incline', decks: ['phys1', 'physcm', 'hs-phys'],
@@ -15358,14 +15540,18 @@ function enterExam() {
   for (const k in CBOX) delete CBOX[k];
   X = BY_ID[T.testId] || X; setAccent(X); inExam = true; show('exam'); renderExam(); livePresence(); if (T.lk) lkStart(); else lkStop(); document.body.classList.toggle('acc-big', !!(T.acc && T.acc.big));
   clearInterval(tick);
+  /* count real seconds: a phone or tablet stops page timers while the student is in another app, and a background tab
+     ticks slowly, so the clock catches up from the wall clock when they come back (time with the page closed isn't counted) */
+  let last = Date.now();
   tick = setInterval(() => {
     if (!T || !inExam) return;
-    T.spent = (T.spent || 0) + 1;
-    if (T.practice || T.untimed) { T.elapsed = (T.elapsed || 0) + 1; updateTimer(); if (Date.now() - lastSave > 5000) { save(); lastSave = Date.now(); } return; }
-    T.remaining -= 1; updateTimer();
-    if (T.remaining <= 0) { if (T.secs && !T.sec) { nextSection(true); return; } clearInterval(tick); finish(true); return; }
+    const dt = Math.floor((Date.now() - last) / 1000); if (dt < 1) return; last += dt * 1000;
+    T.spent = (T.spent || 0) + dt;
+    if (T.practice || T.untimed) { T.elapsed = (T.elapsed || 0) + dt; updateTimer(); if (Date.now() - lastSave > 5000) { save(); lastSave = Date.now(); } return; }
+    T.remaining -= dt; updateTimer();
+    if (T.remaining <= 0) { T.remaining = 0; if (T.secs && !T.sec) { nextSection(true); return; } clearInterval(tick); save(); finish(true); return; }
     if (Date.now() - lastSave > 5000) { save(); lastSave = Date.now(); }
-  }, 1000);
+  }, 250);
 }
 /* end Section I: lock its answers and start the free-response clock */
 function nextSection(auto) {
@@ -15387,9 +15573,9 @@ function renderExam() {
   const kind = T.unit ? 'Unit test' : T.mode === 'calc' ? (T.nocalc ? 'Hand calculation · no calculator' : 'Hand calculation') : T.assign ? 'Assignment · exam simulation' : T.practice ? 'Practice mode' : 'Exam simulation';
   const bar = `<div class="xbar">
     <div class="xtop"><div class="xtitle">${esc(T.title)} <span>· ${kind}${secLbl ? ' · ' + secLbl : ''}</span></div>
-      <div class="timer" id="timer"><span class="lbl">${T.practice || T.untimed ? 'Time spent' : T.secs ? 'Section time left' : 'Time remaining'}</span><span class="t" id="tval"></span><button class="tb link" id="hideT">${hideTime ? 'Show' : 'Hide'}</button></div></div>
+      <span class="svd ok" id="svd" aria-live="polite">✓ Answers saved</span><div class="timer" id="timer"><span class="lbl">${T.practice || T.untimed ? 'Time spent' : T.secs ? 'Section time left' : 'Time remaining'}</span><span class="t" id="tval"></span><button class="tb link" id="hideT">${hideTime ? 'Show' : 'Hide'}</button></div></div>
     <div class="xtools"><div class="qcount">${isRev ? (T.secs ? `Review · Section ${T.sec ? 'II' : 'I'}` : 'Review') : `Question ${pos + 1} of ${n}`}${T.practice ? (() => { const ck = T.checked.filter(Boolean).length, ok = T.items.filter((qq, i) => T.checked[i] && isRight(qq, T.ans[i])).length; return `<span class="score-run" aria-live="polite">Score ${ok} / ${ck}${ck ? ` · ${Math.round(ok / ck * 100)}%` : ''}</span>`; })() : ''}</div>
-      <div class="tbtns">${T.lk && !(T.acc && T.acc.nolock) ? `<span class="tb lk-badge" title="Lockdown is on">${SVG(IC.lock)} Locked</span>` : '<button class="tb link" id="exitB">Save &amp; exit</button>'}${T.unit || T.assign ? '<button class="tb link" id="pzB" title="Hide the questions for a short break. The timer keeps running.">Pause</button><button class="tb link" id="accB" title="Teacher: accommodations (password needed)">Teacher</button>' : ''}${isRev || T.unit ? '' : '<button class="tb link" id="repB" title="Report a problem with this question">Report</button>'}
+      <div class="tbtns"><span class="xz" role="group" aria-label="Text size"><button class="tb" id="xzOut" aria-label="Smaller text" title="Smaller text">A−</button><button class="tb" id="xzIn" aria-label="Larger text" title="Larger text">A+</button></span>${T.lk && !(T.acc && T.acc.nolock) ? `<span class="tb lk-badge" title="Lockdown is on">${SVG(IC.lock)} Locked</span>` : '<button class="tb link" id="exitB">Save &amp; exit</button>'}${T.unit || T.assign ? '<button class="tb link" id="pzB" title="Hide the questions for a short break. The timer keeps running.">Pause</button><button class="tb link" id="accB" title="Teacher: accommodations (password needed)">Teacher</button>' : ''}${isRev || T.unit ? '' : '<button class="tb link" id="repB" title="Report a problem with this question">Report</button>'}
         ${typeof spOn === 'function' && spOn() ? '<button class="tb" id="spB">Supports</button>' : ''}        ${X.tools.length ? `<button class="tb" id="helpB">${T.nocalc || !X.tools.includes('calc') ? 'Reference sheet' : X.tools.length === 1 ? 'Calculator' : 'Calculator &amp; reference'}</button>` : ''}
         ${T.practice ? `<button class="tb" id="endB">End session</button>` : `${isRev ? '' : `<button class="tb ${T.marked[T.cur] ? 'on' : ''}" id="markB" aria-pressed="${T.marked[T.cur]}">${T.marked[T.cur] ? 'Marked' : 'Mark'}</button>`}
         <button class="tb" id="revB">${isRev ? 'Return' : 'Review'}</button>
@@ -15434,9 +15620,10 @@ function renderExam() {
       ${strictKeys() ? '' : `<p class="kbd">Keyboard: 1–${q.choices.length} or A–${LETTERS[q.choices.length - 1]} to choose · ← → to move · M to mark</p>`}</div>`;
     if (q.psg && PASSAGES[q.psg]) body = `<div class="psplit">${psgHTML(PASSAGES[q.psg], !!(T.practice && T.checked[T.cur]))}${body}</div>`;
   }
-  $('#exam').innerHTML = bar + `<div class="xbody">${body}</div>`; updateTimer();
+  $('#exam').innerHTML = bar + `<div class="xbody">${body}</div>`; xzApply(); saveMark(); updateTimer();
   $('#hideT').onclick = () => { hideTime = !hideTime; $('#hideT').textContent = hideTime ? 'Show' : 'Hide'; updateTimer(); };
   if ($('#helpB')) $('#helpB').onclick = () => openHelp(X, helpTools(X)[0]);
+  $('#xzIn').onclick = () => xzStep(1); $('#xzOut').onclick = () => xzStep(-1);
   if ($('#spB')) $('#spB').onclick = openSupports;
   if ($('#repB')) $('#repB').onclick = () => openReport({ test: X.id, q: T.cur + 1, qid: q.id, stem: q.stem });
   if ($('#pzB')) $('#pzB').onclick = pzOn;
@@ -15454,7 +15641,7 @@ function renderExam() {
   } else {
     $$('[data-ch]').forEach(b => b.onclick = () => choose(+b.dataset.ch)); $('#markB').onclick = toggleMark;
     bindCaseTabs();
-    const ci = $('#crIn'); if (ci) ci.oninput = () => { const v = ci.value; T.ans[T.cur] = v.trim() ? [v] : []; const wc = v.trim() ? v.trim().split(/\s+/).length : 0; $('#crWc').textContent = wc + (wc === 1 ? ' word' : ' words'); if (Date.now() - lastSave > 1500) { save(); lastSave = Date.now(); } $('.progress i').style.width = (idx.filter(i => T.ans[i].length).length / n * 100) + '%'; };
+    const ci = $('#crIn'); if (ci) ci.oninput = () => { const v = ci.value; T.ans[T.cur] = v.trim() ? [v] : []; const wc = v.trim() ? v.trim().split(/\s+/).length : 0; $('#crWc').textContent = wc + (wc === 1 ? ' word' : ' words'); clearTimeout(crSave); if (Date.now() - lastSave > 1500) { save(); lastSave = Date.now(); } else crSave = setTimeout(() => { if (inExam) { save(); lastSave = Date.now(); } }, 600); $('.progress i').style.width = (idx.filter(i => T.ans[i].length).length / n * 100) + '%'; };
     if (ci) ci.onblur = save;
     const ni = $('#numIn'); if (ni) { ni.oninput = () => { const v = ni.value.trim(); T.ans[T.cur] = v ? [v] : []; save(); $('.progress i').style.width = (idx.filter(i => T.ans[i].length).length / n * 100) + '%'; }; ni.onkeydown = e => { if (e.key === 'Enter' && ni.tagName === 'INPUT') { e.preventDefault(); if (!strictKeys()) $('#nextB2').click(); } }; }
     const back = () => goQ(T.cur - 1), next = () => T.cur === r1 - 1 ? (T.screen = 'review', save(), renderExam()) : goQ(T.cur + 1);
@@ -15549,7 +15736,7 @@ function finish(auto) { ttsStop(); spStop(); pzOff(); lkStop(); lkExitFull(); do
   const hist = LS.get(k.hist, []); hist.push(rec);
   hist.forEach((h, i) => { if (i < hist.length - 10) { delete h.items; delete h.ans; delete h.marked; } });
   if (!LS.set(k.hist, hist) && PERSIST) { hist.forEach(h => { if (h !== rec) { delete h.items; delete h.ans; delete h.marked; } }); LS.set(k.hist, hist); }
-  LS.set(k.seen, seen); LS.del(k.cur); T = null; renderResults(rec, true); syncProgress();
+  LS.set(k.seen, seen); LS.del(k.cur); if (T && T.assign && T.assign.ut) LS.del(utBakKey(T.assign.ut)); T = null; renderResults(rec, true); syncProgress();
 }
 function ring(p, label) {
   const r = 62, c = 2 * Math.PI * r;
@@ -15568,7 +15755,17 @@ function rubricChecks(q, text, saved) {
   const auto = autoRubric(text || '', p);
   return p.rubric.map((r, j) => ({ ...r, auto: auto[j], on: saved ? !!saved[j] : auto[j] }));
 }
+function renderAssignDone(rec, fresh) {
+  for (const k in CBOX) delete CBOX[k];
+  const x = BY_ID[rec.testId] || X; X = x; setAccent(x); show('results'); const t = crTotals(rec);
+  $('#results').innerHTML = nav('unit-tests') + `<div class="page"><div class="crumb"><a href="#unit-tests">Unit Tests</a> / ${esc(rec.assign.ut.n)}</div>
+    <section class="panel score"><div><div class="eyebrow">${esc(rec.assign.ut.n)} · ${fmtDate(rec.date)}${rec.auto === 'closed' ? ' · closed by the teacher' : rec.auto ? ' · time ran out' : ''}</div><h1>✓ Assignment submitted</h1>
+      <p class="muted" style="margin:0 0 10px">Your answers were saved and go to your teacher${t ? ', including your free-response answers' : ''}. Your teacher will share results. Time used: <span class="mono">${fmtDur(rec.used)}</span>.</p></div></section>
+    <section class="card sendbox" id="examSend" style="margin-top:20px" hidden></section>${foot()}</div>`;
+  bindNav(); window.scrollTo(0, 0); examSendBox(rec, x, fresh);
+}
 function renderResults(rec, fresh) {
+  if (rec && rec.assign && marksHidden()) return renderAssignDone(rec, fresh);
   for (const k in CBOX) delete CBOX[k];
   const x = BY_ID[rec.testId] || X; X = x; setAccent(x); show('results'); PREF_MODE = rec.practice ? 'practice' : 'simulate'; rvFilter = fresh ? (rec.cr ? 'cr' : 'wrong') : 'all';
   const cats = x.cats.filter(c => rec.byCat[c.k]);
@@ -15773,6 +15970,7 @@ function signOut() {
 }
 function enterMember() {
   LS.del('ap.signedout.' + memberKey());
+  try { if (navigator.storage && navigator.storage.persist && !/Firefox\//.test(navigator.userAgent)) navigator.storage.persisted().then(p => { if (!p) navigator.storage.persist(); }).catch(() => {}); } catch (e) {}
   if (MEMBER && MEMBER.email) sha256hex('live|' + normEmail(MEMBER.email)).then(h => { LIVE_TAG = h.slice(0, 16); livePresence(); });
   MODE = 'member'; PID = memberPID(MEMBER.email);
   MEMBER.exp = new Date(Date.now() + SESSION_DAYS * 864e5).toISOString(); delete MEMBER.code;
@@ -16162,7 +16360,7 @@ const fmtCalc = v => { if (!isFinite(v)) return isNaN(v) ? 'Undefined' : (v > 0 
 function calcUI() {
   const K = ['sin(', 'cos(', 'tan(', 'π', '^', 'asin(', 'acos(', 'atan(', '√(', '!', 'ln(', 'log(', '(', ')', '÷', '7', '8', '9', 'e', '×', '4', '5', '6', 'Ans', '−', '1', '2', '3', 'C', '+', '0', '.', 'E', '⌫', '='];
   const label = k => ({ 'sin(': 'sin', 'cos(': 'cos', 'tan(': 'tan', 'asin(': 'sin⁻¹', 'acos(': 'cos⁻¹', 'atan(': 'tan⁻¹', '√(': '√', 'ln(': 'ln', 'log(': 'log', 'E': 'EE', '⌫': '⌫' }[k] || k);
-  return `<div class="calc"><div class="calc-disp"><input id="calcIn" aria-label="Calculator expression" autocomplete="off" spellcheck="false" value="${esc(CALC.expr)}" placeholder="e.g. 3.2*sin(30)+√(2)"><div class="res ${CALC.err ? 'err' : ''}" id="calcOut" aria-live="polite">${esc(CALC.out)}</div></div>
+  return `<div class="calc"><div class="calc-disp"><input id="calcIn" aria-label="Calculator expression" autocomplete="off" spellcheck="false"${lkTablet() ? ' inputmode="none"' : ''} value="${esc(CALC.expr)}" placeholder="e.g. 3.2*sin(30)+√(2)"><div class="res ${CALC.err ? 'err' : ''}" id="calcOut" aria-live="polite">${esc(CALC.out)}</div></div>
     <div class="calc-keys">${K.map(k => `<button type="button" class="${/^[0-9.]$|^π$|^e$/.test(k) ? '' : k === '=' ? 'eq' : 'op'}" data-k="${esc(k)}">${label(k)}</button>`).join('')}</div>
     <div class="calc-opts"><label><input type="checkbox" id="calcDeg" ${CALC.deg ? 'checked' : ''}> Degrees (uncheck for radians)</label><span>Enter = evaluate</span></div></div>`;
 }
@@ -16177,7 +16375,7 @@ function bindCalc() {
     if (k === '⌫') { const a = inp.selectionStart ?? inp.value.length; if (a > 0) { inp.value = inp.value.slice(0, a - 1) + inp.value.slice(a); try { inp.setSelectionRange(a - 1, a - 1); } catch (e) {} } CALC.expr = inp.value; return inp.focus(); }
     insert(k === 'Ans' ? 'ans' : k === 'E' ? 'e' : k); });
   $('#calcDeg').onchange = e => { CALC.deg = e.target.checked; };
-  setTimeout(() => inp.focus(), 0);
+  if (!lkTablet()) setTimeout(() => inp.focus(), 0);
 }
 function toolBody(x, tool) {
   if (tool === 'periodic') {
@@ -16207,6 +16405,8 @@ function openHelp(x, tool) {
 }
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('#modal-root').innerHTML) closeModal(); });
 document.addEventListener('visibilitychange', () => { if (document.hidden && inExam) save(); });
+window.addEventListener('pagehide', () => { if (inExam) save(); });
+document.addEventListener('freeze', () => { if (inExam) save(); });
 
 /* ═══════════ TEACHERS, ASSIGNMENTS, RESULTS EMAIL, PDF, UNIT TESTS, HAND CALCULATION ═══════════
    This file is spliced into the engine just before the first route() call, so it shares the engine's scope. */
@@ -16480,7 +16680,7 @@ function bindSendBox(root, o, cb) {
   if (q('copy')) q('copy').onclick = () => copyText('To: ' + o.to + '\nSubject: ' + o.mail.subject + '\n\n' + o.mail.body, q('msg'), 'Copied. Paste it into a new email to ' + o.to + '.');
   if (q('setto')) q('setto').onclick = () => { const v = normEmail(q('to').value); if (!isEmail(v)) return msg('Enter a full email address.'); cb.onTo(v); };
   if (q('to')) q('to').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); q('setto').click(); } });
-  if (q('auto')) q('auto').onclick = async () => { if (!isEmail(o.to)) return msg('Enter your teacher’s email in step 1 first.'); q('auto').disabled = true; q('auto').textContent = 'Sending…'; const st = await relaySend(o.relay, { to: o.to, subject: o.mail.subject, body: o.mail.body, replyTo: myEmail() }); cb.onAuto(st); };
+  if (q('auto')) q('auto').onclick = async () => { if (!isEmail(o.to)) return msg('Enter your teacher’s email in step 1 first.'); q('auto').disabled = true; q('auto').textContent = 'Sending…'; const st = await relaySend(o.relay, { to: o.to, subject: o.mail.subject, body: o.mail.tbody || o.mail.body, replyTo: myEmail() }); cb.onAuto(st); };
   if (q('sent')) q('sent').onclick = () => { if (!isEmail(o.to)) return msg('Enter your teacher’s email in step 1 first.'); confirmBox('Did you send it?', `Check your email’s Sent folder for the message to ${o.to}. Your teacher only gets your results if the email was actually sent.`, 'Yes, it was sent', () => cb.onSent('manual')); };
 }
 
@@ -16843,7 +17043,7 @@ function renderUtNew() {
         <p class="small muted" style="margin:-4px 0 0">After this time students can’t start the test (anyone already taking it can finish). You can also close or reopen it any time after you generate it.</p>
         <label>Send results to (your school email)<input id="utE" type="email" value="${esc(st.e)}"></label>
         <p class="small muted" style="margin:-4px 0 0">When students finish, their results page opens an email to this address with their results filled in.</p>
-        <label>After a student sends results<select id="utA"><option value="send" ${st.a === 'send' ? 'selected' : ''}>Show them the answers and explanations</option><option value="never" ${st.a === 'never' ? 'selected' : ''}>Keep answers hidden (I’ll go over them in class)</option></select></label></section>
+        <label>After a student sends results <small class="muted">(students never see their score; this only matters when a teacher account opens the results)</small><select id="utA"><option value="send" ${st.a === 'send' ? 'selected' : ''}>Show them the answers and explanations</option><option value="never" ${st.a === 'never' ? 'selected' : ''}>Keep answers hidden (I’ll go over them in class)</option></select></label></section>
       <section class="ut-step">${H('Security and access')}
         <div class="pw-box"><label>Teacher password (unlocks locked tests, accommodations, and saved results)<input id="utPw" maxlength="40" value="${esc(st.pw || teacherPw())}" autocomplete="off" spellcheck="false"></label>
           <p class="small">${SVG(IC.lock)} <b>Don’t show this password to students.</b> If a student sees it, change it here; tests you make after that use the new password. The default is <b>ad31</b>.</p></div>
@@ -17014,18 +17214,26 @@ function utPdf(ut, which, btn) {
 }
 
 /* ── students: open, take, submit ── */
+/* teacher-assigned tests (unit tests and assigned exams): students see that the test was submitted, never a score,
+   a right/wrong mark or the answers. The teacher gets everything (email, class site, Check Results). */
+const marksHidden = () => !(typeof isTeacher === 'function' && isTeacher());
+/* history as the student sees it: assigned exams are left out of scores, charts and progress (they're listed under Unit Tests) */
+const histOf = x => { const h = LS.get(KEY(x).hist, []); return marksHidden() ? h.filter(r => !r.assign) : h; };
 function renderUnitTests(err) {
   setAccent(null); show('hub');
-  const cur = PID ? LS.get(utCurKey(), null) : null, res = PID ? LS.get(utResKey(), []) : [];
-  $('#hub').innerHTML = nav('unit-tests') + `<div class="page">${pageHead('Unit Tests', 'Tests and assignments from your teacher', 'Open the link your teacher sent, or paste the test code below. Unit test answers stay hidden until you finish and send your results.')}
+  const cur = PID ? LS.get(utCurKey(), null) : null, res = PID ? LS.get(utResKey(), []) : [], hide = marksHidden();
+  const asg = PID ? TESTS.flatMap(x => LS.get(KEY(x).hist, []).map((h, i) => ({ h, i, x })).filter(o => o.h.assign)).sort((a, b) => a.h.date < b.h.date ? 1 : -1) : [];
+  $('#hub').innerHTML = nav('unit-tests') + `<div class="page">${pageHead('Unit Tests', 'Tests and assignments from your teacher', 'Open the link your teacher sent, or paste the test code below. ' + (hide ? 'Your teacher gets your results. Scores and answers aren’t shown here.' : 'Unit test answers stay hidden until you finish and send your results.'))}
     ${cur ? `<div class="resume card"><p><b>Unit test in progress:</b> ${esc(cur.title)} · ${cur.ans.filter(a => a.length).length} of ${cur.items.length} answered${cur.untimed ? '' : ` · <span class="mono">${fmtT(cur.remaining)}</span> left`}</p><div class="row"><button class="btn primary" id="utResume">Resume</button></div></div>` : ''}
     <section class="card"><form id="utOpenF" class="field" autocomplete="off"><input id="utCodeIn2" placeholder="Type the test code or paste the link from your teacher" aria-label="Test link or code"><button class="btn primary" type="submit">Open test</button></form><div class="err" id="utOpenErr" role="alert">${err ? esc(err) : ''}</div></section>
-    <section class="card" style="margin-top:18px"><h3 class="ch">Your submitted unit tests</h3>${res.length ? `<div class="tablewrap"><table class="hist"><thead><tr><th>Test</th><th>Submitted</th><th>Score</th><th>Results</th><th></th></tr></thead><tbody>${res.map((r, i) => [r, i]).reverse().map(([r, i]) => `<tr><td><b>${esc(r.ut.n)}</b><br><small class="muted">${esc((BY_ID[r.testId] || {}).subject || '')}</small></td><td>${fmtDate(r.date)}</td><td class="mono">${r.n ? r.correct + '/' + r.n + ' · <b>' + r.pct + '%</b>' : '—'}${r.items.some(q => q.type === 'cr') ? '<br><small class="muted">+ free response</small>' : ''}</td><td>${r.sent ? '<span class="st-on">Sent</span>' : '<span class="st-off">Not sent</span>'}</td><td><button class="linkbtn" data-utr="${i}">${r.sent ? 'View' : 'Send results'}</button></td></tr>`).join('')}</tbody></table></div>` : '<p class="empty">No unit tests yet.</p>'}</section>
+    <section class="card" style="margin-top:18px"><h3 class="ch">Your submitted unit tests</h3>${res.length ? `<div class="tablewrap"><table class="hist"><thead><tr><th>Test</th><th>Submitted</th><th>${hide ? 'Status' : 'Score'}</th><th>Results</th><th></th></tr></thead><tbody>${res.map((r, i) => [r, i]).reverse().map(([r, i]) => `<tr><td><b>${esc(r.ut.n)}</b><br><small class="muted">${esc((BY_ID[r.testId] || {}).subject || '')}</small></td><td>${fmtDate(r.date)}</td><td class="mono">${hide ? 'Submitted' : `${r.n ? r.correct + '/' + r.n + ' · <b>' + r.pct + '%</b>' : '—'}${r.items.some(q => q.type === 'cr') ? '<br><small class="muted">+ free response</small>' : ''}`}</td><td>${r.sent ? '<span class="st-on">Sent</span>' : '<span class="st-off">Not sent</span>'}</td><td><button class="linkbtn" data-utr="${i}">${r.sent ? 'View' : 'Send results'}</button></td></tr>`).join('')}</tbody></table></div>` : '<p class="empty">No unit tests yet.</p>'}</section>
+    ${asg.length ? `<section class="card" style="margin-top:18px"><h3 class="ch">Your submitted assignments</h3><div class="tablewrap"><table class="hist"><thead><tr><th>Assignment</th><th>Submitted</th><th>Results</th><th></th></tr></thead><tbody>${asg.map(o => `<tr><td><b>${esc(o.h.assign.ut.n)}</b><br><small class="muted">${esc(o.x.subject)}</small></td><td>${fmtDate(o.h.date)}</td><td>${o.h.sent ? '<span class="st-on">Sent</span>' : '<span class="st-off">Not sent yet</span>'}</td><td><button class="btn sm" data-asx="${o.x.id}|${o.i}">Open</button></td></tr>`).join('')}</tbody></table></div></section>` : ''}
     ${foot()}</div>`;
   $('#utOpenF').onsubmit = e => { e.preventDefault(); const p = utParse($('#utCodeIn2').value); if (!p) { $('#utOpenErr').textContent = 'That doesn’t look like a test link or code. Copy the whole link or code from your teacher and try again.'; return; } go('ut-' + p.code); };
   formFix('#utOpenF');
   if ($('#utResume')) $('#utResume').onclick = () => { T = LS.get(utCurKey(), null); if (T) { X = BY_ID[T.testId]; enterExam(); } };
   $$('[data-utr]').forEach(b => b.onclick = () => renderUtResult(+b.dataset.utr, false));
+  $$('[data-asx]').forEach(b => b.onclick = () => { const [xid, i] = b.dataset.asx.split('|'), x = BY_ID[xid], h = x && LS.get(KEY(x).hist, [])[+i]; if (h) renderResults(h, false); });
 }
 /* accommodations set on the intro page, applied when the test starts */
 const UTACC = {};
@@ -17046,8 +17254,10 @@ function renderUtIntro(code) {
   if (PID && ut.e) LS.set(`ap.${PID}.teacher`, { e: ut.e, r: ut.r || '' });
   setAccent(x); show('hub');
   const name = LS.get(`ap.${PID}.ut.name`, MODE === 'member' && MEMBER && MEMBER.role !== 'teacher' ? meName() : (me() || {}).name || '');
-  const prev = exam ? 0 : LS.get(utResKey(), []).filter(r => r.code === p.code).length, cur = exam ? loadCur(x) : LS.get(utCurKey(), null);
-  const resumable = exam ? cur && cur.assign && cur.assign.code === p.code : cur && cur.unit && cur.unit.code === p.code;
+  const prev = exam ? 0 : LS.get(utResKey(), []).filter(r => r.code === p.code).length; let cur = exam ? loadCur(x) : LS.get(utCurKey(), null);
+  const same = o => !!o && (o.code === p.code || (!!o.ut && tidOf(o.ut) === tidOf(ut)));
+  let resumable = !!cur && same(exam ? cur.assign : cur.unit);
+  if (!resumable) { const b = LS.get(utBakKey(ut), null); if (b && b.T && same(exam ? b.T.assign : b.T.unit)) { cur = b.T; if (exam) cur.testId = cur.testId || x.id; resumable = true; } }
   const minutes = exam ? x.minutes : ut.m;
   const auto = okRelay(ut.r) && !IN_VIEWER, lkm = (lkOf(ut) || {}).m || 0, sebBlock = lkm === 3 && !isSEB();
   $('#hub').innerHTML = nav('unit-tests') + `<div class="page" style="max-width:780px">${pageHead(exam ? 'Assignment · Exam simulation' : 'Unit Test', esc(ut.n), esc(x.subject) + ' · ' + utUnits(ut).map(esc).join(' · ') + (ut.due ? ' · due ' + esc(dueText(ut)) : ''))}
@@ -17068,7 +17278,7 @@ function renderUtIntro(code) {
       <button class="btn primary big" type="submit">${lkm ? SVG(IC.lock) + ' Start in full screen' : 'Start ' + (exam ? 'exam simulation' : 'unit test')}</button>
       <p class="small muted acc-pre">${UTACC[p.code] && UTACC[p.code].log.length ? `<b>Accommodations set by your teacher:</b> ${esc(UTACC[p.code].log.join('; '))} · ` : ''}<button class="linkbtn sm" type="button" id="utAcc">Teacher: accommodations</button></p><div class="err" id="utStErr" role="alert"></div></form>`}
     </section>${foot()}</div>`;
-  if ($('#utRes')) $('#utRes').onclick = () => { T = cur; X = x; if (T.lk && T.lk.fs) lkFull(); enterExam(); };
+  if ($('#utRes')) $('#utRes').onclick = () => { T = cur; X = x; save(); if (T.lk && T.lk.fs && !lkTablet()) lkFull(); enterExam(); };
   if (!$('#utStartF')) return;
   $('#utAcc').onclick = () => accOpen(ut, o => { const A = UTACC[p.code] = UTACC[p.code] || { log: [], add: 0 }; if (o.big != null) { A.big = o.big; A.log.push(o.big ? 'larger text' : 'normal text'); }
     else if (o.nolock != null) { A.nolock = o.nolock; A.log.push(o.nolock ? 'lockdown off' : 'lockdown on'); }
@@ -17085,7 +17295,7 @@ function renderUtIntro(code) {
     if (nm.length < 3 || !/\s/.test(nm)) { $('#utStErr').textContent = 'Enter your first and last name so your teacher can match your results.'; return; }
     if ($('#utMe')) { const me2 = normEmail($('#utMe').value); if (me2 && !isEmail(me2)) { $('#utStErr').textContent = 'Check your email address, or leave it blank.'; return; } LS.set('ap.testonly.email', me2); }
     if ($('#utTo')) { const to = normEmail($('#utTo').value); if (!isEmail(to)) { $('#utStErr').textContent = 'Enter your teacher’s email address so you can send them your results.'; return; } LS.set(`ap.${PID}.teacher`, { e: to, r: '' }); }
-    const go2 = () => { LS.set(`ap.${PID}.ut.name`, nm); X = x; const lk = lkNew(ut); if (lk && fsOK()) { lk.fs = 1; lkFull(); }
+    const go2 = () => { LS.set(`ap.${PID}.ut.name`, nm); X = x; const lk = lkNew(ut); if (lk && fsOK() && !lkTablet()) { lk.fs = 1; lkFull(); }
       if (exam) { T = buildTest(x, 'full', null, ut.lv || 'std', false); T.title = ut.n; T.assign = { code: p.code, ut }; T.studentName = nm; T.lk = lk; accStart(p.code); save(); enterExam(); return; }
       T = { v: 1, testId: x.id, mode: 'unit', level: 'std', cat: null, items, title: ut.n, ans: items.map(() => []), marked: items.map(() => false), visited: items.map(() => false), cur: 0, screen: 'q',
         remaining: ut.m * 60, total: ut.m * 60, untimed: !ut.m, elapsed: 0, spent: 0, started: new Date().toISOString(), unit: { code: p.code, ut }, studentName: nm, lk };
@@ -17101,7 +17311,7 @@ function utFinish(auto) {
   const nSR = ptsOf(items), prev = LS.get(utResKey(), []);
   const rec = { code: T.unit.code, ut: T.unit.ut, testId: x.id, name: T.studentName, email: myEmail(), date: new Date().toISOString(), started: T.started, used: T.spent || 0, auto,
     n: nSR, correct, pct: nSR ? Math.round(correct / nSR * 100) : 0, byCat, items, ans: T.ans, attempt: prev.filter(r => r.code === T.unit.code).length + 1, sent: null, ...(T.lk ? { lk: lkPack(T.lk) } : {}), ...(T.acc && T.acc.log && T.acc.log.length ? { acc: T.acc.log } : {}), ...(T.pz ? { pz: [T.pz.n, T.pz.secs] } : {}) };
-  prev.push(rec); LS.set(utResKey(), prev.slice(-40)); vaultAdd({ kind: 'ut', r: rec }); LS.del(utCurKey()); T = null;
+  prev.push(rec); LS.set(utResKey(), prev.slice(-40)); vaultAdd({ kind: 'ut', r: rec }); LS.del(utCurKey()); if (T && T.unit && T.unit.ut) LS.del(utBakKey(T.unit.ut)); T = null;
   go('unit-tests'); renderUtResult(LS.get(utResKey(), []).length - 1, true);
 }
 /* the signed data block lets the teacher recompute the score from the answers, so an edited score is caught */
@@ -17111,6 +17321,9 @@ async function utData(r) {
   const sig = (await sha256hex(SITE_KEY + '|ut|' + payload)).slice(0, 12);
   return `APUT.${payload}.${sig}`;
 }
+/* the student's copy of a results email: score lines removed (the teacher's Check Results recomputes them from the data block) */
+const noMarks = body => marksHidden() ? body.split('\n').filter(l => !/^(Multiple choice( \+ definitions)?: \d|Weighted score:|Estimated AP score|By unit:|  Unit \S+ .*: \d+\/\d+$)/.test(l)).join('\n')
+  .replace(/^(Free response \(self-scored[^)]*\)): .*$/m, '$1') + '' : body;
 async function utMail(r) {
   const x = BY_ID[r.testId], fr = r.items.map((q, i) => [q, i]).filter(([q]) => q.type === 'cr');
   const ansLine = r.items.map((q, i) => q.type === 'cr' ? null : `${i + 1}-${q.type === 'txt' ? '“' + ansShow(q, r.ans[i]) + '”' : ansStr(q, r.ans[i])}`).filter(Boolean).join('  ');
@@ -17128,7 +17341,7 @@ Answers chosen: ${ansLine}
 ${fr.length ? `\nFree response (${fr.length}) — for the teacher to score:\n` + fr.map(([q, i], k) => `\n[FRQ ${k + 1}] ${CASES[q.caseId] ? CASES[q.caseId].title : ''} (${q.max} points)\n${r.ans[i][0] || '(no answer)'}`).join('\n') + '\n' : ''}
 Teacher check data (paste into Check Results to verify and score):
 ${data}`;
-  return { subject, body, to: r.to || r.ut.e || (LS.get(`ap.${PID}.teacher`, null) || {}).e || '', data };
+  return { subject, body: noMarks(body), tbody: body, to: r.to || r.ut.e || (LS.get(`ap.${PID}.teacher`, null) || {}).e || '', data };
 }
 function utReviewHTML(r) {
   const x = BY_ID[r.testId];
@@ -17160,15 +17373,15 @@ async function renderUtResult(idx, fresh) {
   const x = BY_ID[r.testId]; X = x; setAccent(x); show('results');
   const m = await utMail(r), fr = r.items.filter(q => q.type === 'cr').length;
   const persist = patch => { const l = LS.get(utResKey(), []); if (l[idx]) { Object.assign(l[idx], patch); LS.set(utResKey(), l); } Object.assign(r, patch); };
-  const reveal = () => r.sent && r.ut.a === 'send';
+  const reveal = () => r.sent && r.ut.a === 'send' && !marksHidden();
   const draw = () => {
     $('#results').innerHTML = nav('unit-tests') + `<div class="page">
     <div class="crumb"><a href="#unit-tests">Unit Tests</a> / ${esc(r.ut.n)}</div>
-    <section class="panel score">${ring(r.pct)}<div><div class="eyebrow">${esc(r.ut.n)} · ${fmtDate(r.date)}${r.auto === 'closed' ? ' · closed by your teacher' : r.auto ? ' · time ran out' : ''}</div><h1>${scWord(r.items) === 'points' ? `Multiple choice + definitions: ${r.correct} of ${r.n} points` : `Multiple choice: ${r.correct} of ${r.n} correct`}</h1>
+    ${marksHidden() ? `<section class="panel score"><div><div class="eyebrow">${esc(r.ut.n)} · ${fmtDate(r.date)}${r.auto === 'closed' ? ' · closed by your teacher' : r.auto ? ' · time ran out' : ''}</div><h1>✓ Test submitted</h1><p class="muted" style="margin:0 0 10px">Your answers were saved and go to your teacher. Your teacher will share results. Time used: <span class="mono">${fmtDur(r.used)}</span>.</p></div></section>` : `<section class="panel score">${ring(r.pct)}<div><div class="eyebrow">${esc(r.ut.n)} · ${fmtDate(r.date)}${r.auto === 'closed' ? ' · closed by your teacher' : r.auto ? ' · time ran out' : ''}</div><h1>${scWord(r.items) === 'points' ? `Multiple choice + definitions: ${r.correct} of ${r.n} points` : `Multiple choice: ${r.correct} of ${r.n} correct`}</h1>
       <p class="muted" style="margin:0 0 10px">${fr ? `Your ${fr} free-response answer${fr > 1 ? 's are' : ' is'} scored by your teacher. ` : ''}Time used: <span class="mono">${fmtDur(r.used)}</span>.</p>
-      ${isTeacher() ? `<div class="row">${pdfBtn('utScPdf', 'Download score card (PDF)')}${paperSel()}</div>` : ''}</div></section>
-    <section class="card sendbox ${r.sent ? 'done' : ''}" id="sendBox" style="margin-top:18px">${sendBoxHTML({ to: m.to, editable: !r.ut.e, mail: m, sent: r.sent, auto: r.autoSt, site: r.site, relay: r.ut.r, unlock: r.ut.a === 'send' ? 'Your answers and explanations unlock after you confirm.' : '' })}</section>
-    <section style="margin-top:18px">${reveal() ? `<h2 class="ch">Answers and explanations</h2>${utReviewHTML(r)}` : r.sent ? '<div class="card empty">Your teacher will go over the answers in class.</div>' : `<div class="card empty">${r.ut.a === 'send' ? 'Answers and explanations unlock after you send your results.' : 'Your teacher will go over the answers in class after everyone has taken the test.'}</div>`}</section>
+      ${isTeacher() ? `<div class="row">${pdfBtn('utScPdf', 'Download score card (PDF)')}${paperSel()}</div>` : ''}</div></section>`}
+    <section class="card sendbox ${r.sent ? 'done' : ''}" id="sendBox" style="margin-top:18px">${sendBoxHTML({ to: m.to, editable: !r.ut.e, mail: m, sent: r.sent, auto: r.autoSt, site: r.site, relay: r.ut.r, unlock: r.ut.a === 'send' && !marksHidden() ? 'Your answers and explanations unlock after you confirm.' : '' })}</section>
+    <section style="margin-top:18px">${reveal() ? `<h2 class="ch">Answers and explanations</h2>${utReviewHTML(r)}` : marksHidden() ? '' : r.sent ? '<div class="card empty">Your teacher will go over the answers in class.</div>' : `<div class="card empty">${r.ut.a === 'send' ? 'Answers and explanations unlock after you send your results.' : 'Your teacher will go over the answers in class after everyone has taken the test.'}</div>`}</section>
     ${foot()}</div>`;
     bindNav(); bindCaseTabs();
     if ($('#utScPdf')) $('#utScPdf').onclick = () => makePdf(utScorecard(r, false), fileSafe(r.ut.n + ' ' + r.name) + '-score-card.pdf', $('#utScPdf'));
@@ -17183,7 +17396,7 @@ async function renderUtResult(idx, fresh) {
     const meta = { name: r.name, test: r.ut.n, course: x.subject };
     dbSubmit('ut', m.data, meta).then(ok => { if (ok) { persist({ site: new Date().toISOString() }); if (ROUTE === 'unit-tests' && $('#sendBox')) draw(); } });
     if (okRelay(r.ut.r) && !IN_VIEWER && !r.sent) { persist({ autoSt: 'sending' }); draw();
-      const st = await relaySend(r.ut.r, { to: m.to, subject: m.subject, body: m.body, replyTo: r.email || '' });
+      const st = await relaySend(r.ut.r, { to: m.to, subject: m.subject, body: m.tbody || m.body, replyTo: r.email || '' });
       persist({ autoSt: st === 'off' ? null : st, ...(st === 'ok' || st === 'maybe' ? { sent: { at: new Date().toISOString(), via: 'auto' } } : {}) }); if ($('#sendBox')) draw(); }
   }
 }
@@ -17215,7 +17428,7 @@ ${t ? (rec.assign ? `\nFree response: ${t.n} answer${t.n > 1 ? 's' : ''} for the
 ${fr.length ? '\nFree-response answers:\n' + fr.map(([q, i], k) => `\n[FRQ ${k + 1}] ${CASES[q.caseId] ? CASES[q.caseId].title : ''} (${q.max} points)${rec.cr && rec.cr.sc[i] != null ? ` · self-score ${rec.cr.sc[i]}` : ''}\n${rec.ans[i][0] || '(no answer)'}`).join('\n') + '\n' : ''}
 Teacher check data (paste into Check Results to verify):
 ${data}`;
-  return { subject, body, data, nm };
+  return { subject, body: rec.assign ? noMarks(body) : body, tbody: body, data, nm };
 }
 function examScorecard(rec, x, nm) {
   const t = crTotals(rec);
@@ -17246,7 +17459,7 @@ async function examSendBox(rec, x, fresh) {
   if (fresh && rec.assign) {
     dbSubmit('ex', m.data, { name: m.nm, test: rec.assign.ut.n, course: x.subject }).then(ok => { if (ok) { histPatch(x, rec, { site: new Date().toISOString() }); examSendBox(rec, x, false); } });
     if (okRelay(relay) && !IN_VIEWER && !rec.sent && isEmail(to)) { histPatch(x, rec, { autoSt: 'sending' }); examSendBox(rec, x, false);
-      const st = await relaySend(relay, { to, subject: m.subject, body: m.body, replyTo: myEmail() });
+      const st = await relaySend(relay, { to, subject: m.subject, body: m.tbody || m.body, replyTo: myEmail() });
       histPatch(x, rec, { autoSt: st === 'off' ? null : st, ...(st === 'ok' || st === 'maybe' ? { sent: { at: new Date().toISOString(), via: 'auto' } } : {}) }); examSendBox(rec, x, false); }
   }
 }
@@ -17879,11 +18092,11 @@ async function renderDevice(err) {
   const head = `<div class="page dev-page"><div class="gate-brand">${SVG(IC.cap)}<span>${BRAND}</span></div><h1 class="display">Teacher access</h1>
     <p class="lead">Everything taken on this device: teacher tests and assignments (sent or not, finished or not), plus history a student reset or cleared.</p>`;
   if (!DEV.list) {
-    $('#hub').innerHTML = nav('device') + head + `<section class="panel"><form id="devF" autocomplete="off"><label>Teacher password<input id="devPw" type="password" autocomplete="off" placeholder="Teacher password"></label><button class="btn primary" type="submit">Enter</button><p class="err" id="devErr" role="alert">${err ? esc(err) : ''}</p></form></section>
+    $('#hub').innerHTML = nav('device') + head + `<section class="panel"><form id="devF" autocomplete="off"><label>Teacher password<input id="devPw" autocomplete="off" placeholder="Teacher only"></label><button class="btn primary" type="submit">Enter</button><p class="err" id="devErr" role="alert">${err ? esc(err) : ''}</p></form></section>
       <p class="small muted">Use the teacher access password from My Students (the same one your tests use). This page is for teachers.</p></div>`;
-    $('#devF').onsubmit = async e => { e.preventDefault(); const pw = $('#devPw').value; $('#devErr').textContent = 'Checking…'; const { list, resets } = await devScan(pw);
+    $('#devF').onsubmit = async e => { e.preventDefault(); const pw = pwOf($('#devPw')); $('#devErr').textContent = 'Checking…'; const { list, resets } = await devScan(pw);
       if (!list.length && !resets.length) { $('#devErr').textContent = 'That password doesn’t match anything on this device.'; return; } DEV = { pw, list, resets }; renderDevice(); bindNav(); };
-    formFix('#devF'); $('#devPw').focus(); return;
+    noSave($('#devPw')); formFix('#devF'); $('#devPw').focus(); return;
   }
   const to0 = (LS.get('ap.dev.to', '') || (DEV.list[0] && DEV.list[0].ut.e) || '');
   $('#hub').innerHTML = nav('device') + head + `<section class="card"><div class="row" style="align-items:flex-end"><label class="dev-to">Send results to<input id="devTo" type="email" value="${esc(to0)}" placeholder="you@school.org"></label><span style="flex:1"></span><button class="btn quiet" id="devLock">${SVG(IC.lock)} Lock this page</button></div></section>
@@ -18114,8 +18327,11 @@ async function closeKey(pw, tid) {
 async function keyOK(ut, pw) { if (!ut) return false; if (!ut.kh) return String(pw).trim().toLowerCase() === LK_DEFAULT; try { return (await keyHash(pw, String(ut.s))) === ut.kh; } catch (e) { return false; } }
 const teacherPw = () => LS.get('ap.lk.pw', LK_DEFAULT) || LK_DEFAULT;
 const isSEB = () => /\bSEB\b/i.test(navigator.userAgent || '');
+/* tablets and phones (iPadOS reports itself as a Mac, so check for touch too): full screen is unreliable there (the on-screen
+   keyboard and edge swipes knock the page out of it), so lockdown checks leaving the app or tab instead */
+const lkTablet = () => { const u = navigator.userAgent || ''; return /iPad|iPhone|iPod|Android/i.test(u) || (/Macintosh/.test(u) && (navigator.maxTouchPoints || 0) > 1); };
 const lkOf = ut => ut && ut.lk ? { m: +ut.lk.m || 0, max: ut.lk.m === 2 ? 3 : 0, k: ut.lk.k ? 1 : 0 } : null;
-const lkNew = ut => { const c = lkOf(ut); return c && c.m ? { m: c.m, max: c.max, k: c.k, seb: isSEB() ? 1 : 0, locked: false, log: { n: 0, away: 0, secs: 0, fsx: 0, paste: 0, ins: 0, keys: 0, rs: 0, auto: 0, unl: 0, bad: 0 }, ev: [] } : null; };
+const lkNew = ut => { const c = lkOf(ut); return c && c.m ? { m: c.m, max: c.max, k: c.k, seb: isSEB() ? 1 : 0, tab: lkTablet() ? 1 : 0, locked: false, log: { n: 0, away: 0, secs: 0, fsx: 0, paste: 0, ins: 0, keys: 0, rs: 0, auto: 0, unl: 0, bad: 0, blip: 0, kbd: 0 }, ev: [] } : null; };
 const testUt = () => T ? (T.unit ? T.unit.ut : T.assign ? T.assign.ut : null) : null;
 const fsOK = () => !!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen);
 function lkFull() { const d = document.documentElement, fail = () => { if (T && T.lk) { T.lk.fs = 0; save(); } }; try { const p = (d.requestFullscreen || d.webkitRequestFullscreen).call(d); if (p && p.catch) p.catch(fail); } catch (e) { fail(); } }
@@ -18123,7 +18339,15 @@ const inFull = () => !!(document.fullscreenElement || document.webkitFullscreenE
 let LK = null; /* live listeners while a locked test is open */
 function lkStart() {
   lkStop(); if (!T || !T.lk || (T.acc && T.acc.nolock)) return;
-  const L = T.lk; let w0 = window.innerWidth; let hidAt = null, lastV = 0;
+  const L = T.lk, tab = lkTablet(); let hidAt = null, lastV = 0;
+  if (tab) { L.tab = 1; if (L.fs) { L.fs = 0; save(); } } /* a test started before this fix, or resumed on a tablet */
+  /* window width: the layout width (pinch-zoom doesn't change it), re-measured whenever the device is rotated */
+  const vw = () => document.documentElement.clientWidth || window.innerWidth;
+  const ori = () => (screen.orientation && screen.orientation.type) || (window.innerWidth > window.innerHeight ? 'l' : 'p');
+  let w0 = vw(), o0 = ori(), h0 = window.innerHeight, d0 = window.devicePixelRatio || 1, ow0 = window.outerWidth, oh0 = window.outerHeight;
+  const rebase = () => { w0 = vw(); h0 = window.innerHeight; d0 = window.devicePixelRatio || 1; ow0 = window.outerWidth; oh0 = window.outerHeight; };
+  /* zooming changes the pixel ratio, or shrinks width and height together while the window itself stays the same size */
+  const zoomed = () => (window.devicePixelRatio || 1) !== d0 || (window.outerWidth === ow0 && window.outerHeight === oh0 && h0 > 0 && window.innerHeight < h0 - 2 && Math.abs(vw() / w0 - window.innerHeight / h0) < 0.04);
   document.body.classList.add('locked');
   const note = (type, msg) => { L.ev.push({ t: T.spent || 0, type }); if (L.ev.length > 40) L.ev.shift(); save(); if (msg) lkToast(msg); };
   const violate = (type, label) => {
@@ -18135,23 +18359,50 @@ function lkStart() {
     lkOverlay(label);
     if (L.max && L.log.n >= L.max) { L.log.auto = 1; save(); setTimeout(() => { lkHideOverlay(); finish(true); lkToast(`You left the test ${L.log.n} times, so it was submitted automatically. Your teacher will see what happened.`); }, 300); }
   };
+  /* on a tablet, a swipe that grazes a screen edge can flash Notification Center or the app switcher for a moment:
+     an absence shorter than this is recorded for the teacher but doesn't lock the test */
+  const GRACE = 2500;
+  /* a Bluetooth or attached keyboard can switch apps (⌘-Tab, ⌘-H, ⌘-Space, Alt-Tab). A web page can't block those, but it
+     sees the ⌘/Alt/Ctrl key go down first: leaving right after one counts at once, with no grace period */
+  let lastMod = 0, hidKeys = false; const viaKeys = () => Date.now() - lastMod < 2000;
+  const KEYS_MSG = 'You left the test with a keyboard shortcut (such as ⌘-Tab or ⌘-H).';
+  const back = () => { if (!hidAt) return; const ms = Date.now() - hidAt; hidAt = null; L.hid = 0; L.log.secs += Math.round(ms / 1000); save(); return ms; };
+  const blip = () => { L.log.blip++; note('blip'); };
   const on = (t, ev, fn, opt) => { t.addEventListener(ev, fn, opt); LK.off.push(() => t.removeEventListener(ev, fn, opt)); };
   LK = { off: [] };
-  on(document, 'visibilitychange', () => { if (!inExam) return; if (document.hidden) { hidAt = Date.now(); violate('away', 'You left the test (switched tabs or apps).'); } else if (hidAt) { L.log.secs += Math.round((Date.now() - hidAt) / 1000); hidAt = null; save(); } });
-  on(window, 'blur', () => { if (!inExam || document.hidden) return; hidAt = hidAt || Date.now(); setTimeout(() => { if (!document.hasFocus() && inExam) violate('away', 'The test window lost focus (another window, app, or assistant panel was opened).'); }, 400); });
-  on(window, 'focus', () => { if (hidAt && !document.hidden) { L.log.secs += Math.round((Date.now() - hidAt) / 1000); hidAt = null; save(); } });
+  /* keep a tablet's screen from dimming and locking itself during the test (that would count as leaving) */
+  const wake = () => { try { if (navigator.wakeLock && !document.hidden) navigator.wakeLock.request('screen').then(w => { if (LK) LK.wl = w; else w.release(); }).catch(() => {}); } catch (e) {} };
+  wake(); LK.off.push(() => { try { if (LK && LK.wl) LK.wl.release(); } catch (e) {} });
+  /* the tablet reloaded the page while the student was away (iPads do this to background tabs): it still counts */
+  if (L.hid && !L.locked) { hidAt = L.hid; const ms = back(); if (ms >= GRACE) setTimeout(() => violate('away', 'You left the test (switched tabs or apps).'), 0); }
+  on(document, 'visibilitychange', () => { if (!inExam) return;
+    if (document.hidden) { hidAt = hidAt || Date.now(); hidKeys = viaKeys(); if (!tab) violate('away', 'You left the test (switched tabs or apps).'); else { L.hid = hidAt; save(); } }
+    else { const ms = back(); wake(); if (tab && ms != null) { if (hidKeys) { L.log.kbd = (L.log.kbd || 0) + 1; violate('away', KEYS_MSG); } else if (ms >= GRACE) violate('away', 'You left the test (switched tabs or apps).'); else blip(); } hidKeys = false; } });
+  on(window, 'blur', () => { if (!inExam || document.hidden) return; hidAt = hidAt || Date.now(); const k = tab && viaKeys();
+    setTimeout(() => { if (Date.now() < (L.calm || 0)) return; /* just unlocked by the teacher */ if (!document.hasFocus() && !document.hidden && inExam) { if (k) L.log.kbd = (L.log.kbd || 0) + 1; violate('away', k ? KEYS_MSG : 'The test window lost focus (another window, app, or assistant panel was opened).'); } }, tab && !k ? GRACE : 400); });
+  on(window, 'focus', () => { if (document.hidden) return; const ms = back(); if (tab && ms != null && ms < GRACE) blip(); });
   on(document, 'fullscreenchange', () => { if (inExam && L.fs && !inFull() && !LK.quiet) violate('fs', 'You left full screen.'); });
-  on(document, 'webkitfullscreenchange', () => { if (inExam && L.fs && !inFull()) violate('fs', 'You left full screen.'); });
-  on(window, 'resize', () => { if (!inExam) return; if (window.innerWidth > w0) w0 = window.innerWidth; else if (window.innerWidth < w0 * 0.85 && !inFull()) violate('rs', 'The test window got smaller (a side panel or split screen was opened).'); });
+  on(document, 'webkitfullscreenchange', () => { if (inExam && L.fs && !inFull() && !LK.quiet) violate('fs', 'You left full screen.'); });
+  on(window, 'resize', () => { if (!inExam) return;
+    if (ori() !== o0) { o0 = ori(); rebase(); return; } /* rotating the device is not a violation */
+    if (zoomed()) { rebase(); return; } /* nor is zooming in or out */
+    const w = vw(); if (w > w0) { rebase(); return; }
+    const lim = tab ? 0.7 : 0.85; if (w >= w0 * lim || inFull()) return;
+    if (!tab) return violate('rs', 'The test window got smaller (a side panel or split screen was opened).');
+    /* tablet: only a split screen that stays put counts */
+    setTimeout(() => { if (inExam && ori() === o0 && vw() < w0 * lim) violate('rs', 'The test window got smaller (split screen or Slide Over was opened).'); }, 1000); });
+  on(window, 'orientationchange', () => setTimeout(() => { o0 = ori(); rebase(); }, 600));
   const block = (e, kind, msg) => { e.preventDefault(); e.stopPropagation(); if (kind) { L.log[kind]++; note(kind, msg); } };
   ['copy', 'cut'].forEach(ev => on(document, ev, e => block(e, 'keys', 'Copying is turned off during this test.'), true));
   on(document, 'paste', e => block(e, 'paste', 'Pasting is turned off during this test.'), true);
   on(document, 'drop', e => block(e, 'paste', 'Dropping text is turned off during this test.'), true);
   on(document, 'contextmenu', e => block(e), true);
-  on(document, 'beforeinput', e => { if (/^insertFrom(Paste|Drop|PasteAsQuotation)$|^insertReplacementText$/.test(e.inputType || '')) block(e, 'paste', 'Inserting text is turned off during this test.'); }, true);
+  on(document, 'beforeinput', e => { if (/^insertFrom(Paste|Drop|PasteAsQuotation)$/.test(e.inputType || '')) block(e, 'paste', 'Inserting text is turned off during this test.'); }, true);
   /* text that appears in one go (an assistant or autofill writing into the box) is logged, not typed */
   const lens = new WeakMap();
   on(document, 'input', e => { const el = e.target; if (!el || !/^(TEXTAREA|INPUT)$/.test(el.tagName)) return; const was = lens.get(el) || 0, now = (el.value || '').length; lens.set(el, now); if (now - was > 30 && !/^insertFrom/.test(e.inputType || '')) { L.log.ins++; note('ins', 'A large block of text appeared at once. This is recorded for your teacher.'); } }, true);
+  on(document, 'keydown', e => { if (e.metaKey || e.altKey || e.ctrlKey || /^(Meta|OS|Alt|AltGraph|Control|Fn|Super|Hyper)$/.test(e.key || '')) lastMod = Date.now(); }, true);
+  on(document, 'keyup', e => { if (/^(Meta|OS|Alt|Control|Fn|Super|Hyper)$/.test(e.key || '')) lastMod = Date.now(); }, true);
   on(document, 'keydown', e => { const k = (e.key || '').toLowerCase(), mod = e.ctrlKey || e.metaKey;
     if ((mod && ['c', 'v', 'x', 'p', 's', 'u', 'f', 'g', 'o'].includes(k)) || k === 'f12' || (mod && e.shiftKey && ['i', 'j', 'c', 'k'].includes(k)) || k === 'printscreen') block(e, 'keys', 'That shortcut is turned off during this test.'); }, true);
   if (L.locked) lkKeyOverlay('This test was locked when you left it.');
@@ -18163,14 +18414,15 @@ function lkKeyOverlay(msg) {
   if (!ov) { ov = document.createElement('div'); ov.id = 'lkOv'; ov.className = 'lk-ov'; document.body.appendChild(ov); }
   ov.innerHTML = `<div class="lk-box" role="alertdialog" aria-labelledby="lkH"><div class="lk-ic">${SVG(IC.lock)}</div><h2 id="lkH">Test locked</h2><p>${esc(msg)}</p>
     <p class="small">Raise your hand. Your teacher must enter their password to unlock the test. The timer is still running, and this is recorded in your results.</p>
-    <form id="lkKeyF" class="lk-key" autocomplete="off"><input id="lkKey" type="password" autocomplete="off" placeholder="Teacher password" aria-label="Teacher password"><button class="btn primary" type="submit">Unlock</button></form>
+    <form id="lkKeyF" class="lk-key" autocomplete="off"><input id="lkKey" autocomplete="off" placeholder="Teacher only" aria-label="Teacher unlock"><button class="btn primary" type="submit">Unlock</button></form>
     <p class="err small" id="lkErr" role="alert"></p></div>`;
   ov.hidden = false;
-  const f = ov.querySelector('#lkKeyF'), inp = ov.querySelector('#lkKey'), err = ov.querySelector('#lkErr'); setTimeout(() => inp.focus(), 50);
+  const f = ov.querySelector('#lkKeyF'), inp = noSave(ov.querySelector('#lkKey')), err = ov.querySelector('#lkErr'); setTimeout(() => inp.focus(), 50);
   f.onsubmit = async e => { e.preventDefault(); if (L.wait && Date.now() < L.wait) { err.textContent = `Too many tries. Wait ${Math.ceil((L.wait - Date.now()) / 1000)} seconds.`; return; }
-    err.textContent = 'Checking…'; const ok = await keyOK(testUt(), inp.value);
-    if (!ok) { L.log.bad++; L.tries = (L.tries || 0) + 1; if (L.tries >= 5) { L.wait = Date.now() + 30000; L.tries = 0; } save(); err.textContent = 'That password is not right. Ask your teacher.'; inp.value = ''; inp.focus(); return; }
-    L.locked = false; L.log.unl++; L.tries = 0; save(); lkHideOverlay(); if (L.fs) lkFull(); lkToast('Unlocked by your teacher. The test continues.'); };
+    err.textContent = 'Checking…'; const ok = await keyOK(testUt(), pwOf(inp));
+    if (!ok) { L.log.bad++; L.tries = (L.tries || 0) + 1; if (L.tries >= 5) { L.wait = Date.now() + 30000; L.tries = 0; } save(); err.textContent = 'That password is not right. Ask your teacher.'; pwClear(inp); inp.focus(); return; }
+    L.locked = false; L.log.unl++; L.tries = 0; L.calm = Date.now() + 4000; pwClear(inp); save(); lkHideOverlay(); if (L.fs) lkFull(); lkToast('Unlocked by your teacher. The test continues.'); };
+  formFix(f);
 }
 /* pause: the questions blur, the clock keeps running (a washroom break) */
 function pzOn() {
@@ -18188,14 +18440,14 @@ const ACC_TIME = [['+5 min', 300], ['+10 min', 600], ['+15 min', 900], ['+30 min
 function accOpen(ut, onDone, pre, onClose) {
   let ov = document.getElementById('accOv'); if (!ov) { ov = document.createElement('div'); ov.id = 'accOv'; ov.className = 'lk-ov acc-ov'; document.body.appendChild(ov); }
   const LQ = inExam && T && T.lk; if (LQ) LQ.off = true;
-  const close = () => { ov.hidden = true; if (onClose) setTimeout(onClose, 0); if (LQ) LQ.off = !!(T && T.acc && T.acc.nolock); if (inExam && T && T.lk && T.lk.fs && !inFull()) lkFull(); };
+  const close = () => { ov.hidden = true; if (onClose) setTimeout(onClose, 0); if (LQ) { LQ.off = !!(T && T.acc && T.acc.nolock); LQ.calm = Date.now() + 4000; } if (inExam && T && T.lk && T.lk.fs && !inFull()) lkFull(); };
   ov.innerHTML = `<div class="lk-box acc-box" role="dialog" aria-labelledby="accH"><h2 id="accH">Teacher: accommodations</h2><p class="small">Enter your teacher password to change this student’s time or supports.</p>
-    <form id="accF" class="lk-key" autocomplete="off"><input id="accKey" type="password" autocomplete="off" placeholder="Teacher password" aria-label="Teacher password"><button class="btn primary" type="submit">Continue</button></form><p class="err small" id="accErr" role="alert"></p>
+    <form id="accF" class="lk-key" autocomplete="off"><input id="accKey" autocomplete="off" placeholder="Teacher only" aria-label="Teacher password"><button class="btn primary" type="submit">Continue</button></form><p class="err small" id="accErr" role="alert"></p>
     <div class="row" style="justify-content:center"><button class="linkbtn sm" id="accX">Cancel</button></div></div>`;
-  ov.hidden = false; setTimeout(() => ov.querySelector('#accKey').focus(), 50);
+  ov.hidden = false; noSave(ov.querySelector('#accKey')); setTimeout(() => ov.querySelector('#accKey').focus(), 50);
   ov.querySelector('#accX').onclick = close;
   ov.querySelector('#accF').onsubmit = async e => { e.preventDefault(); const err = ov.querySelector('#accErr'); err.textContent = 'Checking…';
-    if (!(await keyOK(ut, ov.querySelector('#accKey').value))) { err.textContent = 'That password is not right.'; return; }
+    if (!(await keyOK(ut, pwOf(ov.querySelector('#accKey'))))) { err.textContent = 'That password is not right.'; return; }
     const cur = pre ? pre() : (T && T.acc) || {};
     ov.innerHTML = `<div class="lk-box acc-box" role="dialog" aria-labelledby="accH2"><h2 id="accH2">Accommodations</h2>
       <p class="small">${T && inExam ? (T.untimed ? 'This test has no time limit.' : `Time left now: <b class="mono">${fmtT(Math.max(0, T.remaining))}</b>.`) : 'These apply when the student starts the test.'}</p>
@@ -18250,10 +18502,14 @@ function lkSummary(lk) {
   if (l.auto) bits.push('submitted automatically after too many exits');
   if (l.unl) bits.push(`unlocked by the teacher ${l.unl} time${l.unl > 1 ? 's' : ''}`);
   if (l.bad) bits.push(`${l.bad} wrong password attempt${l.bad > 1 ? 's' : ''}`);
-  if (lk.fs === 0 && lk.m) bits.push('full screen wasn’t available on this device');
-  return { ok: !bits.length, text: bits.length ? bits.join('; ') : 'no issues recorded', seb: !!lk.seb };
+  if (l.kbd) bits.push(`left with a keyboard shortcut ${l.kbd} time${l.kbd > 1 ? 's' : ''}`);
+  if (l.blip) bits.push(`${l.blip} brief swipe${l.blip > 1 ? 's' : ''} away (under 3 seconds, not counted as leaving)`);
+  if (lk.tab && lk.m) bits.push('took it on a tablet (full screen isn’t used there; leaving the app or tab is still checked)');
+  else if (lk.fs === 0 && lk.m) bits.push('full screen wasn’t available on this device');
+  const issues = bits.filter(b => !/^took it on a tablet|^\d+ brief swipe/.test(b)).length;
+  return { ok: !issues, text: bits.length ? bits.join('; ') : 'no issues recorded', seb: !!lk.seb };
 }
-const lkPack = lk => lk ? { m: lk.m, seb: lk.seb, fs: lk.fs ? 1 : 0, ...lk.log } : null;
+const lkPack = lk => lk ? { m: lk.m, seb: lk.seb, fs: lk.fs ? 1 : 0, ...(lk.tab ? { tab: 1 } : {}), ...lk.log } : null;
 function sebFile(link) {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
