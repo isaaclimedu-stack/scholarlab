@@ -15666,10 +15666,10 @@ function renderExam() {
   } else {
     $$('[data-ch]').forEach(b => b.onclick = () => choose(+b.dataset.ch)); $('#markB').onclick = toggleMark;
     bindCaseTabs();
-    const ci = $('#crIn'); if (ci) ci.oninput = () => { const v = ci.value; T.ans[T.cur] = v.trim() ? [v] : []; const wc = v.trim() ? v.trim().split(/\s+/).length : 0; $('#crWc').textContent = wc + (wc === 1 ? ' word' : ' words'); clearTimeout(crSave); if (Date.now() - lastSave > 1500) { save(); lastSave = Date.now(); } else crSave = setTimeout(() => { if (inExam) { save(); lastSave = Date.now(); } }, 600); $('.progress i').style.width = (idx.filter(i => T.ans[i].length).length / n * 100) + '%'; };
+    const ci = $('#crIn'); if (ci) ci.oninput = () => { if (!T || !inExam) return; const v = ci.value; T.ans[T.cur] = v.trim() ? [v] : []; const wc = v.trim() ? v.trim().split(/\s+/).length : 0; $('#crWc').textContent = wc + (wc === 1 ? ' word' : ' words'); clearTimeout(crSave); if (Date.now() - lastSave > 1500) { save(); lastSave = Date.now(); } else crSave = setTimeout(() => { if (inExam) { save(); lastSave = Date.now(); } }, 600); $('.progress i').style.width = (idx.filter(i => T.ans[i].length).length / n * 100) + '%'; };
     if (ci) ci.onblur = save;
-    const ni = $('#numIn'); if (ni) { ni.oninput = () => { const v = ni.value.trim(); T.ans[T.cur] = v ? [v] : []; save(); $('.progress i').style.width = (idx.filter(i => T.ans[i].length).length / n * 100) + '%'; }; ni.onkeydown = e => { if (e.key === 'Enter' && ni.tagName === 'INPUT') { e.preventDefault(); if (!strictKeys()) $('#nextB2').click(); } }; }
-    const back = () => goQ(T.cur - 1), next = () => T.cur === r1 - 1 ? (T.screen = 'review', save(), renderExam()) : goQ(T.cur + 1);
+    const ni = $('#numIn'); if (ni) { ni.oninput = () => { if (!T || !inExam) return; const v = ni.value.trim(); T.ans[T.cur] = v ? [v] : []; save(); $('.progress i').style.width = (idx.filter(i => T.ans[i].length).length / n * 100) + '%'; }; ni.onkeydown = e => { if (!T || !inExam) return; if (e.key === 'Enter' && ni.tagName === 'INPUT') { e.preventDefault(); if (!strictKeys()) $('#nextB2').click(); } }; }
+    const back = () => { if (T && inExam) goQ(T.cur - 1); }, next = () => { if (!T || !inExam) return; T.cur === r1 - 1 ? (T.screen = 'review', save(), renderExam()) : goQ(T.cur + 1); };
     $('#backB').onclick = back; $('#backB2').onclick = back; $('#nextB').onclick = next; $('#nextB2').onclick = next;
   }
 }
@@ -15697,15 +15697,15 @@ function pCheck() { if (!T.ans[T.cur].length || T.checked[T.cur]) return; T.chec
 function pNext() { if (T.cur === T.items.length - 1) finish(false); else goQ(T.cur + 1); }
 function bindPractice(q, n) {
   $$('[data-ch]').forEach(b => b.onclick = () => choose(+b.dataset.ch));
-  const ni = $('#numIn'); if (ni && !ni.disabled) { ni.oninput = () => { const v = ni.value.trim(); T.ans[T.cur] = v ? [v] : []; save(); if ($('#pCheck')) $('#pCheck').disabled = !v; }; ni.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); pCheck(); } }; ni.focus(); }
+  const ni = $('#numIn'); if (ni && !ni.disabled) { ni.oninput = () => { if (!T || !inExam) return; const v = ni.value.trim(); T.ans[T.cur] = v ? [v] : []; save(); if ($('#pCheck')) $('#pCheck').disabled = !v; }; ni.onkeydown = e => { if (!T || !inExam) return; if (e.key === 'Enter') { e.preventDefault(); pCheck(); } }; ni.focus(); }
   if ($('#pCheck')) $('#pCheck').onclick = pCheck; if ($('#pNext')) { $('#pNext').onclick = pNext; if (!ni) $('#pNext').focus({ preventScroll: true }); }
   $('#backB2').onclick = () => goQ(T.cur - 1);
   $$('[data-rvdeck]').forEach(a => a.addEventListener('click', () => { RV.deck = a.dataset.rvdeck; RV.topic = 'all'; RV.tab = 'cards'; rvBuild(false); }, true));
   $('#endB').onclick = () => { const ck = T.checked.filter(Boolean).length; if (!ck) { confirmBox('End this session?', 'You have not checked any answers yet, so there is nothing to score. The set will be discarded.', 'End session', () => { LS.del(KEY(X).cur); clearInterval(tick); inExam = false; T = null; go(X.id); }); return; }
     confirmBox('End this session?', `You've checked ${ck} of ${n} questions. Your summary will cover only those.`, 'See summary', () => finish(false)); };
 }
-function goQ(i) { const [r0, r1] = secRange(); if (i == null || i < r0 || i >= r1) return; ttsStop(); spStop(); T.cur = i; T.screen = 'q'; save(); renderExam(); window.scrollTo(0, 0); }
-function choose(i) {
+function goQ(i) { if (!T || !inExam) return; const [r0, r1] = secRange(); if (i == null || i < r0 || i >= r1) return; ttsStop(); spStop(); T.cur = i; T.screen = 'q'; save(); renderExam(); window.scrollTo(0, 0); }
+function choose(i) { if (!T || !inExam) return;
   if (T.practice && T.checked[T.cur]) return;
   const q = T.items[T.cur]; let a = T.ans[T.cur];
   a = q.k === 1 ? (a[0] === i ? [] : [i]) : (a.includes(i) ? a.filter(v => v !== i) : a.concat(i));
@@ -15714,7 +15714,7 @@ function choose(i) {
   if (T.practice) { if ($('#pCheck')) $('#pCheck').disabled = !T.ans[T.cur].length; return; }
   { const [r0, r1] = secRange(); let a = 0; for (let k = r0; k < r1; k++) if (T.ans[k].length) a++; $('.progress i').style.width = (a / (r1 - r0) * 100) + '%'; }
 }
-function toggleMark() { T.marked[T.cur] = !T.marked[T.cur]; save(); renderExam(); }
+function toggleMark() { if (!T || !inExam) return; T.marked[T.cur] = !T.marked[T.cur]; save(); renderExam(); }
 /* like the official digital exams, exam simulations and teacher-given tests have no answer or navigation shortcuts */
 const strictKeys = () => !!T && !T.practice && !!(T.unit || T.assign || T.mode === 'full' || T.mode === 'half');
 document.addEventListener('keydown', e => {
@@ -16952,8 +16952,11 @@ async function testCheck(uts) {
 }
 /* closing a test also ends it for students who are taking it: checked every minute and whenever the tab comes back. Their answers so far are submitted. */
 const examUt = () => T ? (T.unit ? T.unit.ut : T.assign ? T.assign.ut : null) : null;
+const hasXT = () => !!T && (T.untimed || !!(T.acc && (T.acc.xt || (T.acc.log || []).some(l => /time|\bmin\b/i.test(l)))));
 async function testWatch() { if (!T || !inExam || document.hidden) return; const ut = examUt(); if (!ut) return; const res = await testCheck([ut]); const t = res && res.tests && res.tests[tidOf(ut)];
-  if (t && t.closed && T && inExam && examUt() === ut) { clearInterval(tick); finish('closed'); } }
+  if (!(t && t.closed && T && inExam && examUt() === ut)) return;
+  if (t.status !== 'Closed' && hasXT()) { if (!T.xtNote) { T.xtNote = 1; save(); lkToast('The class closing time has passed, but you have extra time. Keep going.'); } return; }
+  clearInterval(tick); finish('closed'); }
 setInterval(testWatch, 60000); document.addEventListener('visibilitychange', () => { if (!document.hidden) testWatch(); });
 async function testSet(ut, pw, extra) {
   const cfg = await signupReady(); if (!cfg || !cfg.endpoint) return { ok: false, msg: 'Opening and closing tests works on the website (scholarlab.net).' };
