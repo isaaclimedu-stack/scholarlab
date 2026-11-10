@@ -956,7 +956,42 @@ ul.legend small { grid-column: 2 / -1; color: var(--muted); font-size: 12px; mar
 .lvl-note { color: var(--muted); }
 
 /* unit tests */
-.ut-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+.ut-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; align-items: start; }
+.ut-page .ut-form { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.ut-page .ut-grid, .ut-page .ut-toplinks { max-width: 980px; }
+.ut-page #utDraft, .ut-page .ut-grid ~ section { max-width: 980px; }
+.sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.ut-toplinks { display: flex; gap: 8px; flex-wrap: wrap; margin: -6px 0 16px; }
+.ut-badge { display: inline-grid; place-items: center; min-width: 22px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--accent); color: var(--surface); font-size: 12px; font-weight: 800; }
+.ut-go { grid-column: 1 / -1; }
+.utm-page { max-width: 1240px; }
+.utm-bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
+.utm-seg { display: inline-flex; padding: 3px; border-radius: 10px; background: var(--sunk); gap: 2px; }
+.utm-seg button { border: 0; background: transparent; padding: 7px 14px; border-radius: 8px; font: inherit; font-weight: 700; font-size: 14px; color: var(--muted); cursor: pointer; display: inline-flex; gap: 7px; align-items: center; }
+.utm-seg button span { font-size: 12px; font-weight: 700; padding: 1px 7px; border-radius: 9px; background: var(--surface); color: var(--muted); }
+.utm-seg button[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(15, 23, 42, .12); }
+.utm-seg button[aria-selected="true"] span { background: var(--sunk); color: var(--ink); }
+.utm-q { flex: 1 1 240px; } .utm-q input { width: 100%; padding: 9px 12px; border: 1px solid var(--rule); border-radius: 10px; font: inherit; background: var(--surface); color: var(--ink); }
+.utm-note { min-height: 1.2em; margin: 6px 0 10px; }
+.utm-card { padding: 0; overflow: hidden; }
+table.utm { width: 100%; border-collapse: collapse; font-size: 14px; }
+table.utm th { text-align: left; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--sunk); }
+table.utm td { padding: 14px 16px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+table.utm tbody tr:last-child td { border-bottom: 0; }
+table.utm tbody tr:hover td { background: color-mix(in srgb, var(--sunk) 55%, transparent); }
+.utm-t b { display: block; font-size: 15px; line-height: 1.3; } .utm-t small { display: block; font-size: 12.5px; margin-top: 2px; } .utm-t small:first-of-type { color: var(--ink-2, var(--ink)); font-weight: 600; }
+.utm-c { white-space: nowrap; } .utm-c code { display: block; font-size: 14px; font-weight: 700; letter-spacing: .04em; margin-bottom: 2px; } .utm-c .linkbtn { margin-right: 10px; }
+.utm-d { white-space: nowrap; color: var(--muted); }
+.utm-s small { display: block; font-size: 12px; color: var(--muted); margin-top: 4px; }
+.utm-pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 700; background: var(--sunk); color: var(--muted); }
+.utm-pill::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.utm-pill.open { background: color-mix(in srgb, var(--good) 14%, transparent); color: var(--good); }
+.utm-pill.closed { background: color-mix(in srgb, var(--bad) 12%, transparent); color: var(--bad); }
+td.utm-a, th.utm-a { white-space: nowrap; width: 1%; }
+.utm-acts { display: grid; grid-template-columns: 76px 86px 64px; gap: 8px; align-items: center; }
+.utm-acts .btn { width: 100%; justify-content: center; margin: 0; }
+.utm-acts .utm-rm { color: var(--muted); }
+@media (max-width: 760px) { table.utm thead { display: none; } table.utm, table.utm tbody, table.utm tr, table.utm td { display: block; width: 100%; } table.utm tr { padding: 12px 16px; border-bottom: 1px solid var(--line); } table.utm td { border: 0; padding: 4px 0; } td.utm-a { width: auto; } .utm-acts { justify-content: start; } }
 .ut-form { display: grid; gap: 14px; }
 .ut-form label, .ut-intro label { display: grid; gap: 6px; font-size: 13.5px; font-weight: 600; }
 .ut-form fieldset { border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px 12px; margin: 0; }
@@ -1711,7 +1746,7 @@ body.acc-big #exam .qtext, body.acc-big #exam .opt, body.acc-big #exam .stem { f
 .su-hp { position: absolute !important; left: -9999px !important; width: 1px; height: 1px; opacity: 0; }
 /* Create a unit test: wider page, grouped downloads, roomier question list */
 .page.ut-page { max-width: 1440px; }
-.ut-page .ut-grid { gap: 22px; grid-template-columns: minmax(0, 1fr) minmax(260px, 320px); }
+.ut-page .ut-grid { gap: 22px; grid-template-columns: minmax(0, 1fr); }
 .ut-page .ut-form .chk { align-items: flex-start; font-size: 14.5px; line-height: 1.45; }
 .ut-page .ut-form .chk input { margin-top: 3px; flex: none; }
 .ut-page .ut-form p.small { max-width: none; line-height: 1.55; }
@@ -13818,6 +13853,7 @@ function route() {
   else if (h.startsWith('topic-')) renderSubjectGroup(h.slice(6));
   else if (h === 'unit-tests') renderUnitTests();
   else if (h === 'ut-new') renderUtNew();
+  else if (h === 'ut-mine') renderUtMine();
   else if (h === 'ut-check') renderUtCheck();
   else if (h === 'calc') renderCalc();
   else if (h === 'class') renderClass();
@@ -13943,7 +13979,7 @@ function nav(active) {
     <nav class="side-nav" aria-label="Main">${SIDE.map(link).join('')}</nav>
     ${SIDE_GROUPS.map(([h, ls]) => `<div class="side-h">${h}</div><nav class="side-nav" aria-label="${h}">${ls.map(link).join('')}</nav>`).join('')}
     ${sideGroups(cur)}
-    ${isTeacher() ? `<div class="side-h">Teacher Tools</div><nav class="side-nav" aria-label="Teacher tools">${owner ? link(['admin', 'Manage Students', 'users']) + link(['admin-teachers', 'Teachers', 'teacher']) : link(['class', 'My Students', 'users'])}${link(['assign', 'Assign Tests', 'assign'])}${link(['ut-new', 'Create Unit Test', 'plus'])}${link(['ut-check', 'Check Results', 'check'])}${link(['grades', 'Gradebook & Classes', 'grade'])}</nav>` : ''}
+    ${isTeacher() ? `<div class="side-h">Teacher Tools</div><nav class="side-nav" aria-label="Teacher tools">${owner ? link(['admin', 'Manage Students', 'users']) + link(['admin-teachers', 'Teachers', 'teacher']) : link(['class', 'My Students', 'users'])}${link(['assign', 'Assign Tests', 'assign'])}${link(['ut-new', 'Create Unit Test', 'plus'])}${link(['ut-mine', 'My Unit Tests', 'list'])}${link(['ut-check', 'Check Results', 'check'])}${link(['grades', 'Gradebook & Classes', 'grade'])}</nav>` : ''}
     <div class="side-h">Help</div><nav class="side-nav" aria-label="Help">${link(['about', 'About & FAQ', 'info'])}</nav>
     <p class="side-quote">${SVG(IC.leaf)}<span>Better preparation today. Bigger opportunities tomorrow.</span></p></aside>`;
   const top = `<header class="topbar"><button class="tb-icon menu-btn" id="menuBtn" aria-label="Open menu" aria-controls="side" aria-expanded="false">${SVG(IC.menu)}</button><a class="tb-brand" href="#home">${BRAND}</a><span class="spacer"></span>
@@ -14134,7 +14170,7 @@ function homeSearchIndex() {
   TESTS.forEach(x => { out.push({ t: x.subject, s: 'Course · practice tests, question bank, exam', h: '#' + x.id, ic: SUBJ_IC[x.area] }); srCatsOf(x).forEach(c => out.push({ t: `Unit ${c.k}: ${c.name}`, s: x.subject, h: '#' + x.id, ic: 'list' })); });
   if (typeof SK_SUBJ !== 'undefined') SK_SUBJ.forEach(g => g.topics.forEach(t => out.push({ t: t.name, s: 'Skill Builder · ' + g.name, h: '#skill-' + t.id, ic: 'target' })));
   [['Practice Tests', '#tests', 'file'], ['Question Bank', '#bank', 'list'], ['Unit Tests', '#unit-tests', 'check'], ['Free Response Lab', '#lab', 'pen'], ['Calculation Practice', '#calc', 'calc'], ['Skill Builder', '#skills', 'target'], ['Flashcards', '#flashcards', 'cards'], ['Definitions', '#defs', 'vocab'], ['Formulas & reference sheets', '#formulas', 'sigma'], ['Interactive diagrams', '#diagrams', 'atom'], ['Performance', '#analytics', 'chart'], ['About & FAQ', '#about', 'info']].forEach(([t, h, ic]) => out.push({ t, s: 'Tool', h, ic }));
-  if (isTeacher()) [['Create Unit Test', '#ut-new', 'plus'], ['Check Results', '#ut-check', 'check'], ['Gradebook & Classes', '#grades', 'grade'], ['Assign Tests', '#assign', 'assign'], ['My Students', '#class', 'users']].forEach(([t, h, ic]) => out.push({ t, s: 'Teacher tool', h, ic }));
+  if (isTeacher()) [['Create Unit Test', '#ut-new', 'plus'], ['My Unit Tests', '#ut-mine', 'list'], ['Check Results', '#ut-check', 'check'], ['Gradebook & Classes', '#grades', 'grade'], ['Assign Tests', '#assign', 'assign'], ['My Students', '#class', 'users']].forEach(([t, h, ic]) => out.push({ t, s: 'Teacher tool', h, ic }));
   TESTS.forEach(x => Object.entries(DEF_DB[x.id] || {}).forEach(([k, l]) => l.forEach(([term]) => out.push({ t: term, s: `Definition · ${x.subject} Unit ${k}`, h: '#defs', ic: 'vocab', low: 1 }))));
   return out;
 }
@@ -17085,6 +17121,7 @@ function renderUtNew() {
         <label class="small">Or share the long test code (students paste it on the Unit Tests page)<div class="copyline"><input readonly value="${esc(code)}" id="utCodeIn"><button class="btn" data-copy="#utCodeIn">Copy code</button></div></label><span class="copied" id="utCopied" aria-live="polite"></span></div>
       <ol class="utlist">${items.map((q, i) => `<li><span class="u-n ${q.type === 'cr' ? 'frq' : q.def ? 'def' : q.custom ? 'own' : ''}">${q.type === 'cr' ? (CASES[q.caseId] && CASES[q.caseId].custom ? 'Own FRQ' : 'FRQ') : q.def ? 'Definition' : q.custom ? 'Yours' : 'Unit ' + q.cat}</span><span class="ut-stem">${q.gen ? '<span class="ut-tag new">New numbers</span>' : !q.def && !q.custom && q.type !== 'cr' && x2.secure.has(q.id) ? '<span class="ut-tag sec">Teacher-only</span>' : ''}${q.type === 'cr' ? `<b>${esc(CASES[q.caseId].title)}</b> <span class="muted">· ${esc(frqLabel(CASES[q.caseId]))} · ${q.max} pts</span>` : F(String(q.stem).replace(/<table[\s\S]*?<\/table>/g, '[table]').replace(/<[^>]+>/g, ' ').slice(0, 170))}${q.type !== 'cr' && String(q.stem).length > 170 ? '…' : ''}</span>${q.type === 'cr' ? `<button class="linkbtn sm" data-frm="${esc(ut.f[items.filter(o => o.type === 'cr').indexOf(q)] || q.caseId)}" style="color:var(--bad)">Remove</button>` : !q.def && !q.custom && !q.gen && i < ut.q.length ? `<button class="linkbtn sm" data-swap="${i}">Replace</button>` : ''}</li>`).join('')}</ol></section>`; })() : '';
   $('#hub').innerHTML = nav('ut-new') + `<div class="page ut-page">${pageHead('Teacher Tools', 'Create a unit test', 'Build a fixed test from the question bank, with multiple-choice and free-response questions. Students get no feedback while testing, and their results are sent to you when they finish.')}
+    <div class="ut-toplinks"><a class="btn" href="#ut-mine">${SVG(IC.list)} My unit tests${mine.length ? ` <span class="ut-badge">${mine.length}</span>` : ''}</a><a class="btn quiet" href="#ut-check">${SVG(IC.check)} Check results</a></div>
     <div class="ut-grid"><section class="card ut-form">${(() => { let sn = 0; const H = (t, extra) => `<h4 class="ut-sh"><span class="ut-num">${++sn}</span><span>${t}</span>${extra ? `<span class="ut-cnt">${extra}</span>` : ''}</h4>`; return `
       <section class="ut-step">${H('Course and test type')}
         <div class="row2"><label>Course<select id="utT">${courseOpts(st.t)}</select></label>
@@ -17125,9 +17162,7 @@ function renderUtNew() {
         <label class="chk"><input type="checkbox" id="utO" ${st.open ? 'checked' : ''}> <span>Students can take this test without a Scholar Lab account (with the short test code or link)</span></label></section>`; })()}
       <div class="ut-go"><button class="btn primary big" id="utGen">${d ? 'Generate a new version' : 'Generate test'}</button><div class="err" id="utErr" role="alert"></div>${st.justMade && d ? `<p class="ut-ready" role="status">${SVG(IC.check)} <span><b>Your test is ready.</b> It’s just below this form, with the download options.</span><button class="btn sm" type="button" id="utSee">View the test ↓</button></p>` : ''}</div>
     </section>
-    <section class="card"><div class="card-h sm"><h3>Your unit tests</h3><a class="more" href="#ut-check">Check results ${SVG(IC.arrow)}</a></div>
-      <div id="utMineWrap">${mine.length ? `<ul class="utmine">${mine.slice().reverse().map((m, i) => { const ut = (utParse(m.code) || {}).ut; return ut ? `<li data-tid="${tidOf(ut)}"><div><b>${esc(ut.n)}<span class="uo-st"></span></b><small>${esc(BY_ID[ut.t].subject)} · ${ut.q.length} MC${ut.f.length ? ' + ' + ut.f.length + ' FRQ' : ''} · saved ${fmtDate(m.date).split(',')[0]}</small></div><div class="row"><button class="linkbtn sm" data-open="${mine.length - 1 - i}">Open</button><span class="uo-act"></span><button class="linkbtn sm" data-del="${mine.length - 1 - i}" style="color:var(--bad)">Delete</button></div></li>` : ''; }).join('')}</ul>` : `<p class="empty">${myTk() ? 'Tests you make appear here. Online tests you opened on other computers appear here too.' : 'Tests you save appear here, in this browser.'}</p>`}</div>
-    </section></div>
+    </div>
     ${build ? buildPanelHTML(x, st) : ''}
     ${draftHTML}
     ${foot()}</div>`;
@@ -17182,8 +17217,66 @@ function renderUtNew() {
   if (d) bindUtDraft(d, () => redo(true));
   /* show Open / Closed next to each saved test */
   utMineSync(mine, redo);
-  $$('[data-open]').forEach(b => b.onclick = () => { const m = LS.get(UT_MINE, [])[+b.dataset.open]; const p = utParse(m.code); if (!p) return; st.t = p.ut.t; st.u = p.ut.u; st.kind = p.ut.ex || (p.ut.c || p.ut.z == null ? 'build' : 'unit'); st.fsel = p.ut.f.slice(); st.cust = (p.ut.c || []).slice(); st.bq = st.kind === 'build' ? p.ut.q.slice() : st.bq; st.dm = p.ut.dp ? 'pick' : 'auto'; st.dsel = (p.ut.dp || []).slice(); st.dn = p.ut.dn || 0; st.dw = p.ut.dw || ''; st.draft = { ut: p.ut, saved: true }; redo(); const el = $('#utDraft'); if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 86, behavior: 'smooth' }); });
+  const openSaved = m => { const p = m && utParse(m.code); if (!p) return; st.t = p.ut.t; st.u = p.ut.u; st.kind = p.ut.ex || (p.ut.c || p.ut.z == null ? 'build' : 'unit'); st.fsel = p.ut.f.slice(); st.cust = (p.ut.c || []).slice(); st.bq = st.kind === 'build' ? p.ut.q.slice() : st.bq; st.dm = p.ut.dp ? 'pick' : 'auto'; st.dsel = (p.ut.dp || []).slice(); st.dn = p.ut.dn || 0; st.dw = p.ut.dw || ''; st.draft = { ut: p.ut, saved: true }; redo(); const el = $('#utDraft'); if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 86, behavior: 'smooth' }); };
+  $$('[data-open]').forEach(b => b.onclick = () => openSaved(LS.get(UT_MINE, [])[+b.dataset.open]));
+  if (UT_PEND) { const k = UT_PEND; UT_PEND = null; setTimeout(() => openSaved({ code: k }), 0); }
   $$('[data-del]').forEach(b => b.onclick = () => confirmBox('Delete this saved test?', 'It is removed from your list. Students who already have the link or code can still take it.', 'Delete', () => { const l = LS.get(UT_MINE, []); l.splice(+b.dataset.del, 1); LS.set(UT_MINE, l); redo(true); }));
+}
+/* ═════ My Unit Tests: every test you made, with its code, status and quick actions ═════ */
+let UT_PEND = null, UTM = { q: '', st: 'all', S: {}, online: [], note: '', loaded: false };
+function utmRows() {
+  const local = LS.get(UT_MINE, []).map((m, i) => { const p = utParse(m.code); return p && p.ut ? { i, code: m.code, date: m.date, ut: p.ut, id: tidOf(p.ut), local: true } : null; }).filter(Boolean);
+  const ids = new Set(local.map(r => r.id));
+  const remote = UTM.online.filter(t => !ids.has(t.id)).map(t => { const p = t.code && utParse(t.code); return { id: t.id, code: t.code || '', date: t.created || '', ut: p && p.ut, name: t.name, course: t.course, local: false }; });
+  return local.concat(remote).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+}
+function utmStatus(r) {
+  const t = UTM.S[r.id]; if (!t) return UTM.loaded ? { k: 'na', l: 'Status unavailable', d: '' } : { k: 'load', l: 'Checking…', d: '' };
+  if (t.closed) return { k: 'closed', l: 'Closed', d: t.status === 'Closed' || !t.closeAt ? 'closed by you' : 'closed ' + fmtWhen(t.closeAt) };
+  return { k: 'open', l: 'Open', d: t.closeAt ? 'closes ' + fmtWhen(t.closeAt) : 'no closing time' };
+}
+function renderUtMine() {
+  setAccent(null); show('hub');
+  const all = utmRows(), q = UTM.q.trim().toLowerCase();
+  const cnt = { all: all.length, open: all.filter(r => utmStatus(r).k === 'open').length, closed: all.filter(r => utmStatus(r).k === 'closed').length };
+  const rows = all.filter(r => (UTM.st === 'all' || utmStatus(r).k === UTM.st) && (!q || ((r.ut ? r.ut.n + ' ' + (BY_ID[r.ut.t] || {}).subject : (r.name || '') + ' ' + (r.course || '')).toLowerCase().includes(q))));
+  const row = r => { const ut = r.ut, x = ut && BY_ID[ut.t], sc = ut ? utShortOf(ut) : null, st = utmStatus(r), own = UTM.S[r.id] && UTM.S[r.id].own;
+    const what = ut ? [`${ut.q.length} multiple choice`, ut.f.length ? `${ut.f.length} free response` : '', ut.m ? `${ut.m} min` : 'untimed'].filter(Boolean).join(' · ') : 'Saved on another computer';
+    return `<tr data-rid="${r.id}">
+      <td class="utm-t"><b>${esc(ut ? ut.n : r.name || 'Unit test')}</b><small>${esc(x ? x.subject : r.course || '')}</small><small class="muted">${esc(what)}</small></td>
+      <td class="utm-c">${sc ? `<code>${esc(sc)}</code><button class="linkbtn sm" data-utmcp="${esc(sc)}">Copy code</button>` : '<span class="muted">—</span>'}${r.code ? `<button class="linkbtn sm" data-utmln="${esc(r.code)}">Copy link</button>` : ''}</td>
+      <td class="utm-d">${r.date ? esc(fmtDate(r.date).split(',')[0]) : '—'}</td>
+      <td class="utm-s"><span class="utm-pill ${st.k}">${st.l}</span>${st.d ? `<small>${esc(st.d)}</small>` : ''}</td>
+      <td class="utm-a"><div class="utm-acts"><span>${r.code ? `<button class="btn sm primary" data-utmopen="${esc(r.code)}">Open</button>` : ''}</span><span>${own || r.local ? (st.k === 'closed' ? `<button class="btn sm" data-utmreo="${r.id}">Reopen</button>` : st.k === 'open' ? `<button class="btn sm" data-utmclose="${r.id}">Close</button>` : '') : ''}</span><span>${r.local ? `<button class="linkbtn sm utm-rm" data-utmdel="${r.i}" title="Remove from this list">Remove</button>` : ''}</span></div></td></tr>`; };
+  $('#hub').innerHTML = nav('ut-mine') + `<div class="page utm-page">${pageHead('Teacher Tools', 'My unit tests', 'Every unit test you’ve made: its code and link for students, whether it’s open, and quick actions.')}
+    <div class="utm-bar">
+      <div class="utm-seg" role="tablist" aria-label="Show">${[['all', 'All'], ['open', 'Open'], ['closed', 'Closed']].map(([k, l]) => `<button role="tab" aria-selected="${UTM.st === k}" data-utmst="${k}">${l}<span>${cnt[k]}</span></button>`).join('')}</div>
+      <label class="utm-q"><span class="sr-only">Search tests</span><input id="utmQ" type="search" placeholder="Search by name or course" value="${esc(UTM.q)}"></label>
+      <a class="btn primary" href="#ut-new">${SVG(IC.plus)} Create a unit test</a></div>
+    <p class="small muted utm-note" id="utmNote" role="status">${esc(UTM.note)}</p>
+    <section class="card utm-card">${rows.length ? `<div class="tablewrap"><table class="utm"><thead><tr><th>Test</th><th>Student code</th><th>Made</th><th>Status</th><th class="utm-a"><span class="sr-only">Actions</span></th></tr></thead><tbody>${rows.map(row).join('')}</tbody></table></div>`
+      : `<div class="empty">${all.length ? 'No tests match.' : `You haven’t made a unit test in this browser yet. <a href="#ut-new">Create one</a>.`}</div>`}</section>
+    <p class="small muted">Tests you made are saved in this browser${myTk() ? ', and tests you opened online from other computers are listed too' : ''}. Removing a test from this list doesn’t close it; students with the code can still take it unless it’s closed.</p>
+    ${foot()}</div>`;
+  bindNav();
+  const re = () => { const y = window.scrollY; renderUtMine(); window.scrollTo(0, y); };
+  $$('[data-utmst]').forEach(b => b.onclick = () => { UTM.st = b.dataset.utmst; re(); });
+  const qi = $('#utmQ'); qi.oninput = () => { UTM.q = qi.value; const pos = qi.selectionStart; re(); const n = $('#utmQ'); n.focus(); try { n.setSelectionRange(pos, pos); } catch (e) {} };
+  $$('[data-utmcp]').forEach(b => b.onclick = () => copyText(b.dataset.utmcp, '#utmNote', `Code ${b.dataset.utmcp} copied.`));
+  $$('[data-utmln]').forEach(b => b.onclick = () => copyText(utLink(b.dataset.utmln), '#utmNote', 'Test link copied.'));
+  $$('[data-utmopen]').forEach(b => b.onclick = () => { const p = utParse(b.dataset.utmopen); if (p) utSaveMine(p.ut); UT_PEND = b.dataset.utmopen; go('ut-new'); });
+  $$('[data-utmdel]').forEach(b => b.onclick = () => confirmBox('Remove this test from your list?', 'It disappears from this list only. Students who have the link or code can still take it unless you close it first.', 'Remove', () => { const l = LS.get(UT_MINE, []); l.splice(+b.dataset.utmdel, 1); LS.set(UT_MINE, l); re(); }));
+  const setSt = async (id, extra, b, msg) => { b.disabled = true; b.textContent = 'Saving…'; const r = await myTestSet(id, extra);
+    if (r && r.ok) { UTM.S[id] = { ...UTM.S[id], ...r, own: true }; UTM.note = msg; } else UTM.note = (r && r.msg) || 'Couldn’t save. Try again.'; re(); };
+  $$('[data-utmclose]').forEach(b => b.onclick = () => confirmBox('Close this test?', 'Students can’t start it, and anyone taking it now is submitted within a minute (students with extra time keep going until you press Close). You can reopen it any time.', 'Close test', () => setSt(b.dataset.utmclose, { status: 'Closed' }, b, 'Closed. Students can’t start this test now.')));
+  $$('[data-utmreo]').forEach(b => b.onclick = () => { const t = UTM.S[b.dataset.utmreo] || {}; setSt(b.dataset.utmreo, { status: 'Open', ...(t.closeAt && new Date(t.closeAt) <= new Date() ? { closeAt: '' } : {}) }, b, 'Reopened. Students can start the test again.'); });
+  if (!UTM.loaded && !UTM.busy) { UTM.busy = true;
+    const uts = utmRows().filter(r => r.local).map(r => r.ut);
+    const chunks = []; for (let i = 0; i < uts.length; i += 40) chunks.push(uts.slice(i, i + 40));
+    Promise.all([Promise.all(chunks.map(c => testCheck(c))), myTestsLoad()]).then(([res, my]) => {
+      res.forEach(d => { if (d) Object.entries(d.tests || {}).forEach(([id, t]) => { UTM.S[id] = { ...UTM.S[id], id, ...t }; }); });
+      if (my && my.ok) { UTM.online = my.tests || []; UTM.online.forEach(t => { UTM.S[t.id] = { ...UTM.S[t.id], ...t, own: true }; }); } else if (my && my.msg) UTM.note = my.msg;
+      UTM.loaded = true; UTM.busy = false; if (location.hash.slice(1).split('?')[0] === 'ut-mine') re(); }); }
 }
 function utSaveMine(ut) { const code = utCode(ut), l = LS.get(UT_MINE, []); if (!l.some(m => m.code === code)) l.push({ code, date: new Date().toISOString() }); LS.set(UT_MINE, l); return code; }
 function bindUtDraft(d, redraw) {
