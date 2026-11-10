@@ -16061,22 +16061,22 @@ function renderGate(err) {
     <section class="panel take-cta"><div><b>Taking a test from your teacher?</b><span class="small muted">You don’t need an account. Enter the test code.</span></div><a class="btn" href="#take">Enter a test code ${SVG(IC.arrow)}</a></section></div></div>`;
   $('#gForm').onsubmit = async e => {
     e.preventDefault(); const email = !GUEST && ACCT_EMAIL ? ACCT_EMAIL : normEmail($('#gName').value), code = $('#gCode').value;
-    const fail = m => { $('#gErr').textContent = m; $('#gGo').disabled = false; };
+    const fail = m => { $('#gErr').textContent = m; $('#gGo').disabled = false; signLog(email, code, m === OFF_MSG() ? 'off' : /don.t match/.test(m) ? 'nomatch' : 'other'); };
     if (!isEmail(email)) return fail('Enter the email address the site owner registered for you.');
     if (normCode(code).length < 4) return fail('Enter your access code.');
     $('#gGo').disabled = true;
-    const asTeacher = async () => { MEMBER = { name: email, email, role: 'teacher', ck: await ckOf(email, code), joinedAt: new Date().toISOString() }; GATE_MSG = ''; saveCred(email, code); enterMember(); go(ROUTE || 'home'); };
+    const asTeacher = async () => { MEMBER = { name: email, email, role: 'teacher', ck: await ckOf(email, code), joinedAt: new Date().toISOString() }; GATE_MSG = ''; saveCred(email, code); signLog(email, code, 'ok'); enterMember(); go(ROUTE || 'home'); };
     if (GUEST) { if (await teacherOK(email, code)) { if (await liveAccess(email, 'teacher', true) === false) return fail(OFF_MSG()); return asTeacher(); }
       if (!(await guestValid(email, code))) return fail('That email and access code don\'t match. Monthly codes change on the 1st, so check you have the latest one, or use "Forgot your code?" below.');
       if (await liveAccess(email, 'student', true) === false) return fail(OFF_MSG());
-      MEMBER = { name: email, email, ck: await ckOf(email, code), joinedAt: new Date().toISOString() }; GATE_MSG = ''; saveCred(email, code); enterMember(); go(ROUTE || 'home'); return; }
+      MEMBER = { name: email, email, ck: await ckOf(email, code), joinedAt: new Date().toISOString() }; GATE_MSG = ''; saveCred(email, code); signLog(email, code, 'ok'); enterMember(); go(ROUTE || 'home'); return; }
     await loadAccess();
     if (await teacherOK(email, code)) return asTeacher();
     if (!ACCESS_DOC.emails.length && !(ACCESS_DOC.remails || []).length) return fail('The site couldn\'t load its invitation list for your Claude account. Make sure you\'re signed in at claude.ai with the email the site owner shared the site with, then reload.');
     if (!(await emailActive(email)) || !(await codeOK(email, code))) return fail('That email and access code don\'t match. Monthly codes change on the 1st, so check you have the latest one, or use "Forgot your code?" below.');
     if (ACCESS_DOC.removed.includes(memberKey())) return fail('The site owner removed your access. Ask them to restore it.');
     MEMBER = { name: email, email, ck: await ckOf(email, code), joinedAt: new Date().toISOString() }; GATE_MSG = '';
-    saveCred(email, code); enterMember(); go(ROUTE || 'home');
+    saveCred(email, code); signLog(email, code, 'ok'); enterMember(); go(ROUTE || 'home');
   };
   formFix('#gForm'); (!GUEST && ACCT_EMAIL ? $('#gCode') : $('#gName')).focus();
   $('#gShow').onclick = () => { const v = $('#gCode').type === 'password'; $('#gCode').type = v ? 'text' : 'password'; $('#gShow').textContent = v ? 'Hide' : 'Show'; $('#gShow').setAttribute('aria-pressed', v); };
@@ -17698,7 +17698,8 @@ async function classSync(list) {
   try { await DB.doc(`rosters/${UID}`).set({ t: await emHash(myEmail()), emails: await Promise.all(list.map(s => emHash(s.email))), at: new Date().toISOString() }); return true; } catch (e) { return false; }
 }
 let CL = { sel: new Set(), msg: '', codes: {} };
-async function classCodes(list) { const mk = monthKey(), nk = monthKey(1); for (const s of list) if (!CL.codes[s.email + mk]) { CL.codes[s.email + mk] = await monthCode(s.email, mk, 0); CL.codes[s.email + nk] = await monthCode(s.email, nk, 0); } }
+async function classCodes(list) { const mk = monthKey(), nk = monthKey(1); for (const s of list) if (!CL.codes[s.email + mk]) { const i = await accInfo(s.email); /* a code the site owner reset (version) or made lifetime */
+  CL.codes[s.email + mk] = i.life ? await lifeCode(s.email, i.v, i.lk) : await monthCode(s.email, mk, i.v); CL.codes[s.email + nk] = i.life ? CL.codes[s.email + mk] : await monthCode(s.email, nk, i.v); } }
 function renderClass() {
   if (!isTeacher()) return renderHome();
   if (MODE === 'owner') { go('admin'); return; }
@@ -18196,7 +18197,22 @@ async function devScan(pw) {
   const mine = []; for (const o of out) if (await keyOK(o.ut, pw)) mine.push(o);
   let ok = mine.length > 0 || [String(pw), koKeys(pw)].some(p => p.trim().toLowerCase() === LK_DEFAULT);
   if (!ok) for (const u of LS.get('ap.dev.keys', [])) if (await keyOK(u, pw)) { ok = true; break; }
-  return { list: mine.sort((a, b) => (a.date || '') < (b.date || '') ? 1 : -1), resets: ok ? LS.get(VAULT, []).filter(e => e.kind === 'reset').reverse() : [] };
+  return { ok, list: mine.sort((a, b) => (a.date || '') < (b.date || '') ? 1 : -1), resets: ok ? LS.get(VAULT, []).filter(e => e.kind === 'reset').reverse() : [] };
+}
+async function devSignins() {
+  const log = LS.get('ap.signin.log', []).slice().reverse(), seen = new Map();
+  for (const a of log) { const k = a.e; if (!seen.has(k)) seen.set(k, { e: a.e, tries: [] }); seen.get(k).tries.push(a); }
+  const out = [];
+  for (const o of seen.values()) { const i = await accInfo(o.e), cur = i.life ? await lifeCode(o.e, i.v, i.lk) : await monthCode(o.e, monthKey(), i.v), prev = await monthCode(o.e, monthKey(-1), i.v), old0 = i.v ? await monthCode(o.e, monthKey(), 0) : null;
+    const off = (EMBED_ACCESS && (EMBED_ACCESS.off || []).includes(await emHash(o.e))) || EMBED_REVOKED.includes(await sha256hex('rev|' + o.e));
+    const last = o.tries[0], typed = last.c, fmt = c => c.length === 8 ? c.slice(0, 4) + '-' + c.slice(4) : c;
+    const why = last.r === 'ok' ? 'Signed in.' : off || last.r === 'off' ? 'This student’s access is turned off. Turn it back on (or ask the site owner).'
+      : typed === normCode(cur) ? 'The code was right; try again (the connection may have dropped).'
+      : typed === normCode(prev) ? 'They typed last month’s code. Give them this month’s code.'
+      : old0 && typed === normCode(old0) ? 'They typed their code from before it was reset. Give them the new code.'
+      : 'The code doesn’t match this email. Check they typed the same email the code was made for (school vs. personal email), or give them the code shown here.';
+    out.push({ e: o.e, at: last.t, ok: last.r === 'ok', typed: fmt(typed), code: cur, life: !!i.life, n: o.tries.length, why }); }
+  return out;
 }
 async function renderDevice(err) {
   setAccent(null); show('hub');
@@ -18205,17 +18221,21 @@ async function renderDevice(err) {
   if (!DEV.list) {
     $('#hub').innerHTML = nav('device') + head + `<section class="panel"><form id="devF" autocomplete="off"><label>Teacher password<input id="devPw" autocomplete="off" placeholder="Teacher only"></label><button class="btn primary" type="submit">Enter</button><p class="err" id="devErr" role="alert">${err ? esc(err) : ''}</p></form></section>
       <p class="small muted">Use the teacher access password from My Students (the same one your tests use). This page is for teachers.</p></div>`;
-    $('#devF').onsubmit = async e => { e.preventDefault(); const pw = pwOf($('#devPw')); $('#devErr').textContent = 'Checking…'; const { list, resets } = await devScan(pw);
-      if (!list.length && !resets.length) { $('#devErr').textContent = 'That password doesn’t match anything on this device.'; return; } DEV = { pw, list, resets }; renderDevice(); bindNav(); };
+    $('#devF').onsubmit = async e => { e.preventDefault(); const pw = pwOf($('#devPw')); $('#devErr').textContent = 'Checking…'; const { ok, list, resets } = await devScan(pw);
+      if (!ok && !list.length && !resets.length) { $('#devErr').textContent = LS.get('ap.dev.keys', []).length || lsAllKeys().some(k => /ut\.(results|current)\.v1$|\.history\.v1$/.test(k))
+        ? 'That password doesn’t match the tests saved in this browser. Use the teacher password that was set when the test was made (or ad31 if you never set one). Make sure the box was empty before you typed.'
+        : 'No teacher tests are saved in this browser, so there is nothing to unlock. The student may have used a different browser, a private (incognito) window, or their saved data was cleared.'; return; } DEV = { pw, list, resets }; renderDevice(); bindNav(); };
     noSave($('#devPw')); formFix('#devF'); $('#devPw').focus(); return;
   }
-  const to0 = (LS.get('ap.dev.to', '') || (DEV.list[0] && DEV.list[0].ut.e) || '');
+  const to0 = (LS.get('ap.dev.to', '') || (DEV.list[0] && DEV.list[0].ut.e) || ''), signs = await devSignins();
   $('#hub').innerHTML = nav('device') + head + `<section class="card"><div class="row" style="align-items:flex-end"><label class="dev-to">Send results to<input id="devTo" type="email" value="${esc(to0)}" placeholder="you@school.org"></label><span style="flex:1"></span><button class="btn quiet" id="devLock">${SVG(IC.lock)} Lock this page</button></div></section>
     <div class="dev-list">${DEV.list.map((o, n) => `<section class="card dev-item"><div><b>${esc(o.name || 'Unknown student')}</b><small>${esc(o.title)} · ${o.date ? fmtDate(o.date) : ''}</small><span class="small">${esc(o.score)} · ${/cur$/.test(o.kind) ? '<span class="st-off">not finished</span>' : o.sent ? '<span class="st-on">student confirmed sending</span>' : '<span class="st-off">not sent</span>'}${o.gone ? ' · <span class="st-off">removed from the student’s history</span>' : ''}</span></div>
       <div class="row">${/cur$/.test(o.kind) ? `<button class="btn primary sm" data-devsub="${n}">Submit it now</button>` : `<button class="btn primary sm" data-devcp="${n}">Copy results</button>${o.r && o.r.items ? `<button class="btn sm" data-devfx="${n}">Corrections sheet (PDF)</button><button class="btn sm" data-devrv="${n}">Answer review (PDF)</button><button class="btn sm" data-devre="${n}">Reopen with more time</button>` : ''}`}</div></section>`).join('')}</div>
     ${DEV.resets && DEV.resets.length ? `<h2 class="dev-h">Cleared by the student</h2><p class="small muted">Practice and exam history that was reset or cleared on this device. These are summaries kept when the history was removed.</p>
       <div class="dev-list">${DEV.resets.map(e => `<section class="card dev-reset"><div><b>${esc(e.name || 'Student')}</b><small>${esc(e.why)} · ${fmtDate(e.vt)}${e.email ? ' · ' + esc(e.email) : ''}</small></div>
         <div class="dev-tw"><div class="dev-tw"><table class="dev-t"><thead><tr><th>Course</th><th>Cleared</th><th>Recent results</th></tr></thead><tbody>${e.rows.map(r => `<tr><td>${esc((BY_ID[r.t] || {}).subject || r.t)}</td><td>${r.n} (${r.ex} test${r.ex === 1 ? '' : 's'}, ${r.p} practice)</td><td>${r.last.slice().reverse().map(h => `<span class="dev-pill" title="${esc(h.ti)}">${h.d ? esc(fmtDate(h.d)) + ': ' : ''}${h.pct}%${h.a ? ' (assigned)' : h.pr ? ' (practice)' : ''}</span>`).join(' ')}</td></tr>`).join('')}</tbody></table></div></section>`).join('')}</div>` : ''}
+    ${signs.length ? `<h2 class="dev-h">Sign-ins on this device</h2><p class="small muted">Who tried to sign in here, the code they typed, and the code that works for that email${signs.some(s => !s.life) ? ` in ${esc(monthName(monthKey()))}` : ''}.</p>
+      <div class="dev-tw"><table class="dev-t"><thead><tr><th>Email</th><th>Last try</th><th>Code typed</th><th>Correct code</th><th>What happened</th></tr></thead><tbody>${signs.map(o => `<tr><td><b>${esc(o.e)}</b>${o.n > 1 ? `<br><small class="muted">${o.n} tries</small>` : ''}</td><td>${esc(fmtDate(o.at))}</td><td class="mono">${esc(o.typed || '–')}</td><td class="mono"><b>${esc(o.code)}</b>${o.life ? '<br><small class="muted">lifetime</small>' : ''}</td><td class="small">${o.ok ? '<span class="st-on">Signed in</span>' : '<span class="st-off">Didn’t work</span>'} ${esc(o.ok ? '' : o.why)}</td></tr>`).join('')}</tbody></table></div>` : ''}
     <p class="small" id="devMsg" role="status"></p>
     <p class="small muted">Paste the email (or the copied results) into Check Results to verify the score, score written answers, and add it to your gradebook.</p></div>`;
   const mail = async o => { const to = normEmail($('#devTo').value); LS.set('ap.dev.to', to); const m = o.kind === 'ut' ? await utMail({ ...o.r, to }) : await examMail(o.r, o.x, to); return { ...m, body: m.tbody || m.body, to }; };
@@ -18345,6 +18365,8 @@ async function liveAccess(email, role, fresh) {
     LS.set(k, { on: !!d.on, t: Date.now() }); return !!d.on;
   } catch (e) { return null; }
 }
+/* sign-in attempts on this device, newest last (shown to the teacher in Teacher access, to sort out a code that won't work) */
+function signLog(email, code, res) { if (!email) return; const l = LS.get('ap.signin.log', []); l.push({ e: normEmail(email), c: normCode(code || ''), r: res, t: new Date().toISOString() }); LS.set('ap.signin.log', l.slice(-15)); }
 const OFF_MSG = () => `Your access has been turned off. If you think this is a mistake, email ${OWNER_EMAIL}.`;
 /* after a remembered sign-in, check quietly in the background */
 function liveRecheck() {
