@@ -52,7 +52,8 @@ const SIGNUP_ENDPOINT = 'https://script.google.com/macros/s/AKfycby1jWaTEgqIqPZG
       ${field(T.extra)}${T.extra2 ? field(T.extra2, 'email') : ''}
       <input class="su-hp" id="suHp" tabindex="-1" autocomplete="off" aria-hidden="true">
       <div class="su-agree"><label class="su-opt"><input type="checkbox" id="suAg1" required><span>I agree to the <a href="/legal.html#terms" target="_blank" rel="noopener">Terms of Service</a> and <a href="/legal.html#privacy" target="_blank" rel="noopener">Privacy Policy</a>.</span></label>
-        <label class="su-opt"><input type="checkbox" id="suAg2" required><span>I agree to follow the <a href="/legal.html#guidelines" target="_blank" rel="noopener">Community Guidelines</a>.</span></label></div>
+        <label class="su-opt"><input type="checkbox" id="suAg2" required><span>I agree to follow the <a href="/legal.html#guidelines" target="_blank" rel="noopener">Community Guidelines</a>.</span></label>
+        <label class="su-opt"><input type="checkbox" id="suAge" required><span>I confirm I am <b>18 or older</b> and a teacher or educator.</span></label></div>
       <label class="su-opt"><input type="checkbox" id="suOpt"><span>${esc(T.opt)}</span></label>
       <p class="su-msg" id="suMsg" role="status"></p>
       <div class="su-row"><button type="button" id="suX">Cancel</button><button type="submit" class="su-go" id="suGo">Sign up</button></div>
@@ -68,12 +69,13 @@ const SIGNUP_ENDPOINT = 'https://script.google.com/macros/s/AKfycby1jWaTEgqIqPZG
       const name = $('#suName').value.trim().replace(/\s+/g, ' '), email = $('#suEmail').value.trim().toLowerCase();
       if (name.length < 2) { msg('Please enter your name.', 'bad'); return $('#suName').focus(); }
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { msg('Please enter a valid email address.', 'bad'); return $('#suEmail').focus(); }
+      if (!$('#suAge').checked) { msg('Teacher accounts are only for adults. Please confirm you are 18 or older.', 'bad'); return $('#suAge').focus(); }
       if (!$('#suAg1').checked || !$('#suAg2').checked) { msg('Please tick both boxes to agree to the Terms of Service, Privacy Policy and Community Guidelines.', 'bad'); return $(!$('#suAg1').checked ? '#suAg1' : '#suAg2').focus(); }
       const join = $('#suJoin') ? $('#suJoin').value.trim() : '', org = $('#suOrg') ? $('#suOrg').value.trim() : '', tch = $('#suTeacher') ? $('#suTeacher').value.trim() : '';
       const details = [org && 'Organization: ' + org, tch && 'Teacher: ' + tch, join && 'Class code: ' + join].filter(Boolean).join(' · ');
       $('#suGo').disabled = true; msg('Sending…');
       try {
-        const r = await fetch(SIGNUP_ENDPOINT, { method: 'POST', body: JSON.stringify({ site: SITE, ...(T.role ? { role: T.role } : {}), name, email, join, details, agree: true, agreeText: 'I agree to the Terms of Service and Privacy Policy. I agree to follow the Community Guidelines.', terms: '2026-10-29', optIn: $('#suOpt').checked, optInText: T.opt, hp: $('#suHp').value }) });
+        const r = await fetch(SIGNUP_ENDPOINT, { method: 'POST', body: JSON.stringify({ site: SITE, adult: true, ...(T.role ? { role: T.role } : {}), name, email, join, details, agree: true, agreeText: 'I agree to the Terms of Service and Privacy Policy. I agree to follow the Community Guidelines.', terms: '2026-10-29', optIn: $('#suOpt').checked, optInText: T.opt, hp: $('#suHp').value }) });
         const d = await r.json();
         if (!d.ok) { msg(d.msg || 'Something went wrong. Please try again.', 'bad'); $('#suGo').disabled = false; return; }
         $('.su-card').innerHTML = `<div class="su-done"><div class="su-ic">${d.status === 'sent' ? '✉️' : '⏳'}</div><h2>${d.status === 'sent' ? 'Check your email' : 'Request sent'}</h2><p class="su-lead">${esc(d.msg)}</p><p class="su-small">Don’t see it in a few minutes? Check your spam folder.</p><div class="su-row" style="justify-content:center"><button type="button" class="su-go" id="suOk">OK</button></div></div>`;
