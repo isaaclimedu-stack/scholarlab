@@ -44,6 +44,7 @@ const SIGNUP_ENDPOINT = 'https://script.google.com/macros/s/AKfycby1jWaTEgqIqPZG
   const field = ([label, id, ph], type = 'text') => `<label class="su-f">${esc(label)}<input type="${type}" id="${id}" placeholder="${esc(ph)}" autocomplete="off" maxlength="80"></label>`;
 
   function open() {
+    const suT0 = Date.now(); /* the sign-up script refuses forms sent within 2 seconds of opening (bots) */
     const ov = document.createElement('div'); ov.className = 'su-ov';
     ov.innerHTML = `<div class="su-card" role="dialog" aria-modal="true" aria-labelledby="suH"><form id="suF" novalidate>
       <h2 id="suH">${esc(T.title)}</h2><p class="su-lead">${esc(T.lead)}</p>
@@ -75,7 +76,7 @@ const SIGNUP_ENDPOINT = 'https://script.google.com/macros/s/AKfycby1jWaTEgqIqPZG
       const details = [org && 'Organization: ' + org, tch && 'Teacher: ' + tch, join && 'Class code: ' + join].filter(Boolean).join(' · ');
       $('#suGo').disabled = true; msg('Sending…');
       try {
-        const r = await fetch(SIGNUP_ENDPOINT, { method: 'POST', body: JSON.stringify({ site: SITE, adult: true, ...(T.role ? { role: T.role } : {}), name, email, join, details, agree: true, agreeText: 'I agree to the Terms of Service and Privacy Policy. I agree to follow the Community Guidelines.', terms: '2026-10-29', optIn: $('#suOpt').checked, optInText: T.opt, hp: $('#suHp').value }) });
+        const r = await fetch(SIGNUP_ENDPOINT, { method: 'POST', body: JSON.stringify({ site: SITE, ft: Date.now() - suT0, adult: true, ...(T.role ? { role: T.role } : {}), name, email, join, details, agree: true, agreeText: 'I agree to the Terms of Service and Privacy Policy. I agree to follow the Community Guidelines.', terms: '2026-10-29', optIn: $('#suOpt').checked, optInText: T.opt, hp: $('#suHp').value }) });
         const d = await r.json();
         if (!d.ok) { msg(d.msg || 'Something went wrong. Please try again.', 'bad'); $('#suGo').disabled = false; return; }
         $('.su-card').innerHTML = `<div class="su-done"><div class="su-ic">${d.status === 'sent' ? '✉️' : '⏳'}</div><h2>${d.status === 'sent' ? 'Check your email' : 'Request sent'}</h2><p class="su-lead">${esc(d.msg)}</p><p class="su-small">Don’t see it in a few minutes? Check your spam folder.</p><div class="su-row" style="justify-content:center"><button type="button" class="su-go" id="suOk">OK</button></div></div>`;

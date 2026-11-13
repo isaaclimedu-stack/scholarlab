@@ -18642,6 +18642,7 @@ const SU_OPT = { student: 'Email me news about new products from Comma, the team
   teacher: 'Email me about new Comma products, teaching resources, and updates. Optional. You can unsubscribe anytime.' };
 let SU = { role: 'teacher' };
 function openSignup() {
+  const suT0 = Date.now(); /* the sign-up script refuses forms sent within 2 seconds of opening (bots) */
   const cfg = window.SIGNUP; if (!cfg || !cfg.endpoint) return;
   const keep = {}; const grab = () => $$('.su2 input[id]').forEach(i => { keep[i.id] = i.type === 'checkbox' ? i.checked : i.value; });
   const draw = (msg, bad) => {
@@ -18681,7 +18682,7 @@ function openSignup() {
       const details = t ? ['School: ' + val('suSchool'), val('suSubj') && 'Teaches: ' + val('suSubj')].filter(Boolean).join(' · ') : [val('suTch') && 'Teacher: ' + val('suTch'), val('suJoin') && 'Class code: ' + val('suJoin')].filter(Boolean).join(' · ');
       $('#suGo').disabled = true; say('Sending…');
       try {
-        const r = await fetch(cfg.endpoint, { method: 'POST', body: JSON.stringify({ site: cfg.site || 'scholarlab', role: SU.role, adult: true, name, email, join: val('suJoin'), details, agree: true, agreeText: 'I agree to the Terms of Service and Privacy Policy. I agree to follow the Community Guidelines.', terms: '2026-10-29', optIn: $('#suOpt').checked, optInText: SU_OPT[SU.role], hp: $('#suHp').value }) });
+        const r = await fetch(cfg.endpoint, { method: 'POST', body: JSON.stringify({ site: cfg.site || 'scholarlab', role: SU.role, ft: Date.now() - suT0, adult: true, name, email, join: val('suJoin'), details, agree: true, agreeText: 'I agree to the Terms of Service and Privacy Policy. I agree to follow the Community Guidelines.', terms: '2026-10-29', optIn: $('#suOpt').checked, optInText: SU_OPT[SU.role], hp: $('#suHp').value }) });
         const d = await r.json();
         if (!d.ok) { say(d.msg || 'Something went wrong. Please try again.', true); $('#suGo').disabled = false; return; }
         $('.su2').innerHTML = `<div class="mhead"><h3>${d.status === 'sent' ? 'Check your email' : 'Request sent'}</h3><button class="btn" id="suX2">Close</button></div>
