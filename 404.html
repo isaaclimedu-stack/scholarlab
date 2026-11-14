@@ -1129,6 +1129,10 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .utc-k { display: flex; flex-wrap: wrap; gap: 12px; margin: 4px 0 6px; }
 .utc-k > div { border: 1px solid var(--line); border-radius: 10px; padding: 8px 14px; min-width: 150px; background: var(--sunk); }
 .utc-k small { display: block; color: var(--muted); font-size: 12px; } .utc-k b { font-size: 18px; font-family: var(--font-mono); }
+.utc-k i { display: block; font-style: normal; color: var(--muted); font-size: 11.5px; margin-top: 2px; max-width: 230px; }
+.utc-k > div.pend i { color: var(--warn, #9a6700); }
+.utc-k > div.tot { background: color-mix(in srgb, var(--accent) 9%, var(--surface)); border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); }
+.utc-k > div.tot b { font-size: 22px; }
 .utc-frq { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
 .utc-frq h4 { margin: 0 0 8px; font-size: 15px; }
 .utc-frq .rubck { margin: 10px 0; }
@@ -1378,6 +1382,9 @@ body.locked #exam textarea, body.locked #exam input { -webkit-user-select: text;
 .gb-file { cursor: pointer; }
 .gb-repbar { align-items: flex-end; margin-bottom: 14px; }
 .gb-repsel { display: grid; gap: 4px; font-size: 13px; font-weight: 600; min-width: 240px; }
+.gb-ahead { margin-bottom: 14px; } .gb-ahead h3 { margin: 2px 0 4px; font-size: 20px; } .gb-ahead p { margin: 0; }
+.gb-asgtable { grid-column: 1 / -1; }
+.gb-k.gb-k4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } @media (max-width: 700px) { .gb-k.gb-k4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .gb-rep { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
 .gb-rep > .gb-sum, .gb-rep > .gb-comment { grid-column: 1 / -1; }
 .gb-sum { display: flex; align-items: center; gap: 18px; }
@@ -17850,6 +17857,21 @@ function utcFrq(r) {
     const on = saved[i] || auto; const pts = Math.min(o.q.max, P.rubric.reduce((s, rb, j) => s + (on[j] ? rb.pts : 0), 0));
     return { i, o, P, auto, on, pts, max: o.q.max, confirmed: !!saved[i] }; });
 }
+/* the score boxes on a Check Results card: each part on its own (they add up), then one total */
+function utcScoreBoxes(r, tt) {
+  const sum = f => r.rows.filter(o => !o.cr && f(o)).reduce((t, o) => t + qPts(o.q), 0);
+  const mcT = sum(o => !o.q.def), mcG = sum(o => !o.q.def && o.ok), dT = sum(o => o.q.def), dG = sum(o => o.q.def && o.ok), dW = r.rows.some(o => o.q.def && o.w);
+  const pct = (g, t) => t ? Math.round(g / t * 100) + '%' : '';
+  const box = (label, val, note, cls) => `<div${cls ? ` class="${cls}"` : ''}><small>${label}</small><b>${val}</b>${note ? `<i>${note}</i>` : ''}</div>`;
+  const parts = [];
+  if (mcT) parts.push(box('Multiple choice', `${mcG} / ${mcT}`, `${pct(mcG, mcT)} right`));
+  if (dT) parts.push(box('Definitions', `${dG} / ${dT}`, dW ? `points · written ones count 2` : `${pct(dG, dT)} right`));
+  if (tt.fq.length) parts.push(box('Free response', `${tt.fp} / ${tt.fm}`, tt.confirmed ? 'points' : 'points · not confirmed yet (below)', tt.confirmed ? '' : 'pend'));
+  const total = !tt.fq.length ? box('Total', pct(r.c, r.n) || '0%', `${r.c} of ${r.n} points`, 'tot')
+    : tt.byPts || !r.n ? box('Total', tt.comb + '%', `${r.c + tt.fp} of ${r.n + tt.fm} points`, 'tot')
+    : box('Total', tt.comb + '%', `AP style: half from the questions (${pct(r.c, r.n)}), half from free response (${pct(tt.fp, tt.fm)})`, 'tot');
+  return `<div class="utc-k">${parts.join('')}${total}</div>`;
+}
 function utcTotals(r) { const fq = utcFrq(r), fp = fq.reduce((s, f) => s + f.pts, 0), fm = fq.reduce((s, f) => s + f.max, 0);
   const xw = r.kind === 'EX' && BY_ID[r.d.t] && BY_ID[r.d.t].cr ? BY_ID[r.d.t].cr.weight : 0.5;
   /* AP unit tests weight multiple choice and free response 50/50, like the AP exam; high school and middle school tests add up points */
@@ -17945,7 +17967,7 @@ function renderUtCheck() {
     const tt = utcTotals(r);
     return `<section class="card utc"><div class="card-h sm"><h3>${gbWho(r.d.nm)}</h3><span class="small muted">${esc(r.d.em || '')}</span><span class="st-on">✓ Scored from the student’s answers</span><span style="flex:1"></span><button class="btn sm" data-scp="${ri}">${SVG(IC.dl)} Score card PDF</button><button class="btn sm" data-fxp="${ri}">${SVG(IC.dl)} Corrections sheet PDF</button><button class="btn sm" data-rvp="${ri}">${SVG(IC.dl)} Answer review PDF</button></div>
       <p class="small" style="margin:0 0 8px"><b>${esc(r.ut.n)}</b>${r.d.vr != null ? ` · version ${LETTERS[r.d.vr]}` : ''} · ${esc(BY_ID[r.ut.t].subject)} · submitted ${r.d.d ? fmtDate(r.d.d) : '—'} · time ${fmtDur(r.d.u || 0)}${r.d.x ? ' (time ran out)' : ''}${r.d.at > 1 ? ` · <b>attempt ${r.d.at}</b> on their device` : ''}</p>
-      ${lkLine(r.d.lk, r.d)}<div class="utc-k"><div><small>Multiple choice${r.rows.some(o => o.q.def) ? ' + definitions' : ''} (recalculated)</small><b>${r.c}/${r.n} · ${r.n ? Math.round(r.c / r.n * 100) : 0}%</b></div>${r.rows.some(o => o.q.def) ? `<div><small>Definitions${r.rows.some(o => o.w) ? ' (points)' : ''}</small><b>${r.rows.filter(o => o.q.def && o.ok).reduce((t, o) => t + qPts(o.q), 0)}/${r.rows.filter(o => o.q.def).reduce((t, o) => t + qPts(o.q), 0)}</b></div>` : ''}${tt.fq.length ? `<div><small>Free response${tt.confirmed ? '' : ' (auto, confirm below)'}</small><b>${tt.fp}/${tt.fm}</b></div>${r.n ? `<div><small>Combined (${tt.byPts ? `${r.c + tt.fp}/${r.n + tt.fm} points` : '50/50'})</small><b>${tt.comb}%</b></div>` : ''}` : ''}</div>
+      ${lkLine(r.d.lk, r.d)}${utcScoreBoxes(r, tt)}
       ${frqHTML(ri, tt.fq)}
       ${r.rows.some(o => o.w) ? `<div class="utc-dw"><h4>Written definitions <span class="muted">(checked automatically; change any you disagree with)</span></h4><ul>${r.rows.map((o, i) => o.w ? `<li class="${o.ok ? 'ok' : 'no'}"><span class="dw-n">${i + 1}</span><div class="dw-a"><b>${esc(o.a)}</b><small>${o.q.wm === 'd' ? 'Term: ' + esc(o.q.ans) + ' · Model: ' + esc(o.q.defn) : 'Expected: ' + esc(o.q.ans)}</small></div><div class="dw-b" role="group" aria-label="Mark question ${i + 1}"><button class="btn sm ${o.ok ? 'on' : ''}" data-uw="${ri}|${i}|1" aria-pressed="${o.ok}">✓ Right</button><button class="btn sm ${o.ok ? '' : 'on'}" data-uw="${ri}|${i}|0" aria-pressed="${!o.ok}">✕ Wrong</button><span class="dw-tag">${o.ov ? '<span class="dw-mine">changed by you</span>' : '<span class="autotag">auto</span>'}</span></div></li>` : '').join('')}</ul></div>` : ''}
       <details style="margin-top:10px"><summary class="small">Question-by-question</summary><div class="tablewrap"><table class="hist"><thead><tr><th>#</th><th>Unit</th><th>Student</th><th>Key</th><th></th></tr></thead><tbody>${r.rows.map((o, i) => `<tr><td>${i + 1}</td><td>${o.cr ? 'FRQ' : esc(o.q.cat)}</td><td class="${o.w ? '' : 'mono'}">${o.cr ? (o.a === '-' ? 'blank' : 'written') : esc(o.a)}</td><td class="${o.w ? '' : 'mono'}">${o.cr ? 'see above' : esc(o.want)}</td><td>${o.cr ? '' : o.ok ? '<span class="st-on">✓</span>' : '<span class="st-off">✕</span>'}</td></tr>`).join('')}</tbody></table></div></details></section>`;
@@ -19292,7 +19314,7 @@ const GB_KINDS = { mc: 'Multiple choice', written: 'Written responses', calc: 'C
 const GB_ST = [['', '—'], ['missing', 'Missing'], ['late', 'Late'], ['excused', 'Excused']];
 const gbKey = () => `ap.gb.${PID || 'local'}.v1`;
 const gbId = () => Math.random().toString(36).slice(2, 9);
-let GBU = { tab: 'grades', aid: null, sid: null, edit: null, tone: 'student', arch: false, msg: '' };
+let GBU = { tab: 'grades', aid: null, raid: null, sid: null, edit: null, tone: 'student', arch: false, msg: '' };
 function gbLoad() { const d = LS.get(gbKey(), null); return d && Array.isArray(d.classes) ? d : { v: 1, classes: [], cur: null }; }
 function gbSave(db) { LS.set(gbKey(), db); }
 const gbCls = db => db.classes.find(c => c.id === db.cur && !c.archived) || db.classes.find(c => !c.archived) || null;
@@ -19479,9 +19501,110 @@ function gbSettingsHTML(c, db) {
     <section class="card"><h3 class="ch">When the school year ends</h3><p class="small">Archive the class to hide it but keep the grades, or delete it for good. Download a backup first if you might need the grades later.</p>
       <div class="row"><button class="btn" id="gbArchive">Archive this class</button><button class="btn quiet" id="gbDelete" style="color:var(--bad)">Delete this class</button></div></section></div>`;
 }
+/* ── reports for one assignment (whole class, or one student) ── */
+const median = a => { if (!a.length) return null; const s = a.slice().sort((p, q) => p - q), m = s.length >> 1; return s.length % 2 ? s[m] : Math.round((s[m - 1] + s[m]) / 2); };
+function gbAsgStats(c, a) {
+  const rows = c.students.map(st => ({ st, cell: gbCell(c, a, st.id) }));
+  const scored = rows.filter(r => r.cell.pct != null), ps = scored.map(r => r.cell.pct);
+  const dist = { A: 0, B: 0, C: 0, D: 0, F: 0 }; ps.forEach(p => dist[letter(p)]++);
+  /* each section of the assignment (e.g. multiple choice, written): class average over students with a score in it */
+  const cats = a.cats.map(k => { const v = rows.map(r => ((c.g[a.id] || {})[r.st.id] || {}).s).filter(s => s && s[k.id] != null && s[k.id] !== '').map(s => pc(Math.max(0, +s[k.id] || 0), +k.max || 0)).filter(p => p != null); return { k, avg: avg(v), n: v.length }; });
+  /* units: from results imported from Check Results (per-unit points), otherwise the assignment's unit tags */
+  const units = {}; scored.forEach(r => { const bu = r.cell.g.byUnit; if (bu) Object.entries(bu).forEach(([u, [ok, n]]) => { const b = units[u] = units[u] || [0, 0]; b[0] += ok; b[1] += n; }); });
+  const unitAvg = Object.fromEntries(Object.entries(units).filter(([, b]) => b[1]).map(([u, b]) => [u, pc(b[0], b[1])]));
+  const by = st => rows.filter(r => r.cell.st === st);
+  return { rows, scored, avg: avg(ps), med: median(ps), hi: ps.length ? Math.max(...ps) : null, lo: ps.length ? Math.min(...ps) : null, dist, cats, unitAvg,
+    missing: by('missing'), excused: by('excused'), late: by('late'), notYet: rows.filter(r => r.cell.pct == null && !['missing', 'excused'].includes(r.cell.st)),
+    low: scored.filter(r => r.cell.pct < 70 && r.cell.st !== 'missing').sort((p, q) => p.cell.pct - q.cell.pct) };
+}
+const gbAsgName = a => `${a.title || 'Untitled'}${a.date ? ' · ' + a.date : ''}`;
+function gbAsgTips(c, a, as) {
+  const x = BY_ID[c.course], tips = [];
+  Object.entries(as.unitAvg).filter(([, p]) => p < 70).sort((p, q) => p[1] - q[1]).slice(0, 3).forEach(([u, p]) => tips.push(`Reteach ${unitName(x, u)}: the class got ${p}% of it right on this assignment. A Question Bank set${x && DEF_DB[x.id] && DEF_DB[x.id][u] ? ' and the unit definitions' : ''} would help before the next test.`));
+  as.cats.filter(o => o.avg != null && o.avg < 70).forEach(o => tips.push(`${o.k.label} was the weakest part (${o.avg}% average). Go over a few of these together${o.k.kind === 'written' ? ', and model a full claim–evidence–reasoning answer' : ''}.`));
+  if (as.low.length) tips.push(`${as.low.length} student${as.low.length > 1 ? 's' : ''} scored below 70%: ${as.low.map(r => r.st.name).join(', ')}. Consider a retake or a short check-in.`);
+  if (as.missing.length) tips.push(`${as.missing.length} student${as.missing.length > 1 ? 's haven’t' : ' hasn’t'} turned it in: ${as.missing.map(r => r.st.name).join(', ')}.`);
+  if (!tips.length && as.avg != null) tips.push('The class did well on this one. Move on, or stretch strong students with Challenge-level practice.');
+  return tips;
+}
+/* a short comment about one student's result on one assignment */
+function gbAsgNarrative(c, a, st, as, tone) {
+  const nm = gbFirst(st.name), you = tone === 'student', cell = gbCell(c, a, st.id), title = a.title || 'this assignment';
+  if (cell.st === 'excused') return you ? `${nm}, you were excused from ${title}.` : `${nm} was excused from ${title}.`;
+  if (cell.pct == null || (cell.st === 'missing' && !cell.scored)) return you ? `${nm}, ${title} hasn’t been turned in yet. Please hand it in as soon as you can.` : `${nm} hasn’t turned in ${title} yet.`;
+  const g = cell.g.s || {}, parts = a.cats.filter(k => g[k.id] != null && g[k.id] !== '').map(k => ({ k, p: pc(Math.max(0, +g[k.id] || 0), +k.max || 0) })).filter(o => o.p != null);
+  const best = parts.slice().sort((p, q) => q.p - p.p)[0], worst = parts.slice().sort((p, q) => p.p - q.p)[0];
+  const lead = you ? `${nm}, you scored ${cell.pct}% (${letter(cell.pct)}) on ${title}.` : `${nm} scored ${cell.pct}% (${letter(cell.pct)}) on ${title}.`;
+  const cls = as.avg != null ? ` The class average was ${as.avg}%.` : '';
+  const str = parts.length > 1 && best.p >= 80 ? (you ? ` Your strongest part was ${best.k.label} (${best.p}%).` : ` The strongest part was ${best.k.label} (${best.p}%).`) : '';
+  const wk = parts.length > 1 && worst !== best && worst.p < 75 ? (you ? ` To improve: ${worst.k.label} (${worst.p}%).` : ` ${worst.k.label} (${worst.p}%) is the part to work on.`) : '';
+  const bu = cell.g.byUnit ? Object.entries(cell.g.byUnit).map(([u, [ok, n]]) => [u, pc(ok, n)]).filter(([, p]) => p != null && p < 70).sort((p, q) => p[1] - q[1]).slice(0, 2) : [];
+  const un = bu.length ? (you ? ` Review ${bu.map(([u, p]) => `${unitName(BY_ID[c.course], u)} (${p}%)`).join(' and ')}.` : ` Units to review: ${bu.map(([u, p]) => `${unitName(BY_ID[c.course], u)} (${p}%)`).join(', ')}.`) : '';
+  const lt = cell.st === 'late' ? (you ? ' It was turned in late.' : ' It was turned in late.') : '';
+  return (lead + cls + str + wk + un + lt).replace(/\s+/g, ' ').trim();
+}
+function gbAsgReportHTML(c, a, st, sel) {
+  const as = gbAsgStats(c, a), x = BY_ID[c.course], ty = GB_TYPES[a.type] ? GB_TYPES[a.type].label : a.type, maxPts = a.cats.reduce((s, k) => s + (+k.max || 0), 0);
+  const head = `<section class="card gb-ahead"><div><div class="eyebrow">${esc(ty)}${a.date ? ' · ' + esc(a.date) : ''}${(a.units || []).length ? ' · ' + a.units.map(u => esc(unitName(x, u))).join(', ') : ''}</div><h3>${esc(a.title || 'Untitled')}</h3><p class="small muted">${a.cats.map(k => `${esc(k.label)} (${k.max} pts)`).join(' · ')} · ${maxPts} points in all</p></div></section>`;
+  if (st) {
+    const cell = gbCell(c, a, st.id), g = cell.g.s || {}, text = gbAsgNarrative(c, a, st, as, GBU.tone);
+    const stat = cell.st === 'excused' ? 'Excused' : cell.pct == null ? (cell.st === 'missing' ? 'Missing' : 'Not graded yet') : `${cell.earned} / ${cell.max} points${cell.st === 'late' ? ' · late' : ''}`;
+    const bu = cell.g.byUnit ? Object.entries(cell.g.byUnit).map(([u, [ok, n]]) => [u, pc(ok, n)]).filter(([, p]) => p != null) : [];
+    return `<div class="row gb-repbar">${sel}<span style="flex:1"></span><button class="btn" id="gbPdfAsgOne">${SVG(IC.dl)} This result (PDF)</button>${paperSel()}</div>${head}
+      <div class="gb-rep">
+        <section class="card gb-sum"><div class="gb-grade ${cell.pct == null ? '' : band(cell.pct)}"><div class="ring"><b>${letter(cell.pct)}</b></div><div class="pct"><b>${cell.pct == null ? '—' : cell.pct + '%'}</b><small>${as.avg == null ? 'no class average yet' : 'class average ' + as.avg + '%'}</small></div></div><span class="gb-gsep" aria-hidden="true"></span><div><h3>${esc(st.name)}</h3><p class="small muted">${stat}</p></div></section>
+        <section class="card"><h3 class="ch">Each part, compared with the class</h3>${a.cats.length ? `<ul class="blueprint gb-bars">${as.cats.map(o => { const v = g[o.k.id]; const p = v != null && v !== '' ? pc(Math.max(0, +v || 0), +o.k.max || 0) : null; return gbBar(`${esc(o.k.label)}`, p, `${v != null && v !== '' ? `${v} / ${o.k.max}` : 'no score'}${o.avg != null ? ` · class ${o.avg}%` : ''}`); }).join('')}</ul>` : '<p class="empty">This assignment has no sections.</p>'}
+          ${bu.length ? `<h3 class="ch" style="margin-top:14px">By unit</h3><ul class="blueprint gb-bars">${bu.map(([u, p]) => gbBar(esc(unitName(x, u)), p, as.unitAvg[u] != null ? `class ${as.unitAvg[u]}%` : '')).join('')}</ul>` : ''}</section>
+        <section class="card gb-comment"><div class="card-h sm"><h3>Written comment</h3><div class="seg" role="radiogroup" aria-label="Written for">${[['student', 'To the student'], ['parent', 'To a parent']].map(([k, l]) => `<label><input type="radio" name="gbTone" value="${k}" ${GBU.tone === k ? 'checked' : ''}><span>${l}</span></label>`).join('')}</div></div>
+          <textarea id="gbText" rows="5">${esc(text)}</textarea>
+          <div class="row"><button class="btn" id="gbCopy">Copy</button>${st.email ? `<a class="btn" id="gbMail" href="mailto:${encodeURIComponent(st.email)}?subject=${encodeURIComponent((c.name || '') + ': ' + (a.title || 'assignment'))}&body=${encodeURIComponent(text)}" target="_blank" rel="noopener">Email ${esc(gbFirst(st.name))}</a>` : ''}<span class="copied" id="gbCopied" aria-live="polite"></span></div>
+          <p class="small muted" style="margin:6px 0 0">Written from this assignment’s scores. Edit it before you send it.</p></section>
+      </div>`;
+  }
+  const tips = gbAsgTips(c, a, as), done = as.scored.length, total = c.students.length;
+  return `<div class="row gb-repbar">${sel}<span style="flex:1"></span><button class="btn" id="gbPdfAsg">${SVG(IC.dl)} Assignment report (PDF)</button><button class="btn" id="gbPdfSlips">${SVG(IC.dl)} Result slips for students (PDF)</button><button class="btn quiet" id="gbCsvAsg">${SVG(IC.dl)} Spreadsheet (CSV)</button>${paperSel()}</div>${head}
+    <div class="gb-rep">
+      <section class="card gb-asgtable"><h3 class="ch">How the class did</h3><div class="kpis gb-k gb-k4"><div class="card kpi"><small>Class average</small><b>${as.avg == null ? '—' : as.avg + '%'}</b></div><div class="card kpi"><small>Middle score</small><b>${as.med == null ? '—' : as.med + '%'}</b></div><div class="card kpi"><small>Highest · lowest</small><b>${as.hi == null ? '—' : `${as.hi}% · ${as.lo}%`}</b></div><div class="card kpi"><small>Graded</small><b>${done} of ${total}</b></div></div>
+        <div class="gb-dist">${Object.entries(as.dist).map(([l, n]) => `<div><b>${n}</b><span>${l}</span><i style="height:${done ? Math.max(4, n / done * 70) : 4}px"></i></div>`).join('')}</div>
+        <p class="small muted" style="margin:8px 0 0">${[as.missing.length ? `${as.missing.length} missing` : '', as.late.length ? `${as.late.length} late` : '', as.excused.length ? `${as.excused.length} excused` : '', as.notYet.length ? `${as.notYet.length} not graded yet` : ''].filter(Boolean).join(' · ') || 'Everyone has a score.'}</p></section>
+      <section class="card"><h3 class="ch">By part of the assignment</h3>${as.cats.length ? `<ul class="blueprint gb-bars">${as.cats.map(o => gbBar(esc(o.k.label), o.avg, `${o.k.max} pts · ${o.n} scored`)).join('')}</ul>` : '<p class="empty">This assignment has no sections.</p>'}
+        ${Object.keys(as.unitAvg).length ? `<h3 class="ch" style="margin-top:16px">By unit</h3><ul class="blueprint gb-bars">${Object.entries(as.unitAvg).map(([u, p]) => gbBar(esc(unitName(x, u)), p)).join('')}</ul>` : ''}</section>
+      <section class="card"><h3 class="ch">Needs follow-up</h3>${as.low.length || as.missing.length ? `<ul class="gb-sup">${as.low.map(r => `<li><button class="linkbtn" data-gbrep="${r.st.id}">${esc(r.st.name)}</button><small>${r.cell.pct}%</small></li>`).join('')}${as.missing.map(r => `<li><button class="linkbtn" data-gbrep="${r.st.id}">${esc(r.st.name)}</button><small>missing</small></li>`).join('')}</ul>` : '<p class="empty">No one is below 70% or missing this assignment.</p>'}
+        <h3 class="ch" style="margin-top:16px">Suggestions</h3>${tips.length ? `<ul class="gb-tips">${tips.map(t => `<li>${esc(t)}</li>`).join('')}</ul>` : '<p class="empty">Suggestions appear once grades are in.</p>'}</section>
+      <section class="card gb-asgtable"><h3 class="ch">Every student’s score</h3><div class="tablewrap"><table class="hist"><thead><tr><th>Student</th>${a.cats.map(k => `<th class="num">${esc(k.label)} <span class="muted">/${k.max}</span></th>`).join('')}<th class="num">Score</th></tr></thead><tbody>${as.rows.slice().sort((p, q) => (q.cell.pct == null ? -1 : q.cell.pct) - (p.cell.pct == null ? -1 : p.cell.pct)).map(r => { const s = r.cell.g.s || {}; return `<tr><td><button class="linkbtn" data-gbrep="${r.st.id}">${esc(r.st.name)}</button></td>${a.cats.map(k => `<td class="num mono">${s[k.id] != null && s[k.id] !== '' ? esc(String(s[k.id])) : '—'}</td>`).join('')}<td class="num">${gbPctCell(r.cell)}</td></tr>`; }).join('')}</tbody></table></div></section>
+    </div>`;
+}
+/* printable: the class report for one assignment, and one result slip per student */
+function gbAsgPDF(c, a) {
+  const as = gbAsgStats(c, a), x = BY_ID[c.course], tips = gbAsgTips(c, a, as);
+  const bar = (l, p, sub) => `<tr><td>${esc(l)}</td><td><div class="sc-bar"><i class="${p >= 75 ? '' : p >= 60 ? 'mid' : 'lo'}" style="width:${p || 0}%"></i></div></td><td class="num"><b>${p == null ? '—' : p + '%'}</b></td><td class="num cls">${esc(sub || '')}</td></tr>`;
+  const barT = (h, rows) => `<div class="sc-sec"><h2>${h}</h2><table class="sc-bars"><colgroup><col style="width:38%"><col style="width:40%"><col style="width:11%"><col style="width:11%"></colgroup><tbody>${rows}</tbody></table></div>`;
+  return `<div class="sc"><div class="sc-top"><div><div class="sc-brand">Assignment report</div><h1>${esc(a.title || 'Untitled')}</h1><p>${esc(c.name)}${x ? ' · ' + esc(x.subject) : ''}${a.date ? ' · ' + esc(a.date) : ''}</p></div></div>
+    <div class="sc-kpis"><div class="sc-k"><small>Class average</small><b>${as.avg == null ? '—' : as.avg + '%'}</b><span>middle ${as.med == null ? '—' : as.med + '%'}</span></div><div class="sc-k"><small>Highest · lowest</small><b>${as.hi == null ? '—' : as.hi + '% · ' + as.lo + '%'}</b><span>${Object.entries(as.dist).map(([l, n]) => `${l} ${n}`).join(' · ')}</span></div><div class="sc-k"><small>Graded</small><b>${as.scored.length} of ${c.students.length}</b><span>${as.missing.length} missing · ${as.late.length} late</span></div></div>
+    ${as.cats.length ? barT('By part of the assignment', as.cats.map(o => bar(`${o.k.label} (${o.k.max} pts)`, o.avg, '')).join('')) : ''}
+    ${Object.keys(as.unitAvg).length ? barT('By unit', Object.entries(as.unitAvg).map(([u, p]) => bar(unitName(x, u), p, '')).join('')) : ''}
+    ${tips.length ? `<h2>Suggestions</h2><ul>${tips.map(t => `<li>${esc(t)}</li>`).join('')}</ul>` : ''}
+    <h2>Every student’s score</h2><table class="sc-asg"><thead><tr><th>Student</th>${a.cats.map(k => `<th class="num">${esc(k.label)} /${k.max}</th>`).join('')}<th class="num">Score</th></tr></thead><tbody>${as.rows.map(r => { const s = r.cell.g.s || {}; return `<tr><td>${esc(r.st.name)}</td>${a.cats.map(k => `<td class="num">${s[k.id] != null && s[k.id] !== '' ? esc(String(s[k.id])) : '—'}</td>`).join('')}<td class="num">${r.cell.st === 'excused' ? 'Excused' : r.cell.pct == null ? (r.cell.st === 'missing' ? 'Missing' : '—') : r.cell.pct + '%' + (r.cell.st === 'late' ? ' late' : '')}</td></tr>`; }).join('')}</tbody></table></div>`;
+}
+function gbAsgSlipsPDF(c, a, ids) {
+  const as = gbAsgStats(c, a), x = BY_ID[c.course];
+  return ids.map((sid, i) => { const st = c.students.find(s => s.id === sid); if (!st) return ''; const cell = gbCell(c, a, sid), g = cell.g.s || {}, text = gbAsgNarrative(c, a, st, as, 'student');
+    const gcol = cell.pct == null ? '#8a94a6' : cell.pct >= 75 ? '#1d7a46' : cell.pct >= 60 ? '#a86a0c' : '#b42318';
+    return `<div class="sc ${i ? 'pb' : ''}"><div class="sc-top"><div><div class="sc-brand">${esc(a.title || 'Assignment')} · result</div><h1>${esc(st.name)}</h1><p>${esc(c.name)}${x ? ' · ' + esc(x.subject) : ''}${a.date ? ' · ' + esc(a.date) : ''}</p></div><div class="sc-grade"><div class="sc-ring" style="border-color:${gcol};color:${gcol}">${letter(cell.pct)}</div><div class="sc-pct"><b>${cell.pct == null ? (cell.st === 'excused' ? 'Excused' : cell.st === 'missing' ? 'Missing' : '—') : cell.pct + '%'}</b><small>class average ${as.avg == null ? '—' : as.avg + '%'}</small></div></div></div>
+      <h2>Comment</h2><p>${esc(text)}</p>
+      ${a.cats.length ? `<h2>Each part</h2><table class="sc-asg"><thead><tr><th>Part</th><th class="num">Your score</th><th class="num">Class average</th></tr></thead><tbody>${as.cats.map(o => { const v = g[o.k.id]; return `<tr><td>${esc(o.k.label)}</td><td class="num">${v != null && v !== '' ? `${esc(String(v))} / ${o.k.max}` : '—'}</td><td class="num">${o.avg == null ? '—' : o.avg + '%'}</td></tr>`; }).join('')}</tbody></table>` : ''}</div>`; }).join('');
+}
+function gbAsgCsv(c, a) {
+  const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+  const head = ['Student', 'Email'].concat(a.cats.map(k => `${k.label} (/${k.max})`), ['Score %', 'Letter', 'Status']);
+  const rows = c.students.map(st => { const g = ((c.g[a.id] || {})[st.id]) || {}, cell = gbCell(c, a, st.id); return [st.name, st.email].concat(a.cats.map(k => g.s ? g.s[k.id] : ''), [cell.pct, cell.pct == null ? '' : letter(cell.pct), g.st || '']); });
+  return [head].concat(rows).map(r => r.map(q).join(',')).join('\n');
+}
 function gbReportHTML(c) {
-  const cs = gbClassStats(c), x = BY_ID[c.course], st = c.students.find(s => s.id === GBU.sid);
-  const sel = `<label class="gb-repsel">Report for<select id="gbRepSel"><option value="">Whole class</option>${c.students.map(s => `<option value="${s.id}" ${st && st.id === s.id ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select></label>`;
+  const cs = gbClassStats(c), x = BY_ID[c.course], st = c.students.find(s => s.id === GBU.sid), ra = c.asg.find(a => a.id === GBU.raid);
+  const sel = `<label class="gb-repsel">Report for<select id="gbRepSel"><option value="">Whole class</option>${c.students.map(s => `<option value="${s.id}" ${st && st.id === s.id ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select></label>`
+    + `<label class="gb-repsel">Assignment<select id="gbRepAsg"><option value="">All assignments</option>${gbSort(c).slice().reverse().map(a => `<option value="${a.id}" ${ra && ra.id === a.id ? 'selected' : ''}>${esc(gbAsgName(a))}</option>`).join('')}</select></label>`;
+  if (ra) return gbAsgReportHTML(c, ra, st, sel);
   if (!st) {
     const weakU = Object.entries(cs.unitAvg).filter(([, p]) => p != null && p < 70).sort((a, b) => a[1] - b[1]);
     const lowA = cs.asg.filter(o => o.avg != null).sort((a, b) => a.avg - b.avg).slice(0, 3);
@@ -19498,7 +19621,7 @@ function gbReportHTML(c) {
         <section class="card"><h3 class="ch">By unit</h3>${Object.keys(cs.unitAvg).length ? `<ul class="blueprint gb-bars">${Object.entries(cs.unitAvg).sort((a, b) => (x ? srCatsOf(x).findIndex(k => k.k === a[0]) - srCatsOf(x).findIndex(k => k.k === b[0]) : 0)).map(([u, p]) => gbBar(esc(unitName(x, u)), p)).join('')}</ul>` : '<p class="empty">Tag assignments with units to see this.</p>'}
           <h3 class="ch" style="margin-top:16px">By kind of work</h3>${Object.keys(cs.kindAvg).length ? `<ul class="blueprint gb-bars">${Object.entries(cs.kindAvg).map(([k, p]) => gbBar(GB_KINDS[k], p)).join('')}</ul>` : '<p class="empty">No grades yet.</p>'}</section>
         <section class="card"><h3 class="ch">Students who need support</h3>${cs.support.length ? `<ul class="gb-sup">${cs.support.map(r => `<li><button class="linkbtn" data-gbrep="${r.st.id}">${esc(r.st.name)}</button><small>${r.s.overall == null ? '' : r.s.overall + '%'}${r.s.missing.length ? ` · ${r.s.missing.length} missing` : ''}</small></li>`).join('')}</ul>` : '<p class="empty">No one is below 70% or missing two or more assignments.</p>'}
-          <h3 class="ch" style="margin-top:16px">Hardest assignments</h3>${lowA.length ? `<ul class="gb-sup">${lowA.map(o => `<li><span>${esc(o.a.title)}</span><small>${o.avg}% average${o.miss ? ` · ${o.miss} missing` : ''}</small></li>`).join('')}</ul>` : '<p class="empty">No grades yet.</p>'}</section>
+          <h3 class="ch" style="margin-top:16px">Hardest assignments</h3>${lowA.length ? `<ul class="gb-sup">${lowA.map(o => `<li><button class="linkbtn" data-gbrasg="${o.a.id}">${esc(o.a.title)}</button><small>${o.avg}% average${o.miss ? ` · ${o.miss} missing` : ''}</small></li>`).join('')}</ul>` : '<p class="empty">No grades yet.</p>'}</section>
         <section class="card"><h3 class="ch">Suggestions for the class</h3>${tips.length ? `<ul class="gb-tips">${tips.map(t => `<li>${esc(t)}</li>`).join('')}</ul>` : '<p class="empty">Suggestions appear once grades are in.</p>'}</section>
       </div>`;
   }
@@ -19543,7 +19666,7 @@ function gbCsv(c) {
 }
 function gbBind(db, c) {
   const save = () => gbSave(db);
-  $$('[data-gbc]').forEach(b => b.onclick = () => { db.cur = b.dataset.gbc; save(); if (GBU.tab === 'new') GBU.tab = 'grades'; GBU.sid = null; GBU.aid = null; GBU.edit = null; GBU.draft = null; gbRedo(false); });
+  $$('[data-gbc]').forEach(b => b.onclick = () => { db.cur = b.dataset.gbc; save(); if (GBU.tab === 'new') GBU.tab = 'grades'; GBU.sid = null; GBU.aid = null; GBU.raid = null; GBU.edit = null; GBU.draft = null; gbRedo(false); });
   $$('[data-gbnew]').forEach(b => b.onclick = () => { GBU.tab = 'new'; gbRedo(false); });
   $$('[data-gbarch]').forEach(b => b.onclick = () => { GBU.arch = !GBU.arch; gbRedo(); });
   $$('[data-gbunarch]').forEach(b => b.onclick = () => { const k = db.classes.find(o => o.id === b.dataset.gbunarch); k.archived = false; db.cur = k.id; save(); gbRedo(); });
@@ -19603,9 +19726,16 @@ function gbBind(db, c) {
   if ($('#gbDelete')) $('#gbDelete').onclick = () => confirmBox(`Delete ${c.name}?`, 'This deletes the class, its students, and all of its grades from this browser. It can’t be undone unless you have a backup file.', 'Delete class', () => { db.classes = db.classes.filter(o => o !== c); db.cur = null; save(); GBU.tab = 'grades'; gbRedo(false); });
   /* reports */
   if ($('#gbRepSel')) $('#gbRepSel').onchange = () => { GBU.sid = $('#gbRepSel').value || null; gbRedo(false); };
+  if ($('#gbRepAsg')) $('#gbRepAsg').onchange = () => { GBU.raid = $('#gbRepAsg').value || null; gbRedo(false); };
+  $$('[data-gbrasg]').forEach(b => b.onclick = () => { GBU.tab = 'report'; GBU.raid = b.dataset.gbrasg; GBU.sid = null; gbRedo(false); });
+  { const ra = c && c.asg.find(a => a.id === GBU.raid);
+    if (ra && $('#gbPdfAsg')) $('#gbPdfAsg').onclick = () => makePdf(gbAsgPDF(c, ra), fileSafe(c.name + ' ' + (ra.title || 'assignment') + ' report') + '.pdf', $('#gbPdfAsg'));
+    if (ra && $('#gbPdfSlips')) $('#gbPdfSlips').onclick = () => makePdf(gbAsgSlipsPDF(c, ra, c.students.map(s => s.id)), fileSafe(c.name + ' ' + (ra.title || 'assignment') + ' result slips') + '.pdf', $('#gbPdfSlips'));
+    if (ra && $('#gbPdfAsgOne')) $('#gbPdfAsgOne').onclick = () => { const st = c.students.find(s => s.id === GBU.sid); makePdf(gbAsgSlipsPDF(c, ra, [st.id]), fileSafe(c.name + ' ' + (ra.title || 'assignment') + ' ' + st.name) + '.pdf', $('#gbPdfAsgOne')); };
+    if (ra && $('#gbCsvAsg')) $('#gbCsvAsg').onclick = () => saveFile(fileSafe(c.name + ' ' + (ra.title || 'assignment')) + '.csv', gbAsgCsv(c, ra), 'text/csv'); }
   $$('[name="gbTone"]').forEach(r => r.onchange = () => { GBU.tone = r.value; gbRedo(); });
   if ($('#gbCopy')) $('#gbCopy').onclick = () => copyText($('#gbText').value, '#gbCopied', 'Copied');
-  if ($('#gbText') && $('#gbMail')) $('#gbText').oninput = () => { const st = c.students.find(s => s.id === GBU.sid); $('#gbMail').href = `mailto:${encodeURIComponent(st.email)}?subject=${encodeURIComponent(c.name + ' progress report')}&body=${encodeURIComponent($('#gbText').value)}`; };
+  if ($('#gbText') && $('#gbMail')) $('#gbText').oninput = () => { const st = c.students.find(s => s.id === GBU.sid), ra = c.asg.find(a => a.id === GBU.raid); $('#gbMail').href = `mailto:${encodeURIComponent(st.email)}?subject=${encodeURIComponent(c.name + (ra ? ': ' + (ra.title || 'assignment') : ' progress report'))}&body=${encodeURIComponent($('#gbText').value)}`; };
   if ($('#gbPdfOne')) $('#gbPdfOne').onclick = () => { const st = c.students.find(s => s.id === GBU.sid); makePdf(gbReportPDF(c, [st.id]), fileSafe(c.name + ' ' + st.name + ' report') + '.pdf', $('#gbPdfOne')); };
   if ($('#gbPdfAll')) $('#gbPdfAll').onclick = () => makePdf(gbReportPDF(c, c.students.map(s => s.id)), fileSafe(c.name + ' student reports') + '.pdf', $('#gbPdfAll'));
 }
