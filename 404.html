@@ -1433,6 +1433,11 @@ body.locked #exam textarea, body.locked #exam input { -webkit-user-select: text;
 .gb-comment .card-h { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; align-items: center; margin-bottom: 10px; }
 .gb-comment .card-h h3 { margin: 0; }
 .gb-imp .row { align-items: center; }
+.gb-imap select { min-width: 220px; } .gb-imap tr.skip td { color: var(--muted); }
+.gb-mtag { display: inline-block; margin-left: 8px; font-size: 11.5px; font-weight: 600; padding: 1px 8px; border-radius: 9px; background: color-mix(in srgb, var(--good) 14%, var(--surface)); color: var(--good); }
+.gb-mtag.sim { background: color-mix(in srgb, #d99a00 18%, var(--surface)); color: #8a5a00; } .gb-mtag.new { background: var(--sunk); color: var(--muted); }
+.gb-aka { margin-top: 3px; display: flex; flex-wrap: wrap; gap: 4px 10px; } .gb-aka button { margin-left: 3px; color: var(--muted); }
+.gb-merge { margin-top: 14px; } .gb-merge .row { align-items: flex-end; } .gb-merge select { display: block; margin-top: 3px; min-width: 180px; }
 @media (max-width: 900px) { .gb-rep { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 560px) { .gb-cat { grid-template-columns: minmax(0, 1fr) 70px; } .gb-cat select { grid-column: 1; } .gb-k { grid-template-columns: minmax(0, 1fr); } .gb-sum { flex-direction: column; align-items: flex-start; }
   .gb-gsep { display: none; } }
@@ -18067,15 +18072,25 @@ function renderUtCheck() {
       <div class="row" style="margin-top:10px"><button class="btn primary" id="utcGo">Check results</button>${MODE === 'owner' && DB ? `<button class="btn" id="utcLoad">Load results submitted on this site</button>` : ''}<button class="btn quiet" id="utcClr">Clear</button>${good.length ? `<span style="flex:1"></span>${paperSel()}${pdfBtn('utcPdfAll', good.length > 1 ? `All ${good.length} score cards (PDF)` : 'Score card (PDF)')}${good.some(r => r.kind === 'UT' && r.ut) ? pdfBtn('utcFxAll', good.filter(r => r.kind === 'UT' && r.ut).length > 1 ? 'All corrections sheets (PDF)' : 'Corrections sheet (PDF)') + pdfBtn('utcRvAll', good.filter(r => r.kind === 'UT' && r.ut).length > 1 ? 'All answer reviews (PDF)' : 'Answer review (PDF)') : ''}` : ''}</div><div class="small muted" id="utcMsg" role="status" style="margin-top:6px"></div></section>
     ${out && !out.length ? '<div class="card empty" style="margin-top:18px">No result blocks found. Paste the whole email, including the line that starts with APUT or APEX.</div>' : ''}
     ${summary}${utcClassTool(good)}
-    ${good.length ? (() => { const cls = gbLoad().classes.filter(k => !k.archived); return `<section class="card gb-imp" style="margin-top:18px"><div class="card-h sm"><h3>${SVG(IC.grade)} Add to a gradebook</h3></div>${cls.length ? `<div class="row"><label class="small">Class <select id="gbImpC">${cls.map(k => `<option value="${k.id}" ${k.id === gbLoad().cur ? 'selected' : ''}>${esc(k.name)}</option>`).join('')}</select></label><label class="chk small"><input type="checkbox" id="gbImpNew" checked> Add students who aren’t in the class yet</label><button class="btn primary" id="gbImpGo">Add ${good.length} result${good.length > 1 ? 's' : ''}</button></div><p class="small muted" style="margin:8px 0 0">Each test becomes an assignment with multiple-choice and written-response scores and per-unit results, so the class reports update. Confirm free-response scores first if you want them final.</p>` : `<p class="small" style="margin:0">Make a class in <a href="#grades">Gradebook &amp; Classes</a> to keep these results with your students’ other grades.</p>`}<p class="small" id="gbImpMsg" role="status"></p></section>`; })() : ''}
+    ${good.length ? (() => { const db = gbLoad(), cls = db.classes.filter(k => !k.archived), cur = cls.find(k => k.id === UTC.impC) || cls.find(k => k.id === db.cur) || cls[0]; return `<section class="card gb-imp" style="margin-top:18px"><div class="card-h sm"><h3>${SVG(IC.grade)} Add to a gradebook</h3></div>${cls.length ? `<div class="row"><label class="small">Class <select id="gbImpC">${cls.map(k => `<option value="${k.id}" ${k.id === cur.id ? 'selected' : ''}>${esc(k.name)}</option>`).join('')}</select></label></div>
+      <p class="small" style="margin:10px 0 6px"><b>Check who each result belongs to.</b> If a student typed their name differently, choose them from the list so the result goes to the right person instead of a new student.</p>
+      <div class="tablewrap"><table class="hist gb-imap"><thead><tr><th>Result from</th><th>Test</th><th>Add to</th></tr></thead><tbody>${gbImpRows(good, cur)}</tbody></table></div>
+      <div class="row" style="margin-top:10px"><button class="btn primary" id="gbImpGo">Add to ${esc(cur.name)}</button>${UTC.undo && UTC.undo.cid === cur.id ? `<button class="btn" id="gbImpUndo">Undo the last add</button>` : ''}</div><p class="small muted" style="margin:8px 0 0">Each test becomes an assignment with multiple-choice and written-response scores and per-unit results, so the class reports update. Confirm free-response scores first if you want them final. Adding the same result again replaces it, so it’s never counted twice.</p>` : `<p class="small" style="margin:0">Make a class in <a href="#grades">Gradebook &amp; Classes</a> to keep these results with your students’ other grades.</p>`}<p class="small" id="gbImpMsg" role="status">${UTC.impMsg || ''}</p></section>`; })() : ''}
     <div style="margin-top:18px;display:grid;gap:14px">${(out || []).map(card).join('')}</div>
     <p class="small muted" style="margin-top:14px">Unit tests are scored here from the answers in the email, never from a score the student’s device reports. For exam simulations, the check code catches results that were changed by hand; it isn't unbreakable, so treat a valid code as strong evidence, not proof. Your free-response scores are saved in this browser.</p>
     ${foot()}</div>`;
   const redo = () => { const y = window.scrollY, back = keepBoxes(); renderUtCheck(); bindNav(); window.scrollTo(0, y); back(); };
   $('#utcGo').onclick = async () => { UTC.text = $('#utcIn').value; UTC.out = await utCheck(UTC.text); redo(); };
   bindKeysNote(async () => { if (UTC.text) UTC.out = await utCheck(UTC.text); redo(); });
-  $('#utcClr').onclick = () => { UTC = { text: '', out: null }; redo(); };
-  if ($('#gbImpGo')) $('#gbImpGo').onclick = () => { const r = gbImport(good, $('#gbImpC').value, $('#gbImpNew').checked); if (!r) return; $('#gbImpMsg').innerHTML = `Added ${r.added} result${r.added === 1 ? '' : 's'} to <b>${esc(r.name)}</b>${r.newStu ? ` (${r.newStu} new student${r.newStu === 1 ? '' : 's'})` : ''}${r.skipped ? `. Skipped ${r.skipped} (no matching student, or the test couldn’t be rebuilt)` : ''}. <a href="#grades">Open the gradebook</a>`; };
+  $('#utcClr').onclick = () => { UTC = { text: '', out: null, sc: {} }; redo(); };
+  if ($('#gbImpC')) $('#gbImpC').onchange = () => { UTC.impC = $('#gbImpC').value; UTC.impMsg = ''; redo(); };
+  $$('[data-gbmap]').forEach(sel => sel.onchange = () => { UTC.map = UTC.map || {}; UTC.map[sel.dataset.gbmap] = sel.value; redo(); });
+  if ($('#gbImpUndo')) $('#gbImpUndo').onclick = () => { const u = UTC.undo, db = gbLoad(), i = db.classes.findIndex(k => k.id === u.cid); if (i >= 0) { db.classes[i] = JSON.parse(u.cls); gbSave(db); } UTC.undo = null; UTC.impMsg = 'Undone. The gradebook is back to how it was before that add.'; redo(); };
+  if ($('#gbImpGo')) $('#gbImpGo').onclick = () => { const cid = $('#gbImpC').value, before = JSON.stringify(gbLoad().classes.find(k => k.id === cid));
+    const pick = r => { const v = $(`[data-gbmap="${cid}|${r.sig}"]`); return v ? v.value : 'skip'; };
+    const r = gbImport(good, cid, true, pick); if (!r) return; UTC.undo = { cid, cls: before };
+    UTC.impMsg = `Added ${r.added} result${r.added === 1 ? '' : 's'} to <b>${esc(r.name)}</b>${r.newStu ? ` (${r.newStu} new student${r.newStu === 1 ? '' : 's'})` : ''}${r.skipped ? `. Skipped ${r.skipped}` : ''}. <a href="#grades">Open the gradebook</a>`; redo(); };
+  if (0) $('#gbImpGo').onclick = () => { const r = gbImport(good, $('#gbImpC').value, $('#gbImpNew').checked); if (!r) return; $('#gbImpMsg').innerHTML = `Added ${r.added} result${r.added === 1 ? '' : 's'} to <b>${esc(r.name)}</b>${r.newStu ? ` (${r.newStu} new student${r.newStu === 1 ? '' : 's'})` : ''}${r.skipped ? `. Skipped ${r.skipped} (no matching student, or the test couldn’t be rebuilt)` : ''}. <a href="#grades">Open the gradebook</a>`; };
   if ($('#utcLoad')) $('#utcLoad').onclick = async () => { $('#utcLoad').disabled = true; $('#utcMsg').textContent = 'Loading…';
     try { const docs = (await DB.collection('results').get()).docs; const lines = docs.flatMap(d => ((thaw(d.data()) || {}).items || []).map(it => it.data)).filter(Boolean);
       if (!lines.length) { $('#utcMsg').textContent = 'No results have been submitted on this site yet.'; $('#utcLoad').disabled = false; return; }
@@ -19569,9 +19584,11 @@ function gbEnterHTML(c) {
       <p class="small muted" style="margin:10px 0 0">Grades save as you type. Use Tab to move across, and Enter to move down. Leave a box empty if it isn’t graded yet.</p>` : '<p class="empty">Add students first.</p>'}</section>`;
 }
 function gbStudentsHTML(c) {
-  return `<div class="ut-grid"><section class="card"><h3 class="ch">Students</h3>${c.students.length ? `<div class="tablewrap"><table class="hist gb-stu"><thead><tr><th>No.</th><th>Name</th><th>Email</th><th></th></tr></thead><tbody>${c.students.map(st => `<tr><td><input data-gbrno="${st.id}" value="${esc(st.no || '')}" class="gb-no" inputmode="numeric" pattern="[0-9]*" maxlength="3" autocomplete="off" aria-label="Student number"></td><td><input data-gbrn="${st.id}" value="${esc(st.name)}" maxlength="60" aria-label="Name"></td><td><input data-gbre="${st.id}" value="${esc(st.email || '')}" maxlength="80" type="email" placeholder="optional" aria-label="Email"></td><td><button class="linkbtn sm" data-gbrm="${st.id}" style="color:var(--bad)">Remove</button></td></tr>`).join('')}</tbody></table></div>` : '<p class="empty">No students yet.</p>'}</section>
+  return `<div class="ut-grid"><section class="card"><h3 class="ch">Students</h3>${c.students.length ? `<div class="tablewrap"><table class="hist gb-stu"><thead><tr><th>No.</th><th>Name</th><th>Email</th><th></th></tr></thead><tbody>${c.students.map(st => `<tr><td><input data-gbrno="${st.id}" value="${esc(st.no || '')}" class="gb-no" inputmode="numeric" pattern="[0-9]*" maxlength="3" autocomplete="off" aria-label="Student number"></td><td><input data-gbrn="${st.id}" value="${esc(st.name)}" maxlength="60" aria-label="Name">${(st.aka || []).length ? `<div class="gb-aka small muted">Also matches: ${st.aka.map((n, j) => `<span>${esc(n)}<button class="linkbtn" data-gbaka="${st.id}|${j}" aria-label="Forget ${esc(n)}">✕</button></span>`).join('')}</div>` : ''}</td><td><input data-gbre="${st.id}" value="${esc(st.email || '')}" maxlength="80" type="email" placeholder="optional" aria-label="Email"></td><td><button class="linkbtn sm" data-gbrm="${st.id}" style="color:var(--bad)">Remove</button></td></tr>`).join('')}</tbody></table></div>` : '<p class="empty">No students yet.</p>'}</section>
     <section class="card ut-form"><h3 class="ch">Add students</h3><label>One per line: the number you gave them, then their name (email optional)<textarea id="gbAddStu" rows="8" style="font-size:16px" placeholder="1 Jenny Park&#10;2 Sam Lee"></textarea></label><button class="btn primary" id="gbAddStuGo">Add students</button>
-      <p class="small muted" style="margin:0">Students send test results under their number, never their name. Results you add from Check Results match students by number. This list stays in this browser and is never sent to Scholar Lab.</p></section></div>`;
+      <p class="small muted" style="margin:0">Students send test results under their number, never their name. Results you add from Check Results match students by number. This list stays in this browser and is never sent to Scholar Lab.</p></section>
+    ${c.students.length > 1 ? `<section class="card gb-merge"><h3 class="ch">Merge two students</h3><p class="small muted" style="margin:0 0 8px">For a student who was added twice (for example, they typed their name differently on a test). Their grades move to the student you keep, and the extra one is removed.</p>
+      <div class="row"><label class="small">Move grades from<select id="gbMgFrom">${c.students.map(s => `<option value="${s.id}">${esc((s.no ? s.no + ' · ' : '') + s.name)}</option>`).join('')}</select></label><label class="small">Into (keep)<select id="gbMgTo">${c.students.map((s, i) => `<option value="${s.id}" ${i === 1 ? 'selected' : ''}>${esc((s.no ? s.no + ' · ' : '') + s.name)}</option>`).join('')}</select></label><button class="btn" id="gbMgGo">Merge</button></div><p class="small" id="gbMgMsg" role="status"></p></section>` : ''}</div>`;
 }
 function gbAsgHTML(c) {
   const x = BY_ID[c.course], e = GBU.edit ? c.asg.find(a => a.id === GBU.edit) : null, a = e || GBU.draft || (GBU.draft = gbBlankAsg('test'));
@@ -19813,6 +19830,14 @@ function gbBind(db, c) {
   $$('[data-gbrno]').forEach(i => i.onchange = () => { const s = c.students.find(o => o.id === i.dataset.gbrno), n = stuNo(i.value); if (n) s.no = n; else delete s.no; i.value = s.no || ''; save(); });
   $$('[data-gbrn]').forEach(i => i.onchange = () => { const s = c.students.find(o => o.id === i.dataset.gbrn); s.name = i.value.trim() || s.name; save(); });
   $$('[data-gbre]').forEach(i => i.onchange = () => { const s = c.students.find(o => o.id === i.dataset.gbre); s.email = normEmail(i.value); save(); });
+  $$('[data-gbaka]').forEach(b => b.onclick = () => { const [sid, j] = b.dataset.gbaka.split('|'), st = c.students.find(s => s.id === sid); st.aka.splice(+j, 1); if (!st.aka.length) delete st.aka; save(); gbRedo(true); });
+  if ($('#gbMgGo')) $('#gbMgGo').onclick = () => { const f = c.students.find(s => s.id === $('#gbMgFrom').value), t = c.students.find(s => s.id === $('#gbMgTo').value);
+    if (!f || !t || f === t) { $('#gbMgMsg').textContent = 'Choose two different students.'; return; }
+    const both = Object.values(c.g).filter(m => m[f.id] && m[t.id] && m[t.id].s && Object.keys(m[t.id].s).length).length;
+    confirmBox(`Merge ${f.name} into ${t.name}?`, `${f.name}’s grades move to ${t.name}, and ${f.name} is removed from the class.${both ? ` For ${both} assignment${both === 1 ? '' : 's'} where both have a grade, ${t.name}’s grade is kept.` : ''}`, 'Merge', () => {
+      Object.values(c.g).forEach(m => { if (m[f.id]) { if (!(m[t.id] && m[t.id].s && Object.keys(m[t.id].s).length)) m[t.id] = m[f.id]; delete m[f.id]; } });
+      if (!t.email && f.email) t.email = f.email; else if (f.email && f.email !== t.email) t.aka = (t.aka || []).concat(f.email); if (!t.no && f.no) t.no = f.no;
+      t.aka = [...new Set((t.aka || []).concat(f.aka || [], f.name.toLowerCase() !== t.name.toLowerCase() ? [f.name.toLowerCase()] : []))]; if (!t.aka.length) delete t.aka; c.students = c.students.filter(s => s !== f); save(); gbRedo(true); }); };
   $$('[data-gbrm]').forEach(b => b.onclick = () => { const s = c.students.find(o => o.id === b.dataset.gbrm); confirmBox(`Remove ${s.name}?`, 'Their grades in this class are deleted too.', 'Remove', () => { c.students = c.students.filter(o => o !== s); Object.values(c.g).forEach(m => delete m[s.id]); save(); gbRedo(); }); });
   /* assignments */
   const form = () => GBU.edit ? c.asg.find(o => o.id === GBU.edit) : GBU.draft;
@@ -19854,14 +19879,48 @@ function gbBind(db, c) {
 }
 /* add checked results (unit tests and exam simulations) to a class: match students by email then name, one assignment per test */
 const utKey = ut => 'ut:' + hashStr(ut.t + '|' + ut.q.join(',') + '|' + (ut.f || []).join(','));
-function gbImport(results, classId, addNew) {
+/* which student in the class a result belongs to: an exact match (number, email or name), a similar name (a typo,
+   different spacing or order, a nickname that starts the same), or none */
+const gbNameKey = s => String(s || '').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9ㄱ-힝\s]/g, ' ').trim().split(/\s+/).filter(Boolean);
+function gbMatch(c, d) {
+  const nm = (d.nm || '').trim(), em = normEmail(d.em || ''), sn = stuNoOf(nm);
+  const low = nm.toLowerCase().replace(/\s+/g, ' ');
+  const exact = (sn && c.students.find(s => s.no === sn)) || (em && c.students.find(s => s.email === em || (s.aka || []).includes(em))) || (!sn && c.students.find(s => s.name.toLowerCase() === low || (s.aka || []).includes(low)));
+  if (exact) return { st: exact, how: 'exact' };
+  if (sn || !nm) return { st: null };
+  const a = gbNameKey(nm), aj = a.join(''), as = a.slice().sort().join(''), eu = em.split('@')[0].replace(/[^a-z]/g, '');
+  let best = null, bs = 0;
+  c.students.forEach(s => { const b = gbNameKey(s.name), bj = b.join(''), bsrt = b.slice().sort().join(''); let sc = 0;
+    if (aj === bj || as === bsrt) sc = 10;                                  /* spacing, punctuation or name order */
+    else if (aj.length >= 4 && dwLev(aj, bj) <= (aj.length >= 9 ? 2 : 1)) sc = 8; /* a small typo */
+    else if (aj.length >= 3 && (bj.includes(aj) || aj.includes(bj))) sc = 6; /* part of the name */
+    else if (a.length && b.length && a.some(t => t.length >= 3 && b.includes(t)) && a.length + b.length > 2) sc = 4; /* one name the same */
+    if (eu && s.email && s.email.split('@')[0].replace(/[^a-z]/g, '') === eu) sc = Math.max(sc, 9);
+    if (sc > bs) { bs = sc; best = s; } });
+  return best ? { st: best, how: 'similar' } : { st: null };
+}
+/* Check Results → gradebook: pick the student for each result before adding */
+function gbImpRows(good, c) {
+  UTC.map = UTC.map || {};
+  return good.map(r => { const d = r.d || {}, m = gbMatch(c, d), v = UTC.map[c.id + '|' + r.sig] || (m.st ? m.st.id : 'new');
+    const can = !(r.kind === 'UT' && !r.ut);
+    return `<tr class="${v === 'skip' ? 'skip' : ''}"><td>${gbWho(d.nm)}${d.em ? `<br><small class="muted">${esc(d.em)}</small>` : ''}</td><td class="small muted">${esc(r.kind === 'UT' ? (r.ut ? r.ut.n : '—') : (d.as || 'Exam simulation'))}</td>
+      <td>${can ? `<select data-gbmap="${c.id}|${r.sig}" aria-label="Which student">${c.students.slice().sort((p, q) => p.name.localeCompare(q.name)).map(s => `<option value="${s.id}" ${v === s.id ? 'selected' : ''}>${esc((s.no ? s.no + ' · ' : '') + s.name)}</option>`).join('')}<option value="new" ${v === 'new' ? 'selected' : ''}>+ Add as a new student</option><option value="skip" ${v === 'skip' ? 'selected' : ''}>Don’t add</option></select>` : '<span class="small muted">can’t be added (test not rebuilt)</span>'}
+        ${can && !UTC.map[c.id + '|' + r.sig] ? m.how === 'similar' && v === m.st.id ? '<span class="gb-mtag sim">similar name, check</span>' : m.how === 'exact' ? '<span class="gb-mtag">match</span>' : v === 'new' ? '<span class="gb-mtag new">not in this class</span>' : '' : ''}</td></tr>`; }).join('');
+}
+function gbImport(results, classId, addNew, pick) {
   const db = gbLoad(), c = db.classes.find(k => k.id === classId); if (!c) return null;
   c.g = c.g || {}; let added = 0, newStu = 0, skipped = 0;
   for (const r of results) {
     const d = r.d || {}, nm = (d.nm || '').trim(), em = normEmail(d.em || '');
     if (r.kind === 'UT' && !r.ut) { skipped++; continue; }
     const sn = stuNoOf(nm); /* results from students say "Student 14": match the number the teacher gave them */
-    let st = (sn && c.students.find(s => s.no === sn)) || (em && c.students.find(s => s.email === em)) || (!sn && c.students.find(s => s.name.toLowerCase() === nm.toLowerCase())) || null;
+    const pv = pick ? pick(r) : null; if (pv === 'skip') { skipped++; continue; }
+    let st = pv && pv !== 'new' ? c.students.find(s => s.id === pv) || null : pv === 'new' ? null : (sn && c.students.find(s => s.no === sn)) || (em && c.students.find(s => s.email === em)) || (!sn && c.students.find(s => s.name.toLowerCase() === nm.toLowerCase())) || null;
+    if (pv && pv !== 'new' && st) { /* remember another name or email for this student, so the next result matches by itself */
+      if (sn && !st.no && !c.students.some(o => o.no === sn)) st.no = sn;
+      if (em && !st.email) st.email = em; else if (em && st.email !== em && !(st.aka || []).includes(em)) st.aka = (st.aka || []).concat(em);
+      const low = nm.toLowerCase().replace(/\s+/g, ' '); if (nm && !sn && low !== st.name.toLowerCase() && !(st.aka || []).includes(low)) st.aka = (st.aka || []).concat(low); }
     if (!st) { if (!addNew || !nm) { skipped++; continue; } st = { id: gbId(), name: nm, email: em, ...(sn ? { no: sn } : {}) }; c.students.push(st); newStu++; }
     let key, mk, gs, byUnit;
     if (r.kind === 'UT') { const tt = utcTotals(r); key = utKey(r.only && r.ref ? r.ref.ut : r.ut);
