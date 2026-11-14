@@ -1382,7 +1382,7 @@ body.locked #exam textarea, body.locked #exam input { -webkit-user-select: text;
 .gb-file { cursor: pointer; }
 .gb-repbar { align-items: flex-end; margin-bottom: 14px; }
 .gb-repsel { display: grid; gap: 4px; font-size: 13px; font-weight: 600; min-width: 240px; }
-.gb-ahead { margin-bottom: 14px; } .gb-ahead h3 { margin: 2px 0 4px; font-size: 20px; } .gb-ahead p { margin: 0; }
+.gb-ahead { margin-bottom: 14px; } .gb-sheets { margin: -4px 0 14px; align-items: center; } .gb-ahead h3 { margin: 2px 0 4px; font-size: 20px; } .gb-ahead p { margin: 0; }
 .gb-asgtable { grid-column: 1 / -1; }
 .gb-k.gb-k4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } @media (max-width: 700px) { .gb-k.gb-k4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .gb-rep { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
@@ -1784,6 +1784,14 @@ body.acc-big #exam .qtext, body.acc-big #exam .opt, body.acc-big #exam .stem { f
 .ut-page .ut-form .chk { align-items: flex-start; font-size: 14.5px; line-height: 1.45; }
 .ut-page .ut-form .chk input { margin-top: 3px; flex: none; }
 .ut-page .ut-form p.small { max-width: none; line-height: 1.55; }
+.utc-odd { margin: 6px 0 10px; padding: 10px 14px; border-radius: 10px; background: color-mix(in srgb, #d99a00 12%, var(--surface)); border: 1px solid color-mix(in srgb, #d99a00 40%, var(--line)); font-size: 13.5px; }
+.utc-odd p { display: flex; gap: 8px; margin: 0; align-items: flex-start; } .utc-odd p svg { flex: none; width: 16px; height: 16px; margin-top: 2px; }
+.utc-odd .row { margin-top: 8px; align-items: center; }
+.utc-adj { margin-top: 10px; border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; } .utc-adj .row { margin-top: 8px; align-items: flex-end; } .utc-adj input { display: block; margin-top: 3px; }
+.utc-qb { display: flex; gap: 4px; flex-wrap: nowrap; white-space: nowrap; } .utc-qb .btn.sm { padding: 3px 9px; min-height: 0; } .utc-qb .btn.on { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.utc-qt tr.skip td { color: var(--muted); } .utc-qt tr.skip td:nth-child(3), .utc-qt tr.skip td:nth-child(4) { text-decoration: line-through; }
+.utc-clsg + .utc-clsg { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); } .utc-clsg h4 { margin: 0 0 6px; } .utc-clsg select { display: block; width: 100%; margin-top: 3px; }
+.utc-chg { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; font-size: 13px; } .utc-chg li { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; } .utc-chg li span { flex: 1; min-width: 200px; } .utc-chg b { font-size: 12.5px; }
 .utc-dw { margin-top: 14px; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
 .utc-dw h4 { margin: 0 0 8px; font-size: 14.5px; }
 .utc-dw ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
@@ -17823,6 +17831,45 @@ function examScorecardPdf(rec, x, btn) { const nm = rec.studentName || (stuNoGet
 
 /* ── teacher: check pasted results (unit tests and exam simulations), score free response, score cards ── */
 let UTC = { text: '', out: null, sc: {} };
+/* ── grade changes in Check Results ──
+   Saved per result (utcKey): 'w'+i = this question marked right (1) or wrong (0) by the teacher, 'x'+i = not counted,
+   only = score only the questions the rest of the class had, fin/fnote = a final grade the teacher set.
+   Saved per test (utcClsKey): { questionId: 1 (everyone gets credit) | 'x' (not counted for anyone) }. */
+const utcGroupKey = ut => ut.t + '|' + ut.s;
+const utcClsKey = g => 'ap.utcq.' + hashStr(g);
+const utcShape = r => { const q = r.rows.map(o => o.q), d = q.filter(x => x.def), w = d.filter(x => x.type === 'txt'); return { mc: q.filter(x => !x.def && x.type !== 'cr').length, fr: q.filter(x => x.type === 'cr').length, d: d.length, dw: w.length }; };
+const utcShapeTxt = s => [s.mc ? `${s.mc} multiple choice` : '', s.d ? `${s.d} ${s.dw === s.d ? 'written ' : s.dw ? '' : 'multiple-choice '}definition${s.d === 1 ? '' : 's'}` : '', s.fr ? `${s.fr} free response` : ''].filter(Boolean).join(', ');
+function utcApplyAll(out) {
+  const uts = (out || []).filter(r => r.kind === 'UT' && r.ut && r.rows), groups = {};
+  uts.forEach(r => { const g = utcGroupKey(r.ut); (groups[g] = groups[g] || []).push(r); });
+  Object.entries(groups).forEach(([g, rs]) => {
+    const idsOf = r => r.rows.map(o => o.q.id), sigOf = r => idsOf(r).slice().sort().join(',');
+    const sets = {}; rs.forEach(r => (sets[sigOf(r)] = sets[sigOf(r)] || []).push(r));
+    const lists = Object.values(sets), inside = (a, b) => { const B = new Set(idsOf(b[0])); return idsOf(a[0]).every(id => B.has(id)); };
+    /* the class's version: the one most students took; on a tie, the smaller one that the others contain */
+    let best = lists[0]; lists.forEach(l => { if (l.length > best.length || (l.length === best.length && l !== best && idsOf(l[0]).length < idsOf(best[0]).length && inside(l, best))) best = l; });
+    const unclear = lists.some(l => l !== best && l.length === best.length && !inside(best, l));
+    rs.forEach(r => { r.grp = g; r.ref = best[0]; r.odd = null;
+      if (lists.length < 2 || (!unclear && best.includes(r))) return;
+      const mine = new Set(idsOf(r)), ref = new Set(idsOf(best[0])), extra = idsOf(r).filter(id => !ref.has(id)), missing = idsOf(best[0]).filter(id => !mine.has(id));
+      const a = utcShape(r), b = utcShape(best[0]), same = utcShapeTxt(a) === utcShapeTxt(b);
+      r.odd = unclear ? { unclear: true, n: lists.length }
+        : { extra, missing, nRef: best.length, can: !missing.length && extra.length > 0, mine: same ? 'the same number of questions, but different ones' : utcShapeTxt(a), ref: utcShapeTxt(b) }; }); });
+  uts.forEach(utcApply);
+}
+function utcApply(r) {
+  const saved = LS.get(utcKey(r.sig), {}), cls = r.grp ? LS.get(utcClsKey(r.grp), {}) : {};
+  const keep = r.odd && r.odd.can && saved.only ? new Set(r.ref.rows.map(o => o.q.id)) : null; r.only = !!keep;
+  r.rows.forEach((o, i) => { if (o.cr) return; const cv = cls[o.q.id], sv = saved['w' + i];
+    o.cls = cv == null ? null : cv; o.base = cv === 1 ? true : o.auto;
+    o.skip = !!saved['x' + i] || cv === 'x' || (keep ? !keep.has(o.q.id) : false);
+    o.ok = sv != null ? !!sv : o.base; o.ov = sv != null; });
+  const live = r.rows.filter(o => !o.cr && !o.skip);
+  r.c = live.filter(o => o.ok).reduce((t, o) => t + qPts(o.q), 0); r.n = live.reduce((t, o) => t + qPts(o.q), 0);
+  r.byCat = {}; live.forEach(o => { const k = o.q.cat, w = qPts(o.q); r.byCat[k] = r.byCat[k] || [0, 0]; r.byCat[k][1] += w; if (o.ok) r.byCat[k][0] += w; });
+  r.nSkip = r.rows.filter(o => !o.cr && o.skip).length;
+}
+const utcPlain = h => String(h || '').replace(/<[^>]+>/g, ' ').replace(/&[a-z#0-9]+;/gi, ' ').replace(/\s+/g, ' ').trim();
 async function utCheck(text) {
   const out = [], re = /AP(UT|EX)\.([A-Za-z0-9_-]+)\.([0-9a-f]{12})/g; let mm; const seen = new Set();
   while ((mm = re.exec(text))) {
@@ -17841,11 +17888,12 @@ async function utCheck(text) {
       r.ut = ut;
       if (ut) { const items = items0, ans = String(d.a).split('.'); let c = 0, n = 0, fi = 0;
         r.rows = items.map((q, i) => { const a = ans[i] || '-'; if (q.type === 'cr') { const txt = (d.fr || [])[fi++] ; return { q, a, cr: true, text: txt == null ? null : txt }; } n += qPts(q); if (q.type === 'txt') { const text = ansTxt(a), auto = dwRight(q, [text]), ov = (LS.get(utcKey(r.sig), {}) || {})['w' + i], ok = ov == null ? auto : !!ov; if (ok) c += qPts(q); return { q, a: text || '–', want: q.ans, ok, w: true, auto, ov: ov != null, i }; }
-          const want = q.correct.map(j => LETTERS[j]).join(''); const ok = a === want; if (ok) c++; return { q, a, want, ok }; });
+          const want = q.correct.map(j => LETTERS[j]).join(''); const ok = a === want; if (ok) c++; return { q, a, want, ok, auto: ok, i }; });
         r.c = c; r.n = n; r.byCat = {}; r.rows.forEach(o => { if (o.cr) return; const k = o.q.cat, w = qPts(o.q); r.byCat[k] = r.byCat[k] || [0, 0]; r.byCat[k][1] += w; if (o.ok) r.byCat[k][0] += w; }); }
     }
     out.push(r);
   }
+  utcApplyAll(out);
   return out;
 }
 /* teacher's free-response points for one result: saved in this browser, keyed by the result's check code */
@@ -17859,7 +17907,7 @@ function utcFrq(r) {
 }
 /* the score boxes on a Check Results card: each part on its own (they add up), then one total */
 function utcScoreBoxes(r, tt) {
-  const sum = f => r.rows.filter(o => !o.cr && f(o)).reduce((t, o) => t + qPts(o.q), 0);
+  const sum = f => r.rows.filter(o => !o.cr && !o.skip && f(o)).reduce((t, o) => t + qPts(o.q), 0);
   const mcT = sum(o => !o.q.def), mcG = sum(o => !o.q.def && o.ok), dT = sum(o => o.q.def), dG = sum(o => o.q.def && o.ok), dW = r.rows.some(o => o.q.def && o.w);
   const pct = (g, t) => t ? Math.round(g / t * 100) + '%' : '';
   const box = (label, val, note, cls) => `<div${cls ? ` class="${cls}"` : ''}><small>${label}</small><b>${val}</b>${note ? `<i>${note}</i>` : ''}</div>`;
@@ -17867,7 +17915,8 @@ function utcScoreBoxes(r, tt) {
   if (mcT) parts.push(box('Multiple choice', `${mcG} / ${mcT}`, `${pct(mcG, mcT)} right`));
   if (dT) parts.push(box('Definitions', `${dG} / ${dT}`, dW ? `points · written ones count 2` : `${pct(dG, dT)} right`));
   if (tt.fq.length) parts.push(box('Free response', `${tt.fp} / ${tt.fm}`, tt.confirmed ? 'points' : 'points · not confirmed yet (below)', tt.confirmed ? '' : 'pend'));
-  const total = !tt.fq.length ? box('Total', pct(r.c, r.n) || '0%', `${r.c} of ${r.n} points`, 'tot')
+  const total = tt.fin != null ? box('Total', tt.fin + '%', `set by you${tt.fnote ? ': ' + esc(tt.fnote) : ''} (calculated: ${tt.auto}%)`, 'tot')
+    : !tt.fq.length ? box('Total', pct(r.c, r.n) || '0%', `${r.c} of ${r.n} points`, 'tot')
     : tt.byPts || !r.n ? box('Total', tt.comb + '%', `${r.c + tt.fp} of ${r.n + tt.fm} points`, 'tot')
     : box('Total', tt.comb + '%', `AP style: half from the questions (${pct(r.c, r.n)}), half from free response (${pct(tt.fp, tt.fm)})`, 'tot');
   return `<div class="utc-k">${parts.join('')}${total}</div>`;
@@ -17877,18 +17926,19 @@ function utcTotals(r) { const fq = utcFrq(r), fp = fq.reduce((s, f) => s + f.pts
   /* AP unit tests weight multiple choice and free response 50/50, like the AP exam; high school and middle school tests add up points */
   const byPts = r.kind !== 'EX' && r.ut && !isAP(BY_ID[r.ut.t]);
   const mcp = r.n ? r.c / r.n : null, comb = fm ? Math.round(100 * (byPts ? (r.c + fp) / ((r.n || 0) + fm) : mcp == null ? fp / fm : (1 - xw) * mcp + xw * fp / fm)) : (mcp == null ? 0 : Math.round(mcp * 100));
-  return { fq, fp, fm, comb, byPts, confirmed: fq.every(f => f.confirmed) }; }
+  const sv = r.sig ? LS.get(utcKey(r.sig), {}) : {}, fin = sv.fin != null && sv.fin !== '' ? Math.max(0, Math.min(150, +sv.fin)) : null;
+  return { fq, fp, fm, comb: fin != null ? fin : comb, auto: comb, fin, fnote: sv.fnote || '', byPts, confirmed: fq.every(f => f.confirmed) }; }
 /* Student review (PDF), made by the teacher to hand out: each question with the student's answer, the correct answer
    and the explanation; free-response questions with the student's response, the scoring guide and a sample answer.
    o = { title, course, sub, student, date, items, ans } where ans[i] is the student's answer as the test stores it. */
 function reviewPages(o) {
   const mc = o.items.map((q, i) => [q, i]).filter(([q]) => q.type !== 'cr'), fr = o.items.map((q, i) => [q, i]).filter(([q]) => q.type === 'cr');
-  const got = mc.filter(([q, i]) => isRight(q, o.ans[i] || [])).reduce((s, [q]) => s + qPts(q), 0), tot = mc.reduce((s, [q]) => s + qPts(q), 0);
+  const got = mc.filter(([q, i]) => (o.oks && o.oks[i] != null ? o.oks[i] : isRight(q, o.ans[i] || []))).reduce((s, [q]) => s + qPts(q), 0), tot = mc.reduce((s, [q]) => s + qPts(q), 0);
   const ok = '#1d7a46', bad = '#b42318', pill = (c, t) => `<span style="display:inline-block;padding:1px 8px;border-radius:9px;border:1.5px solid ${c};color:${c};font:600 9.5pt/1.5 Arial,sans-serif;margin-left:6px">${t}</span>`;
   const head = `<header class="pp-h"><div><h1>${esc(o.title)}</h1><p>${esc(o.course)}${o.sub ? ' · ' + esc(o.sub) : ''}</p></div><div class="pp-meta"><b>REVIEW</b><br>${esc(o.student || '')}${o.date ? '<br>' + esc(o.date) : ''}</div></header>
     <p class="pp-i">${tot ? `Multiple choice: <b>${got} / ${tot}</b>${mc.some(([q]) => q.type === 'txt') ? ' points' : ' correct'}. ` : ''}Each question shows your answer, the correct answer, and why.${fr.length ? ' Free-response answers are scored by your teacher; the scoring guide and a sample answer are included.' : ''}</p>`;
-  const one = ([q, i], n) => { const a = o.ans[i] || [], right = isRight(q, a), none = !a.length || (q.type === 'txt' && !String(a[0] || '').trim());
-    const mark = none ? pill(bad, 'No answer') : right ? pill(ok, '✓ Correct') : pill(bad, '✗ Incorrect');
+  const one = ([q, i], n) => { const a = o.ans[i] || [], right = o.oks && o.oks[i] != null ? o.oks[i] : isRight(q, a), none = !a.length || (q.type === 'txt' && !String(a[0] || '').trim());
+    const mark = right ? pill(ok, '✓ Correct') : none ? pill(bad, 'No answer') : pill(bad, '✗ Incorrect');
     let body;
     if (q.type === 'txt' || q.type === 'num') body = `<p style="margin:4px 0">Your answer: <b>${esc(ansShow(q, a))}</b><br>Correct answer: <b style="color:${ok}">${esc(keyShow(q))}</b></p>`;
     else body = `<ol class="pp-ch">${q.choices.map((c, j) => { const isKey = q.correct.includes(j), mine = a.includes(j);
@@ -17906,7 +17956,7 @@ function reviewPages(o) {
    The teacher grades it with the Answer review PDF. */
 function correctionPages(o) {
   const mc = o.items.map((q, i) => [q, i]).filter(([q]) => q.type !== 'cr'), fr = o.items.map((q, i) => [q, i]).filter(([q]) => q.type === 'cr');
-  const right = ([q, i]) => isRight(q, o.ans[i] || []), nWrong = mc.filter(x => !right(x)).length;
+  const right = ([q, i]) => (o.oks && o.oks[i] != null ? o.oks[i] : isRight(q, o.ans[i] || [])), nWrong = mc.filter(x => !right(x)).length;
   const ok = '#1d7a46', bad = '#b42318', pill = (c, t) => `<span style="display:inline-block;padding:1px 8px;border-radius:9px;border:1.5px solid ${c};color:${c};font:600 9.5pt/1.5 Arial,sans-serif;margin-left:6px">${t}</span>`;
   const lines = n => `<div class="pp-lines">${'<i></i>'.repeat(n)}</div>`;
   const head = `<header class="pp-h"><div><h1>${esc(o.title)}: Test corrections</h1><p>${esc(o.course)}${o.sub ? ' · ' + esc(o.sub) : ''}</p></div><div class="pp-meta"><b>CORRECTIONS</b><br>${esc(o.student || '')}${o.date ? '<br>' + esc(o.date) : ''}</div></header>
@@ -17914,6 +17964,8 @@ function correctionPages(o) {
     <p style="margin:0 0 10px">Name: ________________________________ &nbsp; Date: ______________</p>`;
   const one = ([q, i]) => { const a = o.ans[i] || [], good = right([q, i]), none = !a.length || (q.type === 'txt' && !String(a[0] || '').trim());
     const mark = good ? pill(ok, '✓ Correct') : none ? pill(bad, '✗ No answer') : pill(bad, '✗ Incorrect');
+    /* correct ones: just the question and the student's answer (no choices, no passage), to save paper */
+    if (good) return `<li style="break-inside:avoid;page-break-inside:avoid;margin-bottom:8px"><div class="pp-stem">${F(q.stem)}${mark}</div><p style="margin:2px 0 0">Your answer: <b>${q.type === 'txt' || q.type === 'num' ? esc(ansShow(q, a)) : a.map(j => `${LETTERS[j]}. ${F(q.choices[j] || '')}`).join(', ')}</b></p></li>`;
     const body = q.type === 'txt' || q.type === 'num' ? `<p style="margin:4px 0">Your answer: <b>${esc(ansShow(q, a))}</b></p>`
       : `<ol class="pp-ch">${q.choices.map((c, j) => `<li style="${a.includes(j) ? `font-weight:700;color:${good ? ok : bad};` : ''}"><b>${LETTERS[j]}.</b> ${F(c)}${a.includes(j) ? ' <span style="font:600 9pt Arial,sans-serif">← your answer</span>' : ''}</li>`).join('')}</ol>`;
     const fix = good ? '' : `<div style="margin-top:6px"><p style="margin:2px 0"><b>Correct answer:</b> ${q.type === 'txt' || q.type === 'num' ? '____________________________' : '_______'}</p><p style="margin:2px 0"><b>Why it’s correct, and what was wrong with my answer:</b></p>${lines(3)}</div>`;
@@ -17926,9 +17978,9 @@ function correctionPages(o) {
 }
 /* the same, rebuilt from a pasted results block (Check Results): answers there are letters, '~text' for written ones */
 function utcReview(r, fix) {
-  const x = BY_ID[r.ut.t], items = r.rows.map(o => o.q);
-  const ans = r.rows.map(o => o.cr ? [o.text || ''] : o.w ? [o.a === '–' ? '' : o.a] : o.q.type === 'num' ? [o.a === '-' ? '' : o.a] : String(o.a || '').split('').map(ch => LETTERS.indexOf(ch)).filter(j => j >= 0));
-  return (fix ? correctionPages : reviewPages)({ title: r.ut.n, course: x.subject, sub: utUnits(r.ut).join(' · '), student: gbLabel(r.d.nm), date: r.d.d ? fmtDate(r.d.d) : '', items, ans });
+  const x = BY_ID[r.ut.t], rows = r.rows.filter(o => !o.skip), items = rows.map(o => o.q);
+  const ans = rows.map(o => o.cr ? [o.text || ''] : o.w ? [o.a === '–' ? '' : o.a] : o.q.type === 'num' ? [o.a === '-' ? '' : o.a] : String(o.a || '').split('').map(ch => LETTERS.indexOf(ch)).filter(j => j >= 0));
+  return (fix ? correctionPages : reviewPages)({ title: r.ut.n, course: x.subject, sub: utUnits(r.ut).join(' · '), student: gbLabel(r.d.nm), date: r.d.d ? fmtDate(r.d.d) : '', items, ans, oks: rows.map(o => o.cr ? null : !!o.ok) });
 }
 function utcScorecard(r) {
   if (r.kind === 'EX') { const x = BY_ID[r.d.t] || TESTS[0], d = r.d;
@@ -17936,12 +17988,45 @@ function utcScorecard(r) {
       units: Object.entries(d.bc || {}).map(([k, [ok, t]]) => ({ name: `Unit ${k}: ${x.CAT[k] ? x.CAT[k].short : ''}`, ok, t })), note: r.sigOk ? 'Check code verified.' : 'Warning: the check code does not match, so these results may have been edited.', check: r.sig }); }
   const x = BY_ID[r.ut.t], tt = utcTotals(r);
   return scoreCardHTML({ title: r.ut.n, course: x.subject, sub: utUnits(r.ut).join(' · '), student: gbLabel(r.d.nm), email: r.d.em, date: r.d.d ? fmtDate(r.d.d) : '', used: r.d.u, mc: { c: r.c, n: r.n }, fr: tt.fq.length ? { done: true, pts: tt.fp, max: tt.fm, who: 'teacher-scored' } : null, weighted: tt.fq.length && r.n ? tt.comb : null, weightNote: tt.byPts ? 'total points' : '50% MC · 50% FRQ',
-    units: Object.entries(r.byCat).map(([k, [ok, t]]) => ({ name: `Unit ${k}: ${x.CAT[k] ? x.CAT[k].short : ''}`, ok, t })), rows: r.rows.map((o, i) => o.cr ? { n: i + 1, cr: true } : { n: i + 1, w: !!o.w, ans: o.w ? o.a : o.a.replace('-', '–'), key: o.want, ok: o.ok }),
+    units: Object.entries(r.byCat).map(([k, [ok, t]]) => ({ name: `Unit ${k}: ${x.CAT[k] ? x.CAT[k].short : ''}`, ok, t })), rows: r.rows.map((o, i) => o.skip ? null : o.cr ? { n: i + 1, cr: true } : { n: i + 1, w: !!o.w, ans: o.w ? o.a : o.a.replace('-', '–'), key: o.want, ok: o.ok }).filter(Boolean),
     frqs: tt.fq.map(f => ({ title: CASES[f.o.q.caseId] ? CASES[f.o.q.caseId].title : 'Free response', max: f.max, pts: f.pts, text: f.o.text == null ? '(answer is in the email)' : f.o.text, rubric: f.P && f.P.rubric ? f.P.rubric.map((rb, j) => ({ t: rb.t, pts: rb.pts, on: !!f.on[j] })) : null })),
-    note: 'Multiple-choice score recalculated from the student’s answers.', check: r.sig });
+    note: 'Multiple-choice score recalculated from the student’s answers.' + (r.nSkip ? ` ${r.nSkip} question${r.nSkip === 1 ? ' was' : 's were'} not counted.` : '') + (tt.fin != null ? ` Final grade set by the teacher${tt.fnote ? ' (' + tt.fnote + ')' : ''}.` : ''), check: r.sig });
 }
 const lkLine = (lk, d) => { const s = lkSummary(lk); return (s ? `<p class="lk-line ${s.ok ? 'ok' : 'warn'}">${SVG(IC.lock)} <span><b>Lockdown${s.seb ? ' (Safe Exam Browser)' : ''}:</b> ${esc(s.text)}</span></p>` : '')
   + (d && (d.ac || (d.pz && d.pz[0])) ? `<p class="lk-line info">${SVG(IC.info)} <span>${d.ac ? `<b>Accommodations:</b> ${esc(d.ac.join('; '))}` : ''}${d.ac && d.pz && d.pz[0] ? ' · ' : ''}${d.pz && d.pz[0] ? `<b>Pauses:</b> ${d.pz[0]} (${fmtDur(d.pz[1] || 0)})` : ''}</span></p>` : ''); };
+/* a student who took a different setting of the test than the rest of the class (e.g. the test was changed after the code went out) */
+function utcOddLine(r, ri) {
+  const o = r.odd; if (!o) return '';
+  const lab = gbLabel(r.d.nm), nm = esc(/^student\b/i.test(lab) ? lab : gbFirst(lab));
+  if (o.unclear) return `<div class="utc-odd"><p>${SVG(IC.info)} <span><b>Not everyone took the same setting of this test.</b> The results you pasted include ${o.n} different settings (for example, a different number of definitions), and no one setting is clearly the class’s. Compare the students’ test codes, or mark questions below.</span></p></div>`;
+  const nx = o.extra.length;
+  return `<div class="utc-odd"><p>${SVG(IC.info)} <span><b>${nm} took a different setting of this test.</b> ${nm}’s test had ${esc(o.mine)}; the other ${o.nRef} result${o.nRef === 1 ? '' : 's'} here had ${esc(o.ref)}. This usually means the test was changed after the code was shared and ${nm} used the other code.</span></p>
+    ${o.can ? r.only ? `<div class="row"><span class="st-on small">✓ Scoring only the questions the class had (${nx} extra not counted)</span><button class="btn sm" data-uonly="${ri}|0">Count all of ${nm}’s questions again</button></div>`
+      : `<div class="row"><button class="btn sm primary" data-uonly="${ri}|1">Score only the questions the class had</button><span class="small muted">${nm}’s test has every question the class had, plus ${nx} more. This leaves out the ${nx} extra so ${nm} is graded on the same test as everyone else.</span></div>`
+      : o.missing.length ? `<p class="small muted" style="margin:6px 0 0">${nm}’s test is missing ${o.missing.length} of the class’s questions, so it can’t be matched automatically. Use “Question by question” below or set the grade yourself.</p>` : ''}</div>`;
+}
+/* the teacher sets this student's final grade (the calculated one stays visible) */
+function utcGradeBox(r, ri, tt) {
+  const on = tt.fin != null;
+  return `<details class="utc-adj" ${on || (UTC.ao && UTC.ao[r.sig]) ? 'open' : ''} data-uad="${ri}"><summary class="small"><b>Change this student’s grade</b>${on ? ` · set to ${tt.fin}%` : ''}</summary>
+    <div class="row"><label class="small">Final grade <input type="number" min="0" max="150" step="0.5" style="width:90px" id="uFin${ri}" value="${on ? tt.fin : ''}" placeholder="${tt.auto}"> %</label>
+      <label class="small" style="flex:1;min-width:200px">Reason (optional, shows on the score card)<input id="uNote${ri}" maxlength="80" value="${esc(tt.fnote)}" placeholder="e.g. retake, extra credit, test setting mix-up"></label>
+      <button class="btn sm primary" data-ufin="${ri}">Save grade</button>${on ? `<button class="btn sm quiet" data-ufin0="${ri}">Use the calculated grade (${tt.auto}%)</button>` : ''}</div>
+    <p class="small muted" style="margin:6px 0 0">The calculated grade is ${tt.auto}%. To change single questions instead, use “Question by question” below. Changes are saved in this browser and go into the gradebook when you add the results.</p></details>`;
+}
+/* change one question for every student who took this test: give everyone credit, or don't count it */
+function utcClassTool(good) {
+  const groups = {}; good.filter(r => r.kind === 'UT' && r.ut && r.rows).forEach(r => (groups[r.grp] = groups[r.grp] || []).push(r));
+  const gs = Object.entries(groups); if (!gs.length) return '';
+  return `<section class="card utc-cls" style="margin-top:18px"><div class="card-h sm"><h3>Change a question for everyone</h3></div>
+    <p class="small muted" style="margin:0 0 10px">For a question that was unfair, confusing or had a mistake: give every student credit for it, or don’t count it for anyone. Students who took a different version or setting get the same change for that question.</p>
+    ${gs.map(([g, rs], gi) => { const ref = rs[0].ref, cls = LS.get(utcClsKey(g), {}), right = id => rs.filter(r => r.rows.some(o => o.q.id === id && o.auto)).length, took = id => rs.filter(r => r.rows.some(o => o.q.id === id)).length;
+      const qs = ref.rows.map((o, i) => [o, i]).filter(([o]) => !o.cr);
+      const changed = Object.entries(cls).map(([id, v]) => { const k = ref.rows.findIndex(o => o.q.id === id); return `<li><span>Question ${k + 1}${k < 0 ? '' : ': ' + esc(utcPlain(ref.rows[k].q.stem).slice(0, 70))}</span><b>${v === 1 ? 'everyone gets credit' : 'not counted'}</b><button class="linkbtn" data-ucq="${gi}|${esc(id)}|">Undo</button></li>`; }).join('');
+      return `<div class="utc-clsg" data-ucg="${gi}" data-g="${esc(g)}">${gs.length > 1 ? `<h4>${esc(ref.ut.n)}</h4>` : ''}<div class="row"><label class="small" style="flex:1;min-width:260px">Question<select data-ucs="${gi}">${qs.map(([o, i]) => `<option value="${esc(o.q.id)}">${i + 1}. ${esc(utcPlain(o.q.stem).slice(0, 60))} · ${right(o.q.id)} of ${took(o.q.id)} right${cls[o.q.id] != null ? ' · changed' : ''}</option>`).join('')}</select></label>
+        <button class="btn sm" data-ucb="${gi}|1">Give everyone credit</button><button class="btn sm" data-ucb="${gi}|x">Don’t count it</button></div>
+        ${changed ? `<ul class="utc-chg">${changed}</ul>` : ''}</div>`; }).join('')}</section>`;
+}
 function renderUtCheck() {
   if (!isTeacher()) return renderUnitTests();
   if (hasKeys() && UTC.out && UTC.out.some(r => r.locked) && !UTC.re) { UTC.re = 1; utCheck(UTC.text).then(o => { UTC.out = o; UTC.re = 0; if (String(ROUTE).split('?')[0] === 'ut-check') { renderUtCheck(); bindNav(); } }); }
@@ -17967,18 +18052,21 @@ function renderUtCheck() {
     const tt = utcTotals(r);
     return `<section class="card utc"><div class="card-h sm"><h3>${gbWho(r.d.nm)}</h3><span class="small muted">${esc(r.d.em || '')}</span><span class="st-on">✓ Scored from the student’s answers</span><span style="flex:1"></span><button class="btn sm" data-scp="${ri}">${SVG(IC.dl)} Score card PDF</button><button class="btn sm" data-fxp="${ri}">${SVG(IC.dl)} Corrections sheet PDF</button><button class="btn sm" data-rvp="${ri}">${SVG(IC.dl)} Answer review PDF</button></div>
       <p class="small" style="margin:0 0 8px"><b>${esc(r.ut.n)}</b>${r.d.vr != null ? ` · version ${LETTERS[r.d.vr]}` : ''} · ${esc(BY_ID[r.ut.t].subject)} · submitted ${r.d.d ? fmtDate(r.d.d) : '—'} · time ${fmtDur(r.d.u || 0)}${r.d.x ? ' (time ran out)' : ''}${r.d.at > 1 ? ` · <b>attempt ${r.d.at}</b> on their device` : ''}</p>
-      ${lkLine(r.d.lk, r.d)}${utcScoreBoxes(r, tt)}
+      ${lkLine(r.d.lk, r.d)}${utcOddLine(r, ri)}${utcScoreBoxes(r, tt)}
       ${frqHTML(ri, tt.fq)}
-      ${r.rows.some(o => o.w) ? `<div class="utc-dw"><h4>Written definitions <span class="muted">(checked automatically; change any you disagree with)</span></h4><ul>${r.rows.map((o, i) => o.w ? `<li class="${o.ok ? 'ok' : 'no'}"><span class="dw-n">${i + 1}</span><div class="dw-a"><b>${esc(o.a)}</b><small>${o.q.wm === 'd' ? 'Term: ' + esc(o.q.ans) + ' · Model: ' + esc(o.q.defn) : 'Expected: ' + esc(o.q.ans)}</small></div><div class="dw-b" role="group" aria-label="Mark question ${i + 1}"><button class="btn sm ${o.ok ? 'on' : ''}" data-uw="${ri}|${i}|1" aria-pressed="${o.ok}">✓ Right</button><button class="btn sm ${o.ok ? '' : 'on'}" data-uw="${ri}|${i}|0" aria-pressed="${!o.ok}">✕ Wrong</button><span class="dw-tag">${o.ov ? '<span class="dw-mine">changed by you</span>' : '<span class="autotag">auto</span>'}</span></div></li>` : '').join('')}</ul></div>` : ''}
-      <details style="margin-top:10px"><summary class="small">Question-by-question</summary><div class="tablewrap"><table class="hist"><thead><tr><th>#</th><th>Unit</th><th>Student</th><th>Key</th><th></th></tr></thead><tbody>${r.rows.map((o, i) => `<tr><td>${i + 1}</td><td>${o.cr ? 'FRQ' : esc(o.q.cat)}</td><td class="${o.w ? '' : 'mono'}">${o.cr ? (o.a === '-' ? 'blank' : 'written') : esc(o.a)}</td><td class="${o.w ? '' : 'mono'}">${o.cr ? 'see above' : esc(o.want)}</td><td>${o.cr ? '' : o.ok ? '<span class="st-on">✓</span>' : '<span class="st-off">✕</span>'}</td></tr>`).join('')}</tbody></table></div></details></section>`;
+      ${r.rows.some(o => o.w && !o.skip) ? `<div class="utc-dw"><h4>Written definitions <span class="muted">(checked automatically; change any you disagree with)</span></h4><ul>${r.rows.map((o, i) => o.w && !o.skip ? `<li class="${o.ok ? 'ok' : 'no'}"><span class="dw-n">${i + 1}</span><div class="dw-a"><b>${esc(o.a)}</b><small>${o.q.wm === 'd' ? 'Term: ' + esc(o.q.ans) + ' · Model: ' + esc(o.q.defn) : 'Expected: ' + esc(o.q.ans)}</small></div><div class="dw-b" role="group" aria-label="Mark question ${i + 1}"><button class="btn sm ${o.ok ? 'on' : ''}" data-uw="${ri}|${i}|1" aria-pressed="${o.ok}">✓ Right</button><button class="btn sm ${o.ok ? '' : 'on'}" data-uw="${ri}|${i}|0" aria-pressed="${!o.ok}">✕ Wrong</button><span class="dw-tag">${o.ov ? '<span class="dw-mine">changed by you</span>' : o.cls === 1 ? '<span class="dw-mine">credit for everyone</span>' : '<span class="autotag">auto</span>'}</span></div></li>` : '').join('')}</ul></div>` : ''}
+      ${utcGradeBox(r, ri, tt)}
+      <details style="margin-top:10px" data-uqd="${ri}" ${UTC.qo && UTC.qo[r.sig] ? 'open' : ''}><summary class="small"><b>Question by question</b> · mark any question right or wrong, or don’t count it</summary><div class="tablewrap"><table class="hist utc-qt"><thead><tr><th>#</th><th>Unit</th><th>Student</th><th>Key</th><th>Scored</th><th>Change</th></tr></thead><tbody>${r.rows.map((o, i) => o.cr ? `<tr><td>${i + 1}</td><td>FRQ</td><td>${o.a === '-' ? 'blank' : 'written'}</td><td>see above</td><td></td><td class="small muted">score it above</td></tr>`
+        : `<tr class="${o.skip ? 'skip' : ''}"><td>${i + 1}</td><td>${esc(o.q.cat)}</td><td class="${o.w ? '' : 'mono'}">${esc(o.a)}</td><td class="${o.w ? '' : 'mono'}">${esc(o.want)}</td><td>${o.skip ? `<span class="muted small">${o.cls === 'x' ? 'dropped for everyone' : r.only && !(LS.get(utcKey(r.sig), {})['x' + i]) ? 'extra · not counted' : 'not counted'}</span>` : o.ok ? '<span class="st-on">✓</span>' : '<span class="st-off">✕</span>'}${o.skip ? '' : o.ov ? ' <span class="dw-mine">by you</span>' : o.cls === 1 ? ' <span class="dw-mine">credit for everyone</span>' : ''}</td>
+          <td><div class="utc-qb">${o.skip ? `<button class="btn sm" data-ux="${ri}|${i}|0" ${o.cls === 'x' || (r.only && !(LS.get(utcKey(r.sig), {})['x' + i])) ? 'disabled title="Change this above"' : ''}>Count it</button>` : `<button class="btn sm ${o.ok ? 'on' : ''}" data-uw="${ri}|${i}|1" aria-label="Mark ${i + 1} right">✓</button><button class="btn sm ${o.ok ? '' : 'on'}" data-uw="${ri}|${i}|0" aria-label="Mark ${i + 1} wrong">✕</button><button class="btn sm quiet" data-ux="${ri}|${i}|1">Don’t count</button>`}</div></td></tr>`).join('')}</tbody></table></div></details></section>`;
   };
   const summary = good.length > 1 ? `<section class="card" style="margin-top:18px"><div class="card-h sm"><h3>Class summary · ${good.length} results</h3><span style="flex:1"></span><button class="btn" id="utcCsv">${SVG(IC.dl)} Spreadsheet (CSV)</button></div><div class="tablewrap"><table class="hist"><thead><tr><th>Student</th><th>Test</th><th>MC</th><th>FRQ</th><th>Overall</th><th>Check</th></tr></thead><tbody>${good.map(r => { if (r.kind === 'EX') { const d = r.d; return `<tr><td>${esc(d.nm)}</td><td>${esc(d.as || (BY_ID[d.t] || {}).subject || '')}</td><td class="mono">${d.mc[0]}/${d.mc[1]}</td><td class="mono">${d.fr ? (d.fr[2] ? d.fr[0] + '/' + d.fr[1] : '—') : ''}</td><td class="mono">${d.ap ? 'AP ' + d.ap[0] : d.w + '%'}</td><td>${r.sigOk ? '<span class="st-on">valid</span>' : '<span class="st-off">edited?</span>'}</td></tr>`; }
-      const tt = r.ut ? utcTotals(r) : null; return `<tr><td>${gbWho(r.d.nm)}</td><td>${r.ut ? esc(r.ut.n) : '—'}</td><td class="mono">${r.ut ? `${r.c}/${r.n}` : '—'}</td><td class="mono">${tt && tt.fq.length ? `${tt.fp}/${tt.fm}` : ''}</td><td class="mono">${tt ? tt.comb + '%' : '—'}</td><td>${r.locked ? '<span class="st-off">locked</span>' : '<span class="st-on">regraded</span>'}</td></tr>`; }).join('')}</tbody></table></div></section>` : '';
+      const tt = r.ut ? utcTotals(r) : null; return `<tr><td>${gbWho(r.d.nm)}</td><td>${r.ut ? esc(r.ut.n) : '—'}</td><td class="mono">${r.ut ? `${r.c}/${r.n}` : '—'}</td><td class="mono">${tt && tt.fq.length ? `${tt.fp}/${tt.fm}` : ''}</td><td class="mono">${tt ? tt.comb + '%' : '—'}</td><td>${r.locked ? '<span class="st-off">locked</span>' : r.odd ? `<span class="st-off">different setting${r.only ? ' · fixed' : ''}</span>` : '<span class="st-on">regraded</span>'}${r.ut && (r.nSkip || tt.fin != null || r.rows.some(o => o.ov)) ? ' <span class="dw-mine">changed</span>' : ''}</td></tr>`; }).join('')}</tbody></table></div></section>` : '';
   $('#hub').innerHTML = nav('ut-check') + `<div class="page">${keysNote()}${pageHead('Teacher Tools', 'Check results', 'Paste result emails from unit tests and exam simulations. Unit test scores are always recalculated from the student’s actual answers (so an edited score has no effect), and you score free response with the scoring guide. For exam simulations, the check code shows whether results were edited.')}
     <section class="card"><textarea id="utcIn" class="crin" style="min-height:170px" placeholder="Paste result emails here (you can paste several at once)">${esc(UTC.text)}</textarea>
       <div class="row" style="margin-top:10px"><button class="btn primary" id="utcGo">Check results</button>${MODE === 'owner' && DB ? `<button class="btn" id="utcLoad">Load results submitted on this site</button>` : ''}<button class="btn quiet" id="utcClr">Clear</button>${good.length ? `<span style="flex:1"></span>${paperSel()}${pdfBtn('utcPdfAll', good.length > 1 ? `All ${good.length} score cards (PDF)` : 'Score card (PDF)')}${good.some(r => r.kind === 'UT' && r.ut) ? pdfBtn('utcFxAll', good.filter(r => r.kind === 'UT' && r.ut).length > 1 ? 'All corrections sheets (PDF)' : 'Corrections sheet (PDF)') + pdfBtn('utcRvAll', good.filter(r => r.kind === 'UT' && r.ut).length > 1 ? 'All answer reviews (PDF)' : 'Answer review (PDF)') : ''}` : ''}</div><div class="small muted" id="utcMsg" role="status" style="margin-top:6px"></div></section>
     ${out && !out.length ? '<div class="card empty" style="margin-top:18px">No result blocks found. Paste the whole email, including the line that starts with APUT or APEX.</div>' : ''}
-    ${summary}
+    ${summary}${utcClassTool(good)}
     ${good.length ? (() => { const cls = gbLoad().classes.filter(k => !k.archived); return `<section class="card gb-imp" style="margin-top:18px"><div class="card-h sm"><h3>${SVG(IC.grade)} Add to a gradebook</h3></div>${cls.length ? `<div class="row"><label class="small">Class <select id="gbImpC">${cls.map(k => `<option value="${k.id}" ${k.id === gbLoad().cur ? 'selected' : ''}>${esc(k.name)}</option>`).join('')}</select></label><label class="chk small"><input type="checkbox" id="gbImpNew" checked> Add students who aren’t in the class yet</label><button class="btn primary" id="gbImpGo">Add ${good.length} result${good.length > 1 ? 's' : ''}</button></div><p class="small muted" style="margin:8px 0 0">Each test becomes an assignment with multiple-choice and written-response scores and per-unit results, so the class reports update. Confirm free-response scores first if you want them final.</p>` : `<p class="small" style="margin:0">Make a class in <a href="#grades">Gradebook &amp; Classes</a> to keep these results with your students’ other grades.</p>`}<p class="small" id="gbImpMsg" role="status"></p></section>`; })() : ''}
     <div style="margin-top:18px;display:grid;gap:14px">${(out || []).map(card).join('')}</div>
     <p class="small muted" style="margin-top:14px">Unit tests are scored here from the answers in the email, never from a score the student’s device reports. For exam simulations, the check code catches results that were changed by hand; it isn't unbreakable, so treat a valid code as strong evidence, not proof. Your free-response scores are saved in this browser.</p>
@@ -17995,11 +18083,21 @@ function renderUtCheck() {
     catch (e) { $('#utcMsg').textContent = 'Couldn’t load submitted results. Try again.'; $('#utcLoad').disabled = false; } };
   $$('[data-uk]').forEach(c => c.onchange = () => { const [ri, i, j] = c.dataset.uk.split('|').map(Number), r = out[ri]; const f = utcFrq(r).find(o => o.i === i); const saved = LS.get(utcKey(r.sig), {}); saved[i] = f.on.slice(); saved[i][j] = c.checked; LS.set(utcKey(r.sig), saved); redo(); });
   $$('[data-ukm]').forEach(c => c.onchange = () => { const [ri, i] = c.dataset.ukm.split('|').map(Number), r = out[ri]; const saved = LS.get(utcKey(r.sig), {}); const v = c.value === '' ? null : Math.max(0, +c.value || 0); if (v == null) delete saved[i]; else saved[i] = { m: v }; LS.set(utcKey(r.sig), saved); redo(); });
+  const again = () => { utcApplyAll(out); redo(); };
   $$('[data-uw]').forEach(b => b.onclick = () => { const [ri, i, v] = b.dataset.uw.split('|').map(Number), r = out[ri], o = r.rows[i]; const saved = LS.get(utcKey(r.sig), {});
-    if (!!v === o.auto) delete saved['w' + i]; else saved['w' + i] = v; LS.set(utcKey(r.sig), saved);
-    /* the same points as the first scoring (a written definition is worth qPts = 2), so a change can only move the score the right way */
-    o.ok = !!v; o.ov = saved['w' + i] != null; r.c = r.rows.filter(z => !z.cr && z.ok).reduce((t, z) => t + qPts(z.q), 0);
-    r.byCat = {}; r.rows.forEach(z => { if (z.cr) return; const k = z.q.cat, w = qPts(z.q); r.byCat[k] = r.byCat[k] || [0, 0]; r.byCat[k][1] += w; if (z.ok) r.byCat[k][0] += w; }); redo(); });
+    /* back to automatic when it matches what the site (or a change for everyone) gives; points per question stay the same, so a change can only move the score the right way */
+    if (!!v === o.base) delete saved['w' + i]; else saved['w' + i] = v; LS.set(utcKey(r.sig), saved); again(); });
+  $$('[data-ux]').forEach(b => b.onclick = () => { const [ri, i, v] = b.dataset.ux.split('|').map(Number), r = out[ri], saved = LS.get(utcKey(r.sig), {}); if (v) saved['x' + i] = 1; else delete saved['x' + i]; LS.set(utcKey(r.sig), saved); again(); });
+  $$('[data-uonly]').forEach(b => b.onclick = () => { const [ri, v] = b.dataset.uonly.split('|').map(Number), r = out[ri], saved = LS.get(utcKey(r.sig), {}); if (v) saved.only = 1; else delete saved.only; LS.set(utcKey(r.sig), saved); again(); });
+  $$('[data-ufin]').forEach(b => b.onclick = () => { const ri = +b.dataset.ufin, r = out[ri], saved = LS.get(utcKey(r.sig), {}), v = $('#uFin' + ri).value.trim();
+    if (v === '' || isNaN(+v)) { delete saved.fin; delete saved.fnote; } else { saved.fin = Math.max(0, Math.min(150, Math.round(+v * 2) / 2)); saved.fnote = $('#uNote' + ri).value.trim().slice(0, 80); }
+    LS.set(utcKey(r.sig), saved); UTC.ao = UTC.ao || {}; UTC.ao[r.sig] = 1; again(); });
+  $$('[data-ufin0]').forEach(b => b.onclick = () => { const r = out[+b.dataset.ufin0], saved = LS.get(utcKey(r.sig), {}); delete saved.fin; delete saved.fnote; LS.set(utcKey(r.sig), saved); again(); });
+  $$('[data-uqd]').forEach(d => d.ontoggle = () => { UTC.qo = UTC.qo || {}; UTC.qo[out[+d.dataset.uqd].sig] = d.open; });
+  $$('[data-uad]').forEach(d => d.ontoggle = () => { UTC.ao = UTC.ao || {}; UTC.ao[out[+d.dataset.uad].sig] = d.open; });
+  const clsSet = (gi, id, v) => { const g = $(`[data-ucg="${gi}"]`).dataset.g, m = LS.get(utcClsKey(g), {}); if (v === '') delete m[id]; else m[id] = v === '1' ? 1 : 'x'; LS.set(utcClsKey(g), m); again(); };
+  $$('[data-ucb]').forEach(b => b.onclick = () => { const [gi, v] = b.dataset.ucb.split('|'); clsSet(gi, $(`[data-ucs="${gi}"]`).value, v); });
+  $$('[data-ucq]').forEach(b => b.onclick = () => { const [gi, id] = b.dataset.ucq.split('|'); clsSet(gi, id, ''); });
   $$('[data-ukc]').forEach(b => b.onclick = () => { const [ri, i] = b.dataset.ukc.split('|').map(Number), r = out[ri]; const f = utcFrq(r).find(o => o.i === i); const saved = LS.get(utcKey(r.sig), {}); saved[i] = f.on.slice(); LS.set(utcKey(r.sig), saved); redo(); });
   $$('[data-scp]').forEach(b => b.onclick = () => { const r = out[+b.dataset.scp]; makePdf(utcScorecard(r), fileSafe((r.ut ? r.ut.n : 'results') + ' ' + gbLabel(r.d.nm)) + '-score-card.pdf', b); });
   [['rvp', false, '-answer-review.pdf'], ['fxp', true, '-corrections.pdf']].forEach(([k, fix, suf]) => $$(`[data-${k}]`).forEach(b => { const r = out[+b.dataset[k]]; if (r.kind !== 'UT' || !r.ut) { b.disabled = true; b.title = 'Exam simulations: open Teacher access on the student’s device to download this.'; return; }
@@ -19543,6 +19641,20 @@ function gbAsgNarrative(c, a, st, as, tone) {
   const lt = cell.st === 'late' ? (you ? ' It was turned in late.' : ' It was turned in late.') : '';
   return (lead + cls + str + wk + un + lt).replace(/\s+/g, ' ').trim();
 }
+const gbSrcIds = (c, a) => c.students.filter(s => ((c.g[a.id] || {})[s.id] || {}).src).map(s => s.id);
+async function gbSheetsPDF(c, a, sids, fix, btn) {
+  /* rebuild with the whole class, so a student who took a different setting is matched against the class like in Check Results */
+  const want = new Set(sids.map(sid => ((c.g[a.id] || {})[sid] || {}).src).filter(Boolean)), all = gbSrcIds(c, a).map(sid => c.g[a.id][sid].src);
+  const out = (await utCheck(all.join('\n'))).filter(r => r.kind === 'UT' && want.has(r.line));
+  if (out.some(r => r.locked)) { gbMsgSay('This test has teacher-only or your own questions. Unlock with your teacher code (Check Results → Unlock), then try again.'); return; }
+  const ok = out.filter(r => r.ut); if (!ok.length) { gbMsgSay('Couldn’t rebuild this test on this computer. Open it once from “Your unit tests”, then try again.'); return; }
+  const one = sids.length === 1 ? ' ' + (c.students.find(s => s.id === sids[0]) || {}).name : '';
+  makePdf(ok.map((r, i) => `<div class="${i ? 'pb' : ''}">${utcReview(r, fix)}</div>`).join(''), fileSafe(c.name + ' ' + (a.title || 'test') + one + (fix ? ' corrections' : ' answer review')) + '.pdf', btn);
+}
+const gbMsgSay = m => { const e = $('#gbSheetMsg'); if (e) e.textContent = m; };
+const gbSheetBtns = (c, a, st) => { const ids = st ? (gbSrcIds(c, a).includes(st.id) ? [st.id] : []) : gbSrcIds(c, a);
+  if (!ids.length) return (a.key || '').startsWith('ut:') ? `<p class="small muted" style="margin:0 0 12px">To download corrections sheets for ${st ? 'this student' : 'this test'}, add ${st ? 'their' : 'the'} results again from <a href="#ut-check">Check Results</a>. Results added from now on keep the answers needed for them.</p>` : '';
+  return `<div class="row gb-sheets"><button class="btn" id="gbFix">${SVG(IC.dl)} ${st ? 'Corrections sheet' : `Corrections sheets (${ids.length})`} (PDF)</button><button class="btn" id="gbRev">${SVG(IC.dl)} ${st ? 'Answer review' : `Answer reviews (${ids.length})`} (PDF)</button><span class="small muted" id="gbSheetMsg" role="status">${st ? '' : ids.length < c.students.length ? `For the ${ids.length} student${ids.length === 1 ? '' : 's'} whose results were added from Check Results.` : ''}</span></div>`; };
 function gbAsgReportHTML(c, a, st, sel) {
   const as = gbAsgStats(c, a), x = BY_ID[c.course], ty = GB_TYPES[a.type] ? GB_TYPES[a.type].label : a.type, maxPts = a.cats.reduce((s, k) => s + (+k.max || 0), 0);
   const head = `<section class="card gb-ahead"><div><div class="eyebrow">${esc(ty)}${a.date ? ' · ' + esc(a.date) : ''}${(a.units || []).length ? ' · ' + a.units.map(u => esc(unitName(x, u))).join(', ') : ''}</div><h3>${esc(a.title || 'Untitled')}</h3><p class="small muted">${a.cats.map(k => `${esc(k.label)} (${k.max} pts)`).join(' · ')} · ${maxPts} points in all</p></div></section>`;
@@ -19550,7 +19662,7 @@ function gbAsgReportHTML(c, a, st, sel) {
     const cell = gbCell(c, a, st.id), g = cell.g.s || {}, text = gbAsgNarrative(c, a, st, as, GBU.tone);
     const stat = cell.st === 'excused' ? 'Excused' : cell.pct == null ? (cell.st === 'missing' ? 'Missing' : 'Not graded yet') : `${cell.earned} / ${cell.max} points${cell.st === 'late' ? ' · late' : ''}`;
     const bu = cell.g.byUnit ? Object.entries(cell.g.byUnit).map(([u, [ok, n]]) => [u, pc(ok, n)]).filter(([, p]) => p != null) : [];
-    return `<div class="row gb-repbar">${sel}<span style="flex:1"></span><button class="btn" id="gbPdfAsgOne">${SVG(IC.dl)} This result (PDF)</button>${paperSel()}</div>${head}
+    return `<div class="row gb-repbar">${sel}<span style="flex:1"></span><button class="btn" id="gbPdfAsgOne">${SVG(IC.dl)} This result (PDF)</button>${paperSel()}</div>${head}${gbSheetBtns(c, a, st)}
       <div class="gb-rep">
         <section class="card gb-sum"><div class="gb-grade ${cell.pct == null ? '' : band(cell.pct)}"><div class="ring"><b>${letter(cell.pct)}</b></div><div class="pct"><b>${cell.pct == null ? '—' : cell.pct + '%'}</b><small>${as.avg == null ? 'no class average yet' : 'class average ' + as.avg + '%'}</small></div></div><span class="gb-gsep" aria-hidden="true"></span><div><h3>${esc(st.name)}</h3><p class="small muted">${stat}</p></div></section>
         <section class="card"><h3 class="ch">Each part, compared with the class</h3>${a.cats.length ? `<ul class="blueprint gb-bars">${as.cats.map(o => { const v = g[o.k.id]; const p = v != null && v !== '' ? pc(Math.max(0, +v || 0), +o.k.max || 0) : null; return gbBar(`${esc(o.k.label)}`, p, `${v != null && v !== '' ? `${v} / ${o.k.max}` : 'no score'}${o.avg != null ? ` · class ${o.avg}%` : ''}`); }).join('')}</ul>` : '<p class="empty">This assignment has no sections.</p>'}
@@ -19562,7 +19674,7 @@ function gbAsgReportHTML(c, a, st, sel) {
       </div>`;
   }
   const tips = gbAsgTips(c, a, as), done = as.scored.length, total = c.students.length;
-  return `<div class="row gb-repbar">${sel}<span style="flex:1"></span><button class="btn" id="gbPdfAsg">${SVG(IC.dl)} Assignment report (PDF)</button><button class="btn" id="gbPdfSlips">${SVG(IC.dl)} Result slips for students (PDF)</button><button class="btn quiet" id="gbCsvAsg">${SVG(IC.dl)} Spreadsheet (CSV)</button>${paperSel()}</div>${head}
+  return `<div class="row gb-repbar">${sel}<span style="flex:1"></span><button class="btn" id="gbPdfAsg">${SVG(IC.dl)} Assignment report (PDF)</button><button class="btn" id="gbPdfSlips">${SVG(IC.dl)} Result slips for students (PDF)</button><button class="btn quiet" id="gbCsvAsg">${SVG(IC.dl)} Spreadsheet (CSV)</button>${paperSel()}</div>${head}${gbSheetBtns(c, a, null)}
     <div class="gb-rep">
       <section class="card gb-asgtable"><h3 class="ch">How the class did</h3><div class="kpis gb-k gb-k4"><div class="card kpi"><small>Class average</small><b>${as.avg == null ? '—' : as.avg + '%'}</b></div><div class="card kpi"><small>Middle score</small><b>${as.med == null ? '—' : as.med + '%'}</b></div><div class="card kpi"><small>Highest · lowest</small><b>${as.hi == null ? '—' : `${as.hi}% · ${as.lo}%`}</b></div><div class="card kpi"><small>Graded</small><b>${done} of ${total}</b></div></div>
         <div class="gb-dist">${Object.entries(as.dist).map(([l, n]) => `<div><b>${n}</b><span>${l}</span><i style="height:${done ? Math.max(4, n / done * 70) : 4}px"></i></div>`).join('')}</div>
@@ -19732,6 +19844,7 @@ function gbBind(db, c) {
     if (ra && $('#gbPdfAsg')) $('#gbPdfAsg').onclick = () => makePdf(gbAsgPDF(c, ra), fileSafe(c.name + ' ' + (ra.title || 'assignment') + ' report') + '.pdf', $('#gbPdfAsg'));
     if (ra && $('#gbPdfSlips')) $('#gbPdfSlips').onclick = () => makePdf(gbAsgSlipsPDF(c, ra, c.students.map(s => s.id)), fileSafe(c.name + ' ' + (ra.title || 'assignment') + ' result slips') + '.pdf', $('#gbPdfSlips'));
     if (ra && $('#gbPdfAsgOne')) $('#gbPdfAsgOne').onclick = () => { const st = c.students.find(s => s.id === GBU.sid); makePdf(gbAsgSlipsPDF(c, ra, [st.id]), fileSafe(c.name + ' ' + (ra.title || 'assignment') + ' ' + st.name) + '.pdf', $('#gbPdfAsgOne')); };
+    if (ra && $('#gbFix')) { const ids = () => GBU.sid ? [GBU.sid] : gbSrcIds(c, ra); $('#gbFix').onclick = () => gbSheetsPDF(c, ra, ids(), true, $('#gbFix')); $('#gbRev').onclick = () => gbSheetsPDF(c, ra, ids(), false, $('#gbRev')); }
     if (ra && $('#gbCsvAsg')) $('#gbCsvAsg').onclick = () => saveFile(fileSafe(c.name + ' ' + (ra.title || 'assignment')) + '.csv', gbAsgCsv(c, ra), 'text/csv'); }
   $$('[name="gbTone"]').forEach(r => r.onchange = () => { GBU.tone = r.value; gbRedo(); });
   if ($('#gbCopy')) $('#gbCopy').onclick = () => copyText($('#gbText').value, '#gbCopied', 'Copied');
@@ -19751,15 +19864,16 @@ function gbImport(results, classId, addNew) {
     let st = (sn && c.students.find(s => s.no === sn)) || (em && c.students.find(s => s.email === em)) || (!sn && c.students.find(s => s.name.toLowerCase() === nm.toLowerCase())) || null;
     if (!st) { if (!addNew || !nm) { skipped++; continue; } st = { id: gbId(), name: nm, email: em, ...(sn ? { no: sn } : {}) }; c.students.push(st); newStu++; }
     let key, mk, gs, byUnit;
-    if (r.kind === 'UT') { const tt = utcTotals(r); key = utKey(r.ut);
+    if (r.kind === 'UT') { const tt = utcTotals(r); key = utKey(r.only && r.ref ? r.ref.ut : r.ut);
       mk = () => ({ id: gbId(), title: r.ut.n, type: r.ut.ex ? 'exam' : 'test', date: (d.d || '').slice(0, 10), units: r.ut.u.slice(), key, cats: [{ id: 'mc', label: 'Multiple choice', max: r.n, kind: 'mc' }].concat(tt.fq.length ? [{ id: 'wr', label: 'Written response', max: tt.fm, kind: 'written' }] : []) });
-      gs = { mc: r.c, ...(tt.fq.length ? { wr: tt.fp } : {}) }; byUnit = r.byCat; if (!c.course) c.course = r.ut.t; }
+      gs = tt.fin != null ? { mc: Math.round(tt.fin / 100 * r.n * 10) / 10, ...(tt.fq.length ? { wr: Math.round(tt.fin / 100 * tt.fm * 10) / 10 } : {}) } : { mc: r.c, ...(tt.fq.length ? { wr: tt.fp } : {}) };
+      byUnit = r.byCat; if (!c.course) c.course = r.ut.t; }
     else { const x = BY_ID[d.t]; key = 'ex:' + (d.as || 'exam') + '|' + d.t;
       mk = () => ({ id: gbId(), title: d.as || `${x ? x.subject : ''} exam simulation`, type: 'exam', date: (d.d || '').slice(0, 10), units: x ? srCatsOf(x).map(k => k.k) : [], key, cats: [{ id: 'mc', label: 'Multiple choice', max: d.mc[1], kind: 'mc' }].concat(d.fr ? [{ id: 'wr', label: 'Written response', max: d.fr[1], kind: 'written' }] : []) });
       gs = { mc: d.mc[0], ...(d.fr && d.fr[2] ? { wr: d.fr[0] } : {}) }; byUnit = d.bc; if (!c.course && x) c.course = x.id; }
     let a = c.asg.find(o => o.key === key); if (!a) { a = mk(); c.asg.push(a); }
     c.g[a.id] = c.g[a.id] || {}; const prev = c.g[a.id][st.id] || {};
-    c.g[a.id][st.id] = { ...prev, s: { ...(prev.s || {}), ...gs }, byUnit, st: prev.st === 'missing' ? '' : prev.st || '', note: prev.note || (d.lk && !lkSummary(d.lk).ok ? 'Lockdown: ' + lkSummary(d.lk).text : '') };
+    c.g[a.id][st.id] = { ...prev, s: { ...(prev.s || {}), ...gs }, byUnit, ...(r.kind === 'UT' && r.line ? { src: r.line } : {}), st: prev.st === 'missing' ? '' : prev.st || '', note: prev.note || [r.kind === 'UT' && utcTotals(r).fin != null ? 'Grade set by teacher' + (utcTotals(r).fnote ? ': ' + utcTotals(r).fnote : '') : '', r.only ? 'Scored on the class’s questions only' : '', d.lk && !lkSummary(d.lk).ok ? 'Lockdown: ' + lkSummary(d.lk).text : ''].filter(Boolean).join(' · ') };
     added++;
   }
   db.cur = c.id; gbSave(db); return { added, newStu, skipped, name: c.name };
